@@ -1,0 +1,12 @@
+{
+  "name": "4andar",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Gestão escolar completa para escolas de dança, focada em forró.",
+  "scripts": {
+    "dev:client": "npm --prefix client run dev",
+    "dev:server": "npm --prefix server run dev",
+    "build:client": "npm --prefix client run build",
+    "start:server": "npm --prefix server start"
+  }
+}

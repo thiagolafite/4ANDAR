@@ -1,0 +1,152 @@
+export type NivelForro = 'B1' | 'B2' | 'I1' | 'I2';
+
+export type PapelDanca = 'Condutor' | 'Conduzido' | 'Ambos';
+
+export type TipoUsuario = 'Equipe' | 'Aluno';
+
+export type StatusPresenca = 'pendente' | 'confirmada' | 'ausente';
+
+export type MetodoPagamento = 'PIX' | 'Dinheiro' | 'Cartão';
+
+export type StatusPagamento = 'Pago' | 'Pendente' | 'Atrasado';
+
+export type StatusNivelamento = 'Agendado' | 'Concluído' | 'Cancelado';
+
+export type ResultadoNivelamento = 'Aprovado' | 'Reprovado';
+
+export interface User {
+  id: string;
+  nome: string;
+  email: string;
+  tipo_usuario: TipoUsuario;
+  avatar_url?: string;
+  aluno_id?: string;
+  equipe_id?: string;
+}
+
+export interface Aluno {
+  id: string;
+  user_id?: string;
+  nome: string;
+  telefone: string;
+  email: string;
+  nivel_atual: NivelForro;
+  papel: PapelDanca;
+  mensalidade_valor: number;
+  dia_vencimento: number;
+  data_matricula: string;
+  data_inicio_nivel: string;
+  status: 'ativo' | 'inativo' | 'trancado';
+  foto_url?: string;
+  observacoes?: string;
+}
+
+export interface Equipe {
+  id: string;
+  user_id?: string;
+  nome: string;
+  email: string;
+  telefone: string;
+  papel_equipe: 'Professor' | 'Admin' | 'Instrutor';
+  especialidades: string[];
+  google_calendar_conectado: boolean;
+  ativo: boolean;
+  foto_url?: string;
+}
+
+export interface Aula {
+  id: string;
+  nome: string;
+  nivel: NivelForro;
+  turno: 'Manhã' | 'Tarde' | 'Noite';
+  dia_semana: 'Segunda' | 'Terça' | 'Quarta' | 'Quinta' | 'Sexta' | 'Sábado';
+  horario_inicio: string;
+  horario_fim: string;
+  sala: string;
+  equipe_id: string; // Professor
+  capacidade_maxima: number;
+}
+
+export interface Cronograma {
+  id: string;
+  aula_id: string;
+  data_aula: string; // YYYY-MM-DD
+  tema_aula: string;
+  observacoes?: string;
+}
+
+export interface Presenca {
+  id: string;
+  aluno_id: string;
+  aula_id: string;
+  data_presenca?: string; // YYYY-MM-DD
+  data_aula?: string; // YYYY-MM-DD
+  status: StatusPresenca;
+  data_solicitacao: string;
+  confirmado_por?: string;
+}
+
+export interface Pagamento {
+  id: string;
+  aluno_id: string;
+  valor: number;
+  data_pagamento: string | null;
+  data_vencimento: string; // YYYY-MM-DD
+  metodo: MetodoPagamento;
+  tipo: 'Mensalidade' | 'Aula Avulsa' | 'Evento';
+  status: StatusPagamento;
+  referencia_mes: string;
+  comprovante_url?: string;
+}
+
+export interface CriterioNivelamento {
+  id: string;
+  nivel: NivelForro;
+  secao: 'Aulão' | 'Dança a dois';
+  criterio: string;
+  descricao: string;
+  peso: number;
+}
+
+export interface NivelamentoSessao {
+  id: string;
+  aluno_id: string;
+  data_agendada: string; // YYYY-MM-DD HH:mm
+  nivel_atual: NivelForro;
+  nivel_alvo: NivelForro;
+  papel: PapelDanca;
+  avaliador_aulao: string;
+  avaliador_danca: string;
+  avaliador_observa: string;
+  status: StatusNivelamento;
+  resultado?: ResultadoNivelamento;
+  feedback_aulao?: string;
+  feedback_danca?: string;
+  feedback_geral?: string;
+  notas?: Record<string, number>; // criterio_id -> nota 1 a 5
+}
+
+export interface Evento {
+  id: string;
+  titulo: string;
+  descricao: string;
+  data_evento: string; // YYYY-MM-DD
+  horario: string;
+  local: string;
+  foto_url: string;
+  preco: number;
+  vagas_limite: number;
+  vagas_preenchidas: number;
+  status: 'Inscrições Abertas' | 'Esgotado' | 'Encerrado';
+}
+
+export interface Aviso {
+  id: string;
+  titulo: string;
+  conteudo: string;
+  data_publicacao: string; // YYYY-MM-DD
+  link_url?: string;
+  link_texto?: string;
+  fixado: boolean;
+  autor: string;
+}
