@@ -1,0 +1,244 @@
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+const DATA_DIR = path.join(__dirname, '../../data');
+const DB_FILE = path.join(DATA_DIR, 'database.json');
+
+// Initial seed data
+const initialData = {
+  alunos: [
+    {
+      id: 'al_1',
+      nome: 'Carlos Eduardo Oliveira',
+      telefone: '(11) 99123-4567',
+      email: 'carlos.oliveira@email.com',
+      nivel_atual: 'B1',
+      papel: 'Condutor',
+      mensalidade_valor: 190.0,
+      dia_vencimento: 5,
+      data_matricula: '2026-06-10',
+      data_inicio_nivel: '2026-06-10',
+      status: 'ativo',
+      foto_url: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150'
+    },
+    {
+      id: 'al_2',
+      nome: 'Camila Santos Rocha',
+      telefone: '(11) 98234-5678',
+      email: 'camila.rocha@email.com',
+      nivel_atual: 'B2',
+      papel: 'Conduzido',
+      mensalidade_valor: 190.0,
+      dia_vencimento: 10,
+      data_matricula: '2026-02-15',
+      data_inicio_nivel: '2026-05-20',
+      status: 'ativo',
+      foto_url: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150'
+    },
+    {
+      id: 'al_3',
+      nome: 'Rodrigo Alencar Lima',
+      telefone: '(11) 97345-6789',
+      email: 'rodrigo.alencar@email.com',
+      nivel_atual: 'I1',
+      papel: 'Condutor',
+      mensalidade_valor: 220.0,
+      dia_vencimento: 15,
+      data_matricula: '2025-08-01',
+      data_inicio_nivel: '2026-03-12',
+      status: 'ativo',
+      foto_url: 'https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?w=150'
+    }
+  ],
+  equipe: [
+    {
+      id: 'eq_1',
+      nome: 'Mariana Sol',
+      email: 'mariana.sol@4andar.com.br',
+      telefone: '(11) 98765-4321',
+      papel_equipe: 'Professor',
+      especialidades: ['Forró Universitário', 'Conexão & Abraço', 'Nivelamento'],
+      google_calendar_conectado: true,
+      ativo: true,
+      foto_url: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150'
+    },
+    {
+      id: 'eq_2',
+      nome: 'Mestre Gonzaga Silva',
+      email: 'gonzaga.silva@4andar.com.br',
+      telefone: '(11) 97654-3210',
+      papel_equipe: 'Professor',
+      especialidades: ['Pé de Serra', 'Baião & Arrasta-pé'],
+      google_calendar_conectado: true,
+      ativo: true,
+      foto_url: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150'
+    }
+  ],
+  aulas: [
+    {
+      id: 'aul_b1_noite',
+      nome: 'Básico 1 — Terça & Quinta (Noite)',
+      nivel: 'B1',
+      turno: 'Noite',
+      dia_semana: 'Terça',
+      horario_inicio: '19:30',
+      horario_fim: '20:45',
+      sala: 'Salão Principal (Gonzagão)',
+      equipe_id: 'eq_2',
+      capacidade_maxima: 24
+    },
+    {
+      id: 'aul_b2_noite',
+      nome: 'Básico 2 — Segunda & Quarta (Noite)',
+      nivel: 'B2',
+      turno: 'Noite',
+      dia_semana: 'Quarta',
+      horario_inicio: '20:00',
+      horario_fim: '21:15',
+      sala: 'Salão Principal (Gonzagão)',
+      equipe_id: 'eq_1',
+      capacidade_maxima: 22
+    }
+  ],
+  cronogramas: [
+    {
+      id: 'crono_1',
+      aula_id: 'aul_b1_noite',
+      data_aula: '2026-09-29',
+      tema_aula: 'Giro simples e caminhadas no tempo 1 do Xote',
+      observacoes: 'Trazer foco no abraço e relaxamento dos ombros.'
+    },
+    {
+      id: 'crono_2',
+      aula_id: 'aul_b2_noite',
+      data_aula: '2026-09-30',
+      tema_aula: 'Giro invertido com saída em travessia',
+      observacoes: 'Trabalho de tônus de braço na condução.'
+    }
+  ],
+  presencas: [
+    {
+      id: 'pre_1',
+      aluno_id: 'al_1',
+      aula_id: 'aul_b1_noite',
+      data_presenca: '2026-09-29',
+      status: 'confirmada',
+      data_solicitacao: '2026-09-28 14:20',
+      confirmado_por: 'Mariana Sol'
+    }
+  ],
+  pagamentos: [
+    {
+      id: 'pag_1',
+      aluno_id: 'al_1',
+      valor: 190.0,
+      data_pagamento: '2026-09-04',
+      data_vencimento: '2026-09-05',
+      metodo: 'PIX',
+      tipo: 'Mensalidade',
+      status: 'Pago',
+      referencia_mes: 'Setembro/2026'
+    },
+    {
+      id: 'pag_2',
+      aluno_id: 'al_1',
+      valor: 190.0,
+      data_pagamento: null,
+      data_vencimento: '2026-10-05',
+      metodo: 'PIX',
+      tipo: 'Mensalidade',
+      status: 'Pendente',
+      referencia_mes: 'Outubro/2026'
+    },
+    {
+      id: 'pag_3',
+      aluno_id: 'al_2',
+      valor: 190.0,
+      data_pagamento: null,
+      data_vencimento: '2026-09-10',
+      metodo: 'PIX',
+      tipo: 'Mensalidade',
+      status: 'Atrasado',
+      referencia_mes: 'Setembro/2026'
+    }
+  ],
+  nivelamentoSessoes: [
+    {
+      id: 'niv_1',
+      aluno_id: 'al_1',
+      data_agendada: '2026-10-10 14:00',
+      nivel_atual: 'B1',
+      nivel_alvo: 'B2',
+      papel: 'Condutor',
+      avaliador_aulao: 'Mariana Sol',
+      avaliador_danca: 'Mestre Gonzaga Silva',
+      avaliador_observa: 'Tiago Baião',
+      status: 'Agendado'
+    }
+  ],
+  eventos: [
+    {
+      id: 'ev_1',
+      titulo: 'Grande Forró do 4ANDAR com Trio Pé de Serra',
+      descricao: 'Uma noite inesquecível de forró autêntico e xote com o Trio Zabumba Dourada.',
+      data_evento: '2026-10-17',
+      horario: '21:00 às 03:00',
+      local: 'Salão Nobre do 4ANDAR',
+      foto_url: 'https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?w=600',
+      preco: 35.0,
+      vagas_limite: 150,
+      vagas_preenchidas: 98,
+      status: 'Inscrições Abertas'
+    }
+  ],
+  avisos: [
+    {
+      id: 'av_1',
+      titulo: '📢 Grupo Oficial de Alunos no WhatsApp',
+      conteudo: 'Entre no canal oficial de comunicação para materiais de estudo e playlists.',
+      data_publicacao: '2026-09-25',
+      link_url: 'https://chat.whatsapp.com/exemplo-4andar',
+      link_texto: 'Entrar no Grupo',
+      fixado: true,
+      autor: 'Mariana Sol'
+    }
+  ]
+};
+
+// Ensure data directory exists
+if (!fs.existsSync(DATA_DIR)) {
+  fs.mkdirSync(DATA_DIR, { recursive: true });
+}
+
+// Ensure database file exists
+if (!fs.existsSync(DB_FILE)) {
+  fs.writeFileSync(DB_FILE, JSON.stringify(initialData, null, 2), 'utf8');
+}
+
+/**
+ * Lê os dados atuais do banco local
+ */
+export const readDB = () => {
+  try {
+    const raw = fs.readFileSync(DB_FILE, 'utf8');
+    return JSON.parse(raw);
+  } catch (err) {
+    console.error('Erro ao ler DB:', err);
+    return initialData;
+  }
+};
+
+/**
+ * Grava atomicamente no banco local
+ */
+export const writeDB = (data) => {
+  try {
+    fs.writeFileSync(DB_FILE, JSON.stringify(data, null, 2), 'utf8');
+  } catch (err) {
+    console.error('Erro ao gravar DB:', err);
+  }
+};
