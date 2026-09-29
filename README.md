@@ -106,4 +106,27 @@ O **4ANDAR** é uma plataforma de gestão escolar voltada a escolas de dança (c
 | `/avisos` | Mural de notícias | Todos |
 | `/equipe` | Cadastro de professores e staff | Equipe |
 | `/agenda-google` | Sincronização com Google Calendar | Professores |
-| `/perfil` | Dados cadastrais do usuário | Todos |
+## 6. Arquitetura 100% Própria & Independente
+
+O sistema foi construído sem dependência de plataformas proprietárias ou SaaS externos:
+- **Frontend SPA:** React + Vite + TypeScript + Tailwind CSS.
+- **Backend API REST:** Node.js + Express.
+- **Banco de Dados:** Camada de persistência local autônoma (`server/data/database.json`), sem lock-in.
+- **E-mails & Régua de Cobrança:** Serviço próprio de envio via Nodemailer (`server/src/services/emailService.js`), com templates responsivos e agendamento nativo via `node-cron` às 08:00 AM.
+- **Google Calendar:** Sincronização direta com deduplicação nativa de eventos (`server/src/services/googleCalendarService.js`).
+
+---
+
+## 7. Como Executar
+
+### Frontend (React / Vite)
+```bash
+npm run dev:client
+# Acesso: http://localhost:5173
+```
+
+### Backend (Node.js / Express API REST)
+```bash
+npm run dev:server
+# Acesso: http://localhost:3001/api/health
+```
