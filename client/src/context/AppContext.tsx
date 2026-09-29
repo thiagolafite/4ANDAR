@@ -141,6 +141,40 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [eventos, setEventos] = useState<Evento[]>(() => loadInitial('eventos', mockEventos));
   const [avisos, setAvisos] = useState<Aviso[]>(() => loadInitial('avisos', mockAvisos));
 
+  const API_URL = 'http://localhost:3001/api';
+
+  // Sincronização inicial com o backend Turso
+  useEffect(() => {
+    fetch(`${API_URL}/health`)
+      .then((r) => r.json())
+      .then(() => {
+        Promise.all([
+          fetch(`${API_URL}/alunos`).then((r) => r.json()).catch(() => null),
+          fetch(`${API_URL}/equipe`).then((r) => r.json()).catch(() => null),
+          fetch(`${API_URL}/aulas`).then((r) => r.json()).catch(() => null),
+          fetch(`${API_URL}/cronograma`).then((r) => r.json()).catch(() => null),
+          fetch(`${API_URL}/presencas`).then((r) => r.json()).catch(() => null),
+          fetch(`${API_URL}/pagamentos`).then((r) => r.json()).catch(() => null),
+          fetch(`${API_URL}/nivelamentos`).then((r) => r.json()).catch(() => null),
+          fetch(`${API_URL}/eventos`).then((r) => r.json()).catch(() => null),
+          fetch(`${API_URL}/avisos`).then((r) => r.json()).catch(() => null)
+        ]).then(([tursoAlunos, tursoEquipe, tursoAulas, tursoCronos, tursoPres, tursoPags, tursoNiv, tursoEv, tursoAv]) => {
+          if (tursoAlunos?.length) setAlunos(tursoAlunos);
+          if (tursoEquipe?.length) setEquipe(tursoEquipe);
+          if (tursoAulas?.length) setAulas(tursoAulas);
+          if (tursoCronos?.length) setCronogramas(tursoCronos);
+          if (tursoPres?.length) setPresencas(tursoPres);
+          if (tursoPags?.length) setPagamentos(tursoPags);
+          if (tursoNiv?.length) setNivelamentoSessoes(tursoNiv);
+          if (tursoEv?.length) setEventos(tursoEv);
+          if (tursoAv?.length) setAvisos(tursoAv);
+        });
+      })
+      .catch(() => {
+        // Modo offline / servidor não iniciado, mantém localStorage
+      });
+  }, []);
+
   // Search & Modal State
   const [searchQuery, setSearchQuery] = useState('');
   const [searchModalOpen, setSearchModalOpen] = useState(false);
@@ -210,6 +244,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       id: `al_${Date.now()}`
     };
     setAlunos((prev) => [newAluno, ...prev]);
+
+    // Grava no Turso em segundo plano
+    fetch(`${API_URL}/alunos`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(newAluno)
+    }).catch(() => {});
+
     showToast(`Aluno(a) ${newAluno.nome} cadastrado(a) com sucesso!`);
     return newAluno;
   };
@@ -218,11 +260,25 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setAlunos((prev) =>
       prev.map((al) => (al.id === id ? { ...al, ...updates } : al))
     );
+
+    // Atualiza no Turso em segundo plano
+    fetch(`${API_URL}/alunos/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(updates)
+    }).catch(() => {});
+
     showToast('Dados do aluno atualizados!');
   };
 
   const deleteAluno = (id: string) => {
     setAlunos((prev) => prev.filter((al) => al.id !== id));
+
+    // Remove do Turso em segundo plano
+    fetch(`${API_URL}/alunos/${id}`, {
+      method: 'DELETE'
+    }).catch(() => {});
+
     showToast('Aluno removido com sucesso.', 'info');
   };
 

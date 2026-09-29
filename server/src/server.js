@@ -2,7 +2,7 @@ import express from 'express';
 import cors from 'cors';
 import cron from 'node-cron';
 import dotenv from 'dotenv';
-import { readDB, writeDB } from './db/database.js';
+import { turso, initTursoDatabase } from './db/turso.js';
 import { enviarLembreteMensalidade } from './services/emailService.js';
 import { sincronizarAulasCalendar } from './services/googleCalendarService.js';
 
@@ -21,199 +21,306 @@ app.get('/api/health', (req, res) => {
   res.json({
     status: 'ok',
     system: '4ANDAR — Gestão Escolar de Dança',
-    architecture: '100% Autônomo & Independente (Sem dependência de Base44)',
+    database: 'Turso (libSQL)',
+    turso_url: process.env.TURSO_DATABASE_URL ? 'Turso Cloud Conectado' : 'Arquivo Local libSQL',
     time: new Date().toISOString()
   });
 });
 
 // ==========================================
-// 2. ALUNOS CRUD
+// 2. ALUNOS (TURSO)
 // ==========================================
-app.get('/api/alunos', (req, res) => {
-  const db = readDB();
-  res.json(db.alunos || []);
-});
-
-app.post('/api/alunos', (req, res) => {
-  const db = readDB();
-  const novo = { id: `al_${Date.now()}`, ...req.body };
-  db.alunos.unshift(novo);
-  writeDB(db);
-  res.status(201).json(novo);
-});
-
-app.put('/api/alunos/:id', (req, res) => {
-  const { id } = req.params;
-  const db = readDB();
-  const idx = db.alunos.findIndex((a) => a.id === id);
-  if (idx === -1) return res.status(404).json({ error: 'Aluno não encontrado' });
-
-  db.alunos[idx] = { ...db.alunos[idx], ...req.body };
-  writeDB(db);
-  res.json(db.alunos[idx]);
-});
-
-app.delete('/api/alunos/:id', (req, res) => {
-  const { id } = req.params;
-  const db = readDB();
-  db.alunos = db.alunos.filter((a) => a.id !== id);
-  writeDB(db);
-  res.json({ success: true, message: 'Aluno removido com sucesso' });
-});
-
-// ==========================================
-// 3. EQUIPE & PROFESSORES
-// ==========================================
-app.get('/api/equipe', (req, res) => {
-  const db = readDB();
-  res.json(db.equipe || []);
-});
-
-app.post('/api/equipe', (req, res) => {
-  const db = readDB();
-  const novo = { id: `eq_${Date.now()}`, ...req.body };
-  db.equipe.push(novo);
-  writeDB(db);
-  res.status(201).json(novo);
-});
-
-// ==========================================
-// 4. AULAS & CRONOGRAMA SEMANAL
-// ==========================================
-app.get('/api/aulas', (req, res) => {
-  const db = readDB();
-  res.json(db.aulas || []);
-});
-
-app.post('/api/aulas', (req, res) => {
-  const db = readDB();
-  const nova = { id: `aul_${Date.now()}`, ...req.body };
-  db.aulas.push(nova);
-  writeDB(db);
-  res.status(201).json(nova);
-});
-
-app.get('/api/cronograma', (req, res) => {
-  const db = readDB();
-  res.json(db.cronogramas || []);
-});
-
-app.put('/api/cronograma', (req, res) => {
-  const { aula_id, data_aula, tema_aula, observacoes } = req.body;
-  const db = readDB();
-  const existing = db.cronogramas.find((c) => c.aula_id === aula_id && c.data_aula === data_aula);
-
-  if (existing) {
-    existing.tema_aula = tema_aula;
-    existing.observacoes = observacoes;
-    writeDB(db);
-    return res.json(existing);
+app.get('/api/alunos', async (req, res) => {
+  try {
+    const result = await turso.execute('SELECT * FROM alunos ORDER BY nome ASC');
+    res.json(result.rows);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
   }
+});
 
-  const novo = { id: `crono_${Date.now()}`, aula_id, data_aula, tema_aula, observacoes };
-  db.cronogramas.push(novo);
-  writeDB(db);
-  res.status(201).json(novo);
+app.post('/api/alunos', async (req, res) => {
+  try {
+    const {
+      nome, telefone, email, nivel_atual, papel,
+      mensalidade_valor, dia_vencimento, data_matricula,
+      data_inicio_nivel, status, foto_url, observacoes
+    } = req.body;
+
+    const id = `al_${Date.now()}`;
+
+    await turso.execute({
+      sql: `INSERT INTO alunos (id, nome, telefone, email, nivel_atual, papel, mensalidade_valor, dia_vencimento, data_matricula, data_inicio_nivel, status, foto_url, observacoes)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      args: [
+        id, nome, telefone, email, nivel_atual || 'B1', papel || 'Condutor',
+        mensalidade_valor || 190.0, dia_vencimento || 5,
+        data_matricula || new Date().toISOString().substring(0, 10),
+        data_inicio_nivel || new Date().toISOString().substring(0, 10),
+        status || 'ativo', foto_url || null, observacoes || null
+      ]
+    });
+
+    const aluno = await turso.execute({ sql: 'SELECT * FROM alunos WHERE id = ?', args: [id] });
+    res.status(201).json(aluno.rows[0]);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.put('/api/alunos/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const {
+      nome, telefone, email, nivel_atual, papel,
+      mensalidade_valor, dia_vencimento, status, observacoes
+    } = req.body;
+
+    await turso.execute({
+      sql: `UPDATE alunos SET 
+            nome = COALESCE(?, nome),
+            telefone = COALESCE(?, telefone),
+            email = COALESCE(?, email),
+            nivel_atual = COALESCE(?, nivel_atual),
+            papel = COALESCE(?, papel),
+            mensalidade_valor = COALESCE(?, mensalidade_valor),
+            dia_vencimento = COALESCE(?, dia_vencimento),
+            status = COALESCE(?, status),
+            observacoes = COALESCE(?, observacoes)
+            WHERE id = ?`,
+      args: [nome, telefone, email, nivel_atual, papel, mensalidade_valor, dia_vencimento, status, observacoes, id]
+    });
+
+    const updated = await turso.execute({ sql: 'SELECT * FROM alunos WHERE id = ?', args: [id] });
+    res.json(updated.rows[0]);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.delete('/api/alunos/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    await turso.execute({ sql: 'DELETE FROM alunos WHERE id = ?', args: [id] });
+    res.json({ success: true, message: 'Aluno removido com sucesso do Turso' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
 // ==========================================
-// 5. PRESENÇA & CHAMADA
+// 3. EQUIPE (TURSO)
 // ==========================================
-app.get('/api/presencas', (req, res) => {
-  const db = readDB();
-  res.json(db.presencas || []);
+app.get('/api/equipe', async (req, res) => {
+  try {
+    const result = await turso.execute('SELECT * FROM equipe ORDER BY nome ASC');
+    const rows = result.rows.map((row) => ({
+      ...row,
+      especialidades: typeof row.especialidades === 'string' ? JSON.parse(row.especialidades || '[]') : row.especialidades
+    }));
+    res.json(rows);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
-app.post('/api/presencas/solicitar', (req, res) => {
-  const { aluno_id, aula_id, data_presenca } = req.body;
-  const db = readDB();
-  const nova = {
-    id: `pre_${Date.now()}`,
-    aluno_id,
-    aula_id,
-    data_presenca,
-    status: 'pendente',
-    data_solicitacao: new Date().toISOString()
-  };
-  db.presencas.unshift(nova);
-  writeDB(db);
-  res.status(201).json(nova);
-});
-
-app.put('/api/presencas/:id/confirmar', (req, res) => {
-  const { id } = req.params;
-  const { confirmado_por } = req.body;
-  const db = readDB();
-  const p = db.presencas.find((item) => item.id === id);
-  if (!p) return res.status(404).json({ error: 'Presença não encontrada' });
-
-  p.status = 'confirmada';
-  p.confirmado_por = confirmado_por || 'Equipe 4ANDAR';
-  writeDB(db);
-  res.json(p);
-});
-
-app.put('/api/presencas/:id/ausente', (req, res) => {
-  const { id } = req.params;
-  const db = readDB();
-  const p = db.presencas.find((item) => item.id === id);
-  if (!p) return res.status(404).json({ error: 'Presença não encontrada' });
-
-  p.status = 'ausente';
-  writeDB(db);
-  res.json(p);
+app.post('/api/equipe', async (req, res) => {
+  try {
+    const { nome, email, telefone, papel_equipe, especialidades, foto_url } = req.body;
+    const id = `eq_${Date.now()}`;
+    await turso.execute({
+      sql: `INSERT INTO equipe (id, nome, email, telefone, papel_equipe, especialidades, foto_url)
+            VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      args: [id, nome, email, telefone || null, papel_equipe || 'Professor', JSON.stringify(especialidades || []), foto_url || null]
+    });
+    res.status(201).json({ id, nome, email, papel_equipe });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
 // ==========================================
-// 6. PAGAMENTOS & FINANCEIRO
+// 4. AULAS & CRONOGRAMA (TURSO)
 // ==========================================
-app.get('/api/pagamentos', (req, res) => {
-  const db = readDB();
-  res.json(db.pagamentos || []);
+app.get('/api/aulas', async (req, res) => {
+  try {
+    const result = await turso.execute('SELECT * FROM aulas ORDER BY nome ASC');
+    res.json(result.rows);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
-app.post('/api/pagamentos', (req, res) => {
-  const db = readDB();
-  const novo = { id: `pag_${Date.now()}`, ...req.body };
-  db.pagamentos.unshift(novo);
-  writeDB(db);
-  res.status(201).json(novo);
+app.post('/api/aulas', async (req, res) => {
+  try {
+    const { nome, nivel, turno, dia_semana, horario_inicio, horario_fim, sala, equipe_id, capacidade_maxima } = req.body;
+    const id = `aul_${Date.now()}`;
+    await turso.execute({
+      sql: `INSERT INTO aulas (id, nome, nivel, turno, dia_semana, horario_inicio, horario_fim, sala, equipe_id, capacidade_maxima)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      args: [id, nome, nivel, turno, dia_semana, horario_inicio, horario_fim, sala, equipe_id, capacidade_maxima || 24]
+    });
+    res.status(201).json({ id, nome, nivel });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
-app.put('/api/pagamentos/:id/baixar', (req, res) => {
-  const { id } = req.params;
-  const { metodo } = req.body;
-  const db = readDB();
-  const pag = db.pagamentos.find((p) => p.id === id);
-  if (!pag) return res.status(404).json({ error: 'Pagamento não encontrado' });
+app.get('/api/cronograma', async (req, res) => {
+  try {
+    const result = await turso.execute('SELECT * FROM cronogramas ORDER BY data_aula ASC');
+    res.json(result.rows);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
 
-  pag.status = 'Pago';
-  pag.metodo = metodo || 'PIX';
-  pag.data_pagamento = new Date().toISOString().substring(0, 10);
-  writeDB(db);
-  res.json(pag);
+app.put('/api/cronograma', async (req, res) => {
+  try {
+    const { aula_id, data_aula, tema_aula, observacoes } = req.body;
+    const existing = await turso.execute({
+      sql: 'SELECT * FROM cronogramas WHERE aula_id = ? AND data_aula = ?',
+      args: [aula_id, data_aula]
+    });
+
+    if (existing.rows.length > 0) {
+      await turso.execute({
+        sql: 'UPDATE cronogramas SET tema_aula = ?, observacoes = ? WHERE id = ?',
+        args: [tema_aula, observacoes || null, existing.rows[0].id]
+      });
+      return res.json({ ...existing.rows[0], tema_aula, observacoes });
+    }
+
+    const id = `crono_${Date.now()}`;
+    await turso.execute({
+      sql: 'INSERT INTO cronogramas (id, aula_id, data_aula, tema_aula, observacoes) VALUES (?, ?, ?, ?, ?)',
+      args: [id, aula_id, data_aula, tema_aula, observacoes || null]
+    });
+    res.status(201).json({ id, aula_id, data_aula, tema_aula, observacoes });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
 // ==========================================
-// 7. WORKFLOW: LEMBRETES DE MENSALIDADE
-// (Totalmente próprio - Sem backend do Base44)
+// 5. PRESENÇAS & CHAMADAS (TURSO)
+// ==========================================
+app.get('/api/presencas', async (req, res) => {
+  try {
+    const result = await turso.execute('SELECT * FROM presencas ORDER BY data_presenca DESC');
+    res.json(result.rows);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/api/presencas/solicitar', async (req, res) => {
+  try {
+    const { aluno_id, aula_id, data_presenca } = req.body;
+    const id = `pre_${Date.now()}`;
+    const dataSolicitacao = new Date().toISOString();
+
+    await turso.execute({
+      sql: `INSERT INTO presencas (id, aluno_id, aula_id, data_presenca, status, data_solicitacao)
+            VALUES (?, ?, ?, ?, 'pendente', ?)`,
+      args: [id, aluno_id, aula_id, data_presenca, dataSolicitacao]
+    });
+    res.status(201).json({ id, aluno_id, aula_id, data_presenca, status: 'pendente' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.put('/api/presencas/:id/confirmar', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { confirmado_por } = req.body;
+    await turso.execute({
+      sql: "UPDATE presencas SET status = 'confirmada', confirmado_por = ? WHERE id = ?",
+      args: [confirmado_por || 'Equipe 4ANDAR', id]
+    });
+    res.json({ id, status: 'confirmada' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.put('/api/presencas/:id/ausente', async (req, res) => {
+  try {
+    const { id } = req.params;
+    await turso.execute({
+      sql: "UPDATE presencas SET status = 'ausente' WHERE id = ?",
+      args: [id]
+    });
+    res.json({ id, status: 'ausente' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ==========================================
+// 6. PAGAMENTOS (TURSO)
+// ==========================================
+app.get('/api/pagamentos', async (req, res) => {
+  try {
+    const result = await turso.execute('SELECT * FROM pagamentos ORDER BY data_vencimento DESC');
+    res.json(result.rows);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/api/pagamentos', async (req, res) => {
+  try {
+    const { aluno_id, valor, data_vencimento, metodo, tipo, status, referencia_mes } = req.body;
+    const id = `pag_${Date.now()}`;
+    await turso.execute({
+      sql: `INSERT INTO pagamentos (id, aluno_id, valor, data_vencimento, metodo, tipo, status, referencia_mes)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+      args: [id, aluno_id, valor, data_vencimento, metodo || 'PIX', tipo || 'Mensalidade', status || 'Pendente', referencia_mes]
+    });
+    res.status(201).json({ id, aluno_id, valor, status: status || 'Pendente' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.put('/api/pagamentos/:id/baixar', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { metodo } = req.body;
+    const dataHoje = new Date().toISOString().substring(0, 10);
+    await turso.execute({
+      sql: "UPDATE pagamentos SET status = 'Pago', metodo = ?, data_pagamento = ? WHERE id = ?",
+      args: [metodo || 'PIX', dataHoje, id]
+    });
+    res.json({ id, status: 'Pago', data_pagamento: dataHoje });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ==========================================
+// 7. WORKFLOW: LEMBRETES AUTOMÁTICOS DE MENSALIDADE
 // ==========================================
 export const processarLembretesMensalidade = async () => {
-  const db = readDB();
   const hoje = new Date();
   const limiteTresDias = new Date(hoje);
   limiteTresDias.setDate(hoje.getDate() + 3);
 
-  const pagamentosElegiveis = db.pagamentos.filter((p) => {
-    if (p.status === 'Pago') return false;
+  const pagamentosResult = await turso.execute("SELECT * FROM pagamentos WHERE status != 'Pago'");
+  const pagamentos = pagamentosResult.rows;
+
+  const elegiveis = pagamentos.filter((p) => {
     const v = new Date(p.data_vencimento);
     return v <= limiteTresDias || p.status === 'Atrasado';
   });
 
   const envios = [];
 
-  for (const pag of pagamentosElegiveis) {
-    const aluno = db.alunos.find((a) => a.id === pag.aluno_id);
+  for (const pag of elegiveis) {
+    const alunoResult = await turso.execute({ sql: 'SELECT * FROM alunos WHERE id = ?', args: [pag.aluno_id] });
+    const aluno = alunoResult.rows[0];
     if (!aluno || !aluno.email) continue;
 
     try {
@@ -235,7 +342,7 @@ export const processarLembretesMensalidade = async () => {
         status_envio: 'sucesso'
       });
     } catch (err) {
-      console.error(`Erro ao enviar para ${aluno.email}:`, err.message);
+      console.error(`Erro ao enviar lembrete para ${aluno.email}:`, err.message);
       envios.push({
         aluno_id: aluno.id,
         nome: aluno.nome,
@@ -249,13 +356,12 @@ export const processarLembretesMensalidade = async () => {
   return envios;
 };
 
-// Endpoint sob demanda para disparar lembretes
 app.post('/api/workflows/enviar-lembretes-mensalidade', async (req, res) => {
   try {
     const envios = await processarLembretesMensalidade();
     res.json({
       success: true,
-      message: 'Workflow de régua de cobrança executado com sucesso.',
+      message: 'Workflow de cobrança executado via Turso.',
       total_enviados: envios.filter((e) => e.status_envio === 'sucesso').length,
       detalhes: envios
     });
@@ -264,9 +370,9 @@ app.post('/api/workflows/enviar-lembretes-mensalidade', async (req, res) => {
   }
 });
 
-// Agendador diário nativo em Node.js (Executa todo dia às 08:00 AM automaticamente)
+// Cron nativo (Executa todo dia às 08:00 AM)
 cron.schedule('0 8 * * *', async () => {
-  console.log('⏰ [CRON NATIVO] Disparando régua diária de cobrança automática...');
+  console.log('⏰ [CRON TURSO] Verificando faturas no Turso para envio de lembretes...');
   try {
     await processarLembretesMensalidade();
   } catch (err) {
@@ -275,20 +381,23 @@ cron.schedule('0 8 * * *', async () => {
 });
 
 // ==========================================
-// 8. INTEGRAÇÃO: GOOGLE CALENDAR (Deduplicada)
-// (Totalmente própria - Sem backend do Base44)
+// 8. INTEGRAÇÃO: GOOGLE CALENDAR
 // ==========================================
 app.post('/api/integracoes/sincronizar-aulas-calendar', async (req, res) => {
   try {
     const { professor_id, professor_email, access_token } = req.body;
-    const db = readDB();
 
-    const aulasDoProf = db.aulas.filter(
-      (a) => a.equipe_id === professor_id || !professor_id
-    );
+    const aulasResult = await turso.execute({
+      sql: 'SELECT * FROM aulas WHERE equipe_id = ? OR ? IS NULL',
+      args: [professor_id || null, professor_id || null]
+    });
+    const aulas = aulasResult.rows;
 
-    const aulasComCronograma = aulasDoProf.map((aula) => {
-      const crono = db.cronogramas.find((c) => c.aula_id === aula.id);
+    const cronogramasResult = await turso.execute('SELECT * FROM cronogramas');
+    const cronogramas = cronogramasResult.rows;
+
+    const aulasComCronograma = aulas.map((aula) => {
+      const crono = cronogramas.find((c) => c.aula_id === aula.id);
       return {
         aula_id: aula.id,
         turma_nome: aula.nome,
@@ -315,71 +424,116 @@ app.post('/api/integracoes/sincronizar-aulas-calendar', async (req, res) => {
 });
 
 // ==========================================
-// 9. NIVELAMENTO TÉCNICO & BANCA
+// 9. NIVELAMENTO TÉCNICO (TURSO)
 // ==========================================
-app.get('/api/nivelamentos', (req, res) => {
-  const db = readDB();
-  res.json(db.nivelamentoSessoes || []);
-});
-
-app.post('/api/nivelamentos/agendar', (req, res) => {
-  const db = readDB();
-  const nova = { id: `niv_${Date.now()}`, status: 'Agendado', ...req.body };
-  db.nivelamentoSessoes.push(nova);
-  writeDB(db);
-  res.status(201).json(nova);
-});
-
-app.put('/api/nivelamentos/:id/avaliar', (req, res) => {
-  const { id } = req.params;
-  const { resultado, feedback_geral, feedback_aulao, feedback_danca, notas } = req.body;
-  const db = readDB();
-
-  const sessao = db.nivelamentoSessoes.find((s) => s.id === id);
-  if (!sessao) return res.status(404).json({ error: 'Sessão de nivelamento não encontrada' });
-
-  sessao.status = 'Concluído';
-  sessao.resultado = resultado;
-  sessao.feedback_geral = feedback_geral;
-  sessao.feedback_aulao = feedback_aulao;
-  sessao.feedback_danca = feedback_danca;
-  sessao.notas = notas;
-
-  // Requisito: ao aprovar, promove automaticamente o nível do aluno
-  if (resultado === 'Aprovado') {
-    const aluno = db.alunos.find((a) => a.id === sessao.aluno_id);
-    if (aluno) {
-      aluno.nivel_atual = sessao.nivel_alvo;
-      aluno.data_inicio_nivel = new Date().toISOString().substring(0, 10);
-    }
+app.get('/api/nivelamentos', async (req, res) => {
+  try {
+    const result = await turso.execute('SELECT * FROM nivelamento_sessoes ORDER BY data_agendada DESC');
+    res.json(result.rows);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
   }
+});
 
-  writeDB(db);
-  res.json(sessao);
+app.post('/api/nivelamentos/agendar', async (req, res) => {
+  try {
+    const { aluno_id, data_agendada, nivel_atual, nivel_alvo, papel } = req.body;
+    const id = `niv_${Date.now()}`;
+    await turso.execute({
+      sql: `INSERT INTO nivelamento_sessoes (id, aluno_id, data_agendada, nivel_atual, nivel_alvo, papel, status, avaliador_aulao, avaliador_danca)
+            VALUES (?, ?, ?, ?, ?, ?, 'Agendado', 'Mestre Gonzaga Silva', 'Mariana Sol')`,
+      args: [id, aluno_id, data_agendada, nivel_atual, nivel_alvo, papel]
+    });
+    res.status(201).json({ id, aluno_id, nivel_alvo, status: 'Agendado' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.put('/api/nivelamentos/:id/avaliar', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { resultado, feedback_geral, feedback_aulao, feedback_danca, notas } = req.body;
+
+    await turso.execute({
+      sql: `UPDATE nivelamento_sessoes SET 
+            status = 'Concluído',
+            resultado = ?,
+            feedback_geral = ?,
+            feedback_aulao = ?,
+            feedback_danca = ?,
+            notas = ?
+            WHERE id = ?`,
+      args: [resultado, feedback_geral || null, feedback_aulao || null, feedback_danca || null, JSON.stringify(notas || {}), id]
+    });
+
+    if (resultado === 'Aprovado') {
+      const sessaoResult = await turso.execute({ sql: 'SELECT * FROM nivelamento_sessoes WHERE id = ?', args: [id] });
+      const sessao = sessaoResult.rows[0];
+      if (sessao) {
+        const hoje = new Date().toISOString().substring(0, 10);
+        await turso.execute({
+          sql: 'UPDATE alunos SET nivel_atual = ?, data_inicio_nivel = ? WHERE id = ?',
+          args: [sessao.nivel_alvo, hoje, sessao.aluno_id]
+        });
+      }
+    }
+
+    res.json({ id, status: 'Concluído', resultado });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
 // ==========================================
-// 10. EVENTOS & AVISOS
+// 10. EVENTOS & AVISOS (TURSO)
 // ==========================================
-app.get('/api/eventos', (req, res) => {
-  const db = readDB();
-  res.json(db.eventos || []);
+app.get('/api/eventos', async (req, res) => {
+  try {
+    const result = await turso.execute('SELECT * FROM eventos ORDER BY data_evento ASC');
+    res.json(result.rows);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
-app.get('/api/avisos', (req, res) => {
-  const db = readDB();
-  res.json(db.avisos || []);
+app.get('/api/avisos', async (req, res) => {
+  try {
+    const result = await turso.execute('SELECT * FROM avisos ORDER BY fixado DESC, data_publicacao DESC');
+    res.json(result.rows);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
-app.post('/api/avisos', (req, res) => {
-  const db = readDB();
-  const novo = { id: `av_${Date.now()}`, ...req.body };
-  db.avisos.unshift(novo);
-  writeDB(db);
-  res.status(201).json(novo);
+app.post('/api/avisos', async (req, res) => {
+  try {
+    const { titulo, conteudo, link_url, link_texto, fixado, autor } = req.body;
+    const id = `av_${Date.now()}`;
+    const dataPub = new Date().toISOString().substring(0, 10);
+    await turso.execute({
+      sql: 'INSERT INTO avisos (id, titulo, conteudo, data_publicacao, link_url, link_texto, fixado, autor) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+      args: [id, titulo, conteudo, dataPub, link_url || null, link_texto || null, fixado ? 1 : 0, autor || 'Coordenação']
+    });
+    res.status(201).json({ id, titulo });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
-app.listen(PORT, () => {
-  console.log(`\n🚀 4ANDAR API Server rodando na porta ${PORT}`);
-  console.log(`📡 Sistema 100% Autônomo e Independente de Plataformas Externas.`);
-});
+// ==========================================
+// INICIALIZAÇÃO DO SERVIDOR COM TURSO
+// ==========================================
+const startServer = async () => {
+  try {
+    await initTursoDatabase();
+    app.listen(PORT, () => {
+      console.log(`\n🚀 4ANDAR API Server rodando na porta ${PORT}`);
+      console.log(`💾 Banco de Dados: Turso (libSQL) Ativo & Sincronizado`);
+    });
+  } catch (err) {
+    console.error('Falha ao iniciar servidor com Turso:', err);
+  }
+};
+
+startServer();
