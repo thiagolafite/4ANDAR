@@ -25,42 +25,6 @@ export const mockUsers: User[] = [
       equipe: { view: true, manage: true },
       usuarios: { view: true, manage: true, approve: true }
     }
-  },
-  {
-    id: 'usr_admin',
-    nome: 'Mariana Sol (Professora & Coordenação)',
-    email: 'mariana.sol@4andar.com.br',
-    tipo_usuario: 'Equipe',
-    role: 'professor',
-    status: 'aprovado',
-    is_master: false,
-    cargo_pretendido: 'Professor',
-    avatar_url: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
-    equipe_id: 'eq_1',
-    permissoes: {
-      dashboard: { view: true },
-      cronograma: { view: true, edit: true },
-      presenca: { view: true, manage: true },
-      nivelamento: { view: true, evaluate: true },
-      aulas: { view: true }
-    }
-  },
-  {
-    id: 'usr_aluno_1',
-    nome: 'Carlos Eduardo Oliveira',
-    email: 'carlos.oliveira@email.com',
-    tipo_usuario: 'Aluno',
-    role: 'aluno',
-    status: 'aprovado',
-    is_master: false,
-    cargo_pretendido: 'Aluno',
-    avatar_url: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=80',
-    aluno_id: 'al_1',
-    permissoes: {
-      dashboard: { view: true },
-      presenca: { view: true, checkin: true },
-      cronograma: { view: true }
-    }
   }
 ];
 

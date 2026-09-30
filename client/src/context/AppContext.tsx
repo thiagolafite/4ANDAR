@@ -152,34 +152,18 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const pendingUsersCount = usuariosList.filter((u) => u.status === 'pendente').length;
   const [users] = useState<User[]>(mockUsers);
-  const [alunos, setAlunos] = useState<Aluno[]>(() => loadInitial('alunos', mockAlunos));
-  const [equipe, setEquipe] = useState<Equipe[]>(() => loadInitial('equipe', mockEquipe));
-  const [aulas, setAulas] = useState<Aula[]>(() => {
-    const local = loadInitial('aulas', mockAulas);
-    if (Array.isArray(local) && local.length < mockAulas.length) {
-      return mockAulas;
-    }
-    return local;
-  });
-  const [cronogramas, setCronogramas] = useState<Cronograma[]>(() => {
-    const local = loadInitial('cronogramas', mockCronogramas);
-    if (Array.isArray(local) && local.length <= 10 && mockCronogramas.length > local.length) {
-      return mockCronogramas;
-    }
-    return local;
-  });
-  const [presencas, setPresencas] = useState<Presenca[]>(() =>
-    loadInitial('presencas', mockPresencas)
-  );
-  const [pagamentos, setPagamentos] = useState<Pagamento[]>(() =>
-    loadInitial('pagamentos', mockPagamentos)
-  );
+  const [alunos, setAlunos] = useState<Aluno[]>(() => loadInitial('alunos', []));
+  const [equipe, setEquipe] = useState<Equipe[]>(() => loadInitial('equipe', []));
+  const [aulas, setAulas] = useState<Aula[]>(() => loadInitial('aulas', []));
+  const [cronogramas, setCronogramas] = useState<Cronograma[]>(() => loadInitial('cronogramas', []));
+  const [presencas, setPresencas] = useState<Presenca[]>(() => loadInitial('presencas', []));
+  const [pagamentos, setPagamentos] = useState<Pagamento[]>(() => loadInitial('pagamentos', []));
   const [criteriosNivelamento] = useState<CriterioNivelamento[]>(mockCriteriosNivelamento);
   const [nivelamentoSessoes, setNivelamentoSessoes] = useState<NivelamentoSessao[]>(() =>
-    loadInitial('nivelamentoSessoes', mockNivelamentoSessoes)
+    loadInitial('nivelamentoSessoes', [])
   );
-  const [eventos, setEventos] = useState<Evento[]>(() => loadInitial('eventos', mockEventos));
-  const [avisos, setAvisos] = useState<Aviso[]>(() => loadInitial('avisos', mockAvisos));
+  const [eventos, setEventos] = useState<Evento[]>(() => loadInitial('eventos', []));
+  const [avisos, setAvisos] = useState<Aviso[]>(() => loadInitial('avisos', []));
 
   const API_URL = import.meta.env.VITE_API_URL || (import.meta.env.PROD ? '/api' : 'http://localhost:3001/api');
 
@@ -199,15 +183,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           fetch(`${API_URL}/eventos`).then((r) => r.json()).catch(() => null),
           fetch(`${API_URL}/avisos`).then((r) => r.json()).catch(() => null)
         ]).then(([tursoAlunos, tursoEquipe, tursoAulas, tursoCronos, tursoPres, tursoPags, tursoNiv, tursoEv, tursoAv]) => {
-          if (tursoAlunos?.length) setAlunos(tursoAlunos);
-          if (tursoEquipe?.length) setEquipe(tursoEquipe);
-          if (tursoAulas?.length) setAulas(tursoAulas);
-          if (tursoCronos?.length) setCronogramas(tursoCronos);
-          if (tursoPres?.length) setPresencas(tursoPres);
-          if (tursoPags?.length) setPagamentos(tursoPags);
-          if (tursoNiv?.length) setNivelamentoSessoes(tursoNiv);
-          if (tursoEv?.length) setEventos(tursoEv);
-          if (tursoAv?.length) setAvisos(tursoAv);
+          if (Array.isArray(tursoAlunos)) setAlunos(tursoAlunos);
+          if (Array.isArray(tursoEquipe)) setEquipe(tursoEquipe);
+          if (Array.isArray(tursoAulas)) setAulas(tursoAulas);
+          if (Array.isArray(tursoCronos)) setCronogramas(tursoCronos);
+          if (Array.isArray(tursoPres)) setPresencas(tursoPres);
+          if (Array.isArray(tursoPags)) setPagamentos(tursoPags);
+          if (Array.isArray(tursoNiv)) setNivelamentoSessoes(tursoNiv);
+          if (Array.isArray(tursoEv)) setEventos(tursoEv);
+          if (Array.isArray(tursoAv)) setAvisos(tursoAv);
         });
       })
       .catch(() => {
@@ -234,6 +218,26 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const removeToast = (id: string) => {
     setToasts((prev) => prev.filter((t) => t.id !== id));
   };
+
+  // Purge cache antigo uma vez para iniciar do zero
+  useEffect(() => {
+    const isCleaned = localStorage.getItem('4andar_clean_v2');
+    if (!isCleaned) {
+      ['alunos', 'equipe', 'aulas', 'cronogramas', 'presencas', 'pagamentos', 'nivelamentoSessoes', 'eventos', 'avisos'].forEach((k) => {
+        localStorage.removeItem(`4andar_${k}`);
+      });
+      localStorage.setItem('4andar_clean_v2', 'true');
+      setAlunos([]);
+      setEquipe([]);
+      setAulas([]);
+      setCronogramas([]);
+      setPresencas([]);
+      setPagamentos([]);
+      setNivelamentoSessoes([]);
+      setEventos([]);
+      setAvisos([]);
+    }
+  }, []);
 
   // Sync to local storage
   useEffect(() => {
