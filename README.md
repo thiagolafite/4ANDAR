@@ -130,3 +130,12 @@ npm run dev:client
 npm run dev:server
 # Acesso: http://localhost:3001/api/health
 ```
+
+---
+
+## 8. Deploy & Cloud (Vercel + Turso)
+
+- **Frontend & Serverless API:** Hospedado na Vercel com CI/CD contínuo via GitHub (`main`).
+- **Banco de Dados Cloud:** Turso Database (libSQL edge engine).
+- **Importação de Cronograma:** Módulo de leitura e mapeamento automático de planilhas Excel (`.xlsx`).
+
