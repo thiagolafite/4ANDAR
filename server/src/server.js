@@ -653,12 +653,26 @@ app.post('/api/avisos', async (req, res) => {
   }
 });
 
+let isTursoReady = false;
+app.use(async (req, res, next) => {
+  if (!isTursoReady) {
+    try {
+      await initTursoDatabase();
+      isTursoReady = true;
+    } catch (e) {
+      console.warn('Turso init check:', e.message);
+    }
+  }
+  next();
+});
+
 // ==========================================
 // INICIALIZAÇÃO DO SERVIDOR COM TURSO
 // ==========================================
 const startServer = async () => {
   try {
     await initTursoDatabase();
+    isTursoReady = true;
     app.listen(PORT, () => {
       console.log(`\n🚀 4ANDAR API Server rodando na porta ${PORT}`);
       console.log(`💾 Banco de Dados: Turso (libSQL) Ativo & Sincronizado`);
@@ -668,4 +682,8 @@ const startServer = async () => {
   }
 };
 
-startServer();
+export default app;
+
+if (!process.env.VERCEL) {
+  startServer();
+}

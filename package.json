@@ -3,12 +3,22 @@
   "version": "1.0.0",
   "private": true,
   "description": "Gestão escolar completa para escolas de dança, focada em forró.",
+  "type": "module",
   "scripts": {
+    "build": "cd client && npm install && npm run build",
     "dev:client": "npm --prefix client run dev",
     "dev:server": "npm --prefix server run dev",
     "build:client": "npm --prefix client run build",
     "start:server": "npm --prefix server start",
     "db:push": "npm --prefix server run db:push",
     "db:export": "npm --prefix server run db:export"
+  },
+  "dependencies": {
+    "@libsql/client": "^0.18.0",
+    "cors": "^2.8.5",
+    "dotenv": "^16.6.1",
+    "express": "^4.21.0",
+    "node-cron": "^4.6.0",
+    "nodemailer": "^10.0.12"
   }
 }

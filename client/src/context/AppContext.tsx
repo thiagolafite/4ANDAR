@@ -156,7 +156,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [eventos, setEventos] = useState<Evento[]>(() => loadInitial('eventos', mockEventos));
   const [avisos, setAvisos] = useState<Aviso[]>(() => loadInitial('avisos', mockAvisos));
 
-  const API_URL = 'http://localhost:3001/api';
+  const API_URL = import.meta.env.VITE_API_URL || (import.meta.env.PROD ? '/api' : 'http://localhost:3001/api');
 
   // Sincronização inicial com o backend Turso
   useEffect(() => {
