@@ -39,11 +39,27 @@ export const DashboardPage: React.FC = () => {
   } = useApp();
 
   const navigate = useNavigate();
-  const isEquipe = currentUser.tipo_usuario === 'Equipe';
+  const isMaster = Boolean(currentUser.is_master || currentUser.role === 'master' || currentUser.tipo_usuario === 'AdminMaster');
+  const isAluno = currentUser.role === 'aluno' || (!isMaster && currentUser.role !== 'professor' && currentUser.tipo_usuario === 'Aluno');
+  const isEquipe = !isAluno;
 
-  // Current student if logged in as Aluno
-  const alunoLogado = !isEquipe
-    ? alunos.find((a) => a.id === currentUser.aluno_id || a.email === currentUser.email) || alunos[0]
+  // Safe alunoLogado fallback when database is empty
+  const alunoLogado = isAluno
+    ? alunos.find((a) => a.id === currentUser.aluno_id || a.email === currentUser.email) || alunos[0] || {
+        id: currentUser.aluno_id || currentUser.id || 'aluno_temp',
+        nome: currentUser.nome || 'Aluno',
+        email: currentUser.email || '',
+        telefone: currentUser.telefone || '',
+        nivel_atual: 'B1' as const,
+        papel: 'Condutor' as const,
+        status: 'ativo' as const,
+        mensalidade_status: 'em_dia' as const,
+        mensalidade_valor: 150,
+        dia_vencimento: 10,
+        data_inicio_nivel: '2026-09-01',
+        frequencia_percentual: 100,
+        foto_url: currentUser.avatar_url || ''
+      }
     : null;
 
   // EQUIPE METRICS
@@ -56,24 +72,19 @@ export const DashboardPage: React.FC = () => {
 
   // Next class for student
   const proximaAulaAluno = alunoLogado
-    ? aulas.find((a) => a.nivel === alunoLogado.nivel_atual) || aulas[0]
+    ? aulas.find((a) => a.nivel === alunoLogado.nivel_atual) || aulas[0] || null
     : null;
 
   const cronoProxima = proximaAulaAluno
-    ? cronogramas.find((c) => c.aula_id === proximaAulaAluno.id)
+    ? cronogramas.find((c) => c.aula_id === proximaAulaAluno.id) || null
     : null;
 
   const presencaAlunoHoje =
     alunoLogado && proximaAulaAluno
       ? presencas.find(
           (p) => p.aluno_id === alunoLogado.id && p.aula_id === proximaAulaAluno.id
-        )
+        ) || null
       : null;
-
-  // Student Payment status
-  const pagamentoAlunoAtual = alunoLogado
-    ? pagamentos.find((p) => p.aluno_id === alunoLogado.id)
-    : null;
 
   return (
     <div className="space-y-6">
@@ -397,171 +408,127 @@ export const DashboardPage: React.FC = () => {
       {/* ======================================================== */}
       {!isEquipe && alunoLogado && (
         <div className="space-y-6">
-          {/* Card em Destaque: Minha Próxima Aula */}
+          {/* Card em Destaque: Minha Próxima Aula & Presença */}
           <div className="rounded-3xl bg-white p-6 md:p-8 border border-orange-100 shadow-md">
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
-              <div className="space-y-3">
-                <div className="flex items-center gap-2.5">
-                  <span className="rounded-full bg-brand-100 px-3 py-1 text-xs font-bold text-brand-800">
-                    Sua Turma: {alunoLogado.nivel_atual} ({alunoLogado.papel})
-                  </span>
-                  <span className="text-xs font-semibold text-slate-400">
-                    {proximaAulaAluno?.dia_semana} às {proximaAulaAluno?.horario_inicio}
-                  </span>
-                </div>
+            {proximaAulaAluno ? (
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2.5">
+                    <span className="rounded-full bg-brand-100 px-3 py-1 text-xs font-bold text-brand-800">
+                      Sua Turma: {alunoLogado.nivel_atual} ({alunoLogado.papel})
+                    </span>
+                    <span className="text-xs font-semibold text-slate-400">
+                      {proximaAulaAluno.dia_semana} às {proximaAulaAluno.horario_inicio}
+                    </span>
+                  </div>
 
-                <h3 className="text-2xl font-black text-slate-900">
-                  {proximaAulaAluno?.nome}
-                </h3>
+                  <h3 className="text-2xl font-black text-slate-900">
+                    {proximaAulaAluno.nome}
+                  </h3>
 
-                <div className="rounded-2xl bg-orange-50/70 p-4 border border-orange-100 text-sm">
-                  <p className="font-semibold text-brand-900 flex items-center gap-2">
-                    <Sparkles className="h-4 w-4 text-brand-600" />
-                    Tema Planejado:
-                  </p>
-                  <p className="text-slate-700 mt-1 font-medium">
-                    {cronoProxima?.tema_aula || 'Fundamentos de giro e caminhada no tempo 1'}
-                  </p>
-                  {cronoProxima?.observacoes && (
-                    <p className="text-xs text-slate-500 mt-1">
-                      💡 Obs do professor: {cronoProxima.observacoes}
+                  <div className="rounded-2xl bg-orange-50/70 p-4 border border-orange-100 text-sm">
+                    <p className="font-semibold text-brand-900 flex items-center gap-2">
+                      <Sparkles className="h-4 w-4 text-brand-600" />
+                      Tema Planejado:
                     </p>
-                  )}
+                    <p className="text-slate-700 mt-1 font-medium">
+                      {cronoProxima?.tema_aula || 'Fundamentos de ritmo, conexão e abraço'}
+                    </p>
+                    {cronoProxima?.observacoes && (
+                      <p className="text-xs text-slate-500 mt-1">
+                        💡 Obs do professor: {cronoProxima.observacoes}
+                      </p>
+                    )}
+                  </div>
+
+                  <p className="text-xs text-slate-500 flex items-center gap-3">
+                    <span>📍 Local: {proximaAulaAluno.sala || 'Salão Principal'}</span>
+                    <span>•</span>
+                    <span>Prof.: Mariana Sol / Mestre Gonzaga</span>
+                  </p>
                 </div>
 
-                <p className="text-xs text-slate-500 flex items-center gap-3">
-                  <span>📍 Local: {proximaAulaAluno?.sala}</span>
-                  <span>•</span>
-                  <span>Prof.: Mariana Sol / Mestre Gonzaga</span>
-                </p>
-              </div>
+                {/* Action Box: Marcar Presença */}
+                <div className="shrink-0 flex flex-col items-start md:items-end justify-center gap-3 p-4 rounded-2xl bg-slate-50 border border-slate-100">
+                  <span className="text-xs font-bold uppercase tracking-wider text-slate-400">
+                    Marcar Presença
+                  </span>
 
-              {/* Action Box */}
-              <div className="shrink-0 flex flex-col items-start md:items-end justify-center gap-3 p-4 rounded-2xl bg-slate-50 border border-slate-100">
-                <span className="text-xs font-bold uppercase tracking-wider text-slate-400">
-                  Status de Presença
-                </span>
-
-                {presencaAlunoHoje ? (
-                  <div className="flex items-center gap-2">
-                    <span
-                      className={`px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 ${
-                        presencaAlunoHoje.status === 'confirmada'
-                          ? 'bg-emerald-100 text-emerald-800'
-                          : 'bg-amber-100 text-amber-800'
-                      }`}
+                  {presencaAlunoHoje ? (
+                    <div className="flex items-center gap-2">
+                      <span
+                        className={`px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 ${
+                          presencaAlunoHoje.status === 'confirmada'
+                            ? 'bg-emerald-100 text-emerald-800'
+                            : 'bg-amber-100 text-amber-800'
+                        }`}
+                      >
+                        <CheckCircle2 className="h-4 w-4" />
+                        {presencaAlunoHoje.status === 'confirmada'
+                          ? 'Presença Confirmada!'
+                          : 'Solicitação Enviada (Pendente)'}
+                      </span>
+                    </div>
+                  ) : (
+                    <button
+                      onClick={() =>
+                        solicitarPresenca(
+                          alunoLogado.id,
+                          proximaAulaAluno.id,
+                          cronoProxima?.data_aula || new Date().toISOString().substring(0, 10)
+                        )
+                      }
+                      className="flex items-center gap-2 rounded-xl bg-brand-600 hover:bg-brand-700 text-white font-bold px-6 py-3 shadow-md shadow-brand-500/20 text-sm transition-all"
                     >
                       <CheckCircle2 className="h-4 w-4" />
-                      {presencaAlunoHoje.status === 'confirmada'
-                        ? 'Presença Confirmada!'
-                        : 'Solicitação Enviada (Pendente)'}
-                    </span>
-                  </div>
-                ) : (
-                  <button
-                    onClick={() =>
-                      proximaAulaAluno &&
-                      solicitarPresenca(
-                        alunoLogado.id,
-                        proximaAulaAluno.id,
-                        cronoProxima?.data_aula || '2026-09-29'
-                      )
-                    }
-                    className="flex items-center gap-2 rounded-xl bg-brand-600 hover:bg-brand-700 text-white font-bold px-6 py-3 shadow-md shadow-brand-500/20 text-sm transition-all"
-                  >
-                    <CheckCircle2 className="h-4 w-4" />
-                    Solicitar Presença na Aula
-                  </button>
-                )}
-                <span className="text-[11px] text-slate-400 text-center">
-                  Avise a equipe com antecedência para equilibrar os pares.
-                </span>
+                      Marcar Presença na Aula
+                    </button>
+                  )}
+                  <span className="text-[11px] text-slate-400 text-center">
+                    Avise a equipe para organizarmos os pares na sala.
+                  </span>
+                </div>
               </div>
-            </div>
+            ) : (
+              <div className="text-center py-6">
+                <Clock className="h-10 w-10 text-orange-400 mx-auto mb-2 opacity-80" />
+                <h4 className="font-bold text-slate-800">Nenhuma aula programada no momento</h4>
+                <p className="text-xs text-slate-500 mt-1 max-w-md mx-auto">
+                  Assim que o professor publicar turmas para o seu nível ({alunoLogado.nivel_atual}), elas aparecerão aqui para você marcar presença.
+                </p>
+              </div>
+            )}
           </div>
 
-          {/* Student Status Grid: Financeiro & Nivelamento */}
+          {/* Student Status Grid: Nivelamento Técnico & Eventos Convidados */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {/* Financeiro */}
-            <div className="rounded-2xl bg-white p-5 border border-slate-100 shadow-sm flex flex-col justify-between">
-              <div>
-                <div className="flex items-center justify-between pb-3 border-b border-slate-100 mb-4">
-                  <h4 className="font-bold text-slate-900 text-sm flex items-center gap-2">
-                    <DollarSign className="h-4 w-4 text-emerald-500" />
-                    Minha Mensalidade
-                  </h4>
-                  <button
-                    onClick={() => navigate('/meus-pagamentos')}
-                    className="text-xs font-semibold text-brand-600 hover:text-brand-700 flex items-center gap-1"
-                  >
-                    Ver Extrato <ArrowRight className="h-3.5 w-3.5" />
-                  </button>
-                </div>
-
-                <div className="flex items-center justify-between p-4 rounded-xl bg-slate-50 border border-slate-100">
-                  <div>
-                    <span className="text-xs text-slate-400">Referência</span>
-                    <p className="font-bold text-slate-900 text-base">
-                      {pagamentoAlunoAtual?.referencia_mes || 'Outubro/2026'}
-                    </p>
-                    <p className="text-xs text-slate-500 mt-0.5">
-                      Vence dia {alunoLogado.dia_vencimento}
-                    </p>
-                  </div>
-                  <div className="text-right">
-                    <span
-                      className={`inline-block px-2.5 py-1 rounded-full text-xs font-bold ${
-                        pagamentoAlunoAtual?.status === 'Pago'
-                          ? 'bg-emerald-100 text-emerald-800'
-                          : 'bg-amber-100 text-amber-800'
-                      }`}
-                    >
-                      {pagamentoAlunoAtual?.status || 'Pendente'}
-                    </span>
-                    <p className="font-black text-slate-900 text-lg mt-1">
-                      R$ {alunoLogado.mensalidade_valor.toFixed(2)}
-                    </p>
-                  </div>
-                </div>
-              </div>
-
-              <div className="mt-4 pt-3 border-t border-slate-100">
-                <button
-                  onClick={() => navigate('/meus-pagamentos')}
-                  className="w-full py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs transition-colors"
-                >
-                  Pagar via Chave PIX
-                </button>
-              </div>
-            </div>
-
             {/* Nivelamento Técnico */}
             <div className="rounded-2xl bg-white p-5 border border-slate-100 shadow-sm flex flex-col justify-between">
               <div>
                 <div className="flex items-center justify-between pb-3 border-b border-slate-100 mb-4">
                   <h4 className="font-bold text-slate-900 text-sm flex items-center gap-2">
                     <Award className="h-4 w-4 text-purple-500" />
-                    Nivelamento & Evolução Técnica
+                    Meu Nivelamento & Evolução Técnica
                   </h4>
                   <button
-                    onClick={() => navigate('/agendamento-nivelamento')}
+                    onClick={() => navigate('/meus-nivelamentos')}
                     className="text-xs font-semibold text-brand-600 hover:text-brand-700 flex items-center gap-1"
                   >
-                    Agendar Teste <ArrowRight className="h-3.5 w-3.5" />
+                    Ver Histórico <ArrowRight className="h-3.5 w-3.5" />
                   </button>
                 </div>
 
                 <div className="p-4 rounded-xl bg-purple-50/50 border border-purple-100 space-y-2">
                   <div className="flex items-center justify-between">
                     <span className="text-xs font-bold text-purple-900 uppercase">
-                      Nível Atual: {alunoLogado.nivel_atual}
+                      Nível Atual: {alunoLogado.nivel_atual} ({alunoLogado.papel})
                     </span>
                     <span className="text-xs text-purple-700 font-semibold">
                       Desde {alunoLogado.data_inicio_nivel}
                     </span>
                   </div>
                   <p className="text-xs text-slate-600 leading-relaxed">
-                    Você está apto(a) para se preparar para o nivelamento de{' '}
+                    Você pode agendar sua banca de avaliação técnica para a transição para{' '}
                     <strong>
                       {alunoLogado.nivel_atual === 'B1'
                         ? 'B2 (Básico 2)'
@@ -583,89 +550,63 @@ export const DashboardPage: React.FC = () => {
                 </button>
               </div>
             </div>
-          </div>
 
-          {/* Avisos e Eventos */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {/* Mural de Avisos */}
-            <div className="rounded-2xl bg-white p-5 border border-slate-100 shadow-sm">
-              <div className="flex items-center justify-between pb-3 border-b border-slate-100 mb-3">
-                <h4 className="font-bold text-slate-900 text-sm flex items-center gap-2">
-                  <Megaphone className="h-4 w-4 text-brand-500" />
-                  Mural de Avisos
-                </h4>
-                <button
-                  onClick={() => navigate('/avisos')}
-                  className="text-xs font-semibold text-brand-600 hover:text-brand-700"
-                >
-                  Ver Todos
-                </button>
-              </div>
-              <div className="space-y-2.5">
-                {avisos.slice(0, 2).map((aviso) => (
-                  <div
-                    key={aviso.id}
-                    className="p-3 rounded-xl bg-slate-50 border border-slate-100 text-xs"
+            {/* Eventos & Bailes Convidados */}
+            <div className="rounded-2xl bg-white p-5 border border-slate-100 shadow-sm flex flex-col justify-between">
+              <div>
+                <div className="flex items-center justify-between pb-3 border-b border-slate-100 mb-4">
+                  <h4 className="font-bold text-slate-900 text-sm flex items-center gap-2">
+                    <PartyPopper className="h-4 w-4 text-amber-500" />
+                    Eventos & Bailes Convidados
+                  </h4>
+                  <button
+                    onClick={() => navigate('/eventos')}
+                    className="text-xs font-semibold text-brand-600 hover:text-brand-700 flex items-center gap-1"
                   >
-                    <p className="font-bold text-slate-900">{aviso.titulo}</p>
-                    <p className="text-slate-600 mt-1 line-clamp-2">
-                      {aviso.conteudo}
-                    </p>
-                    {aviso.link_url && (
-                      <a
-                        href={aviso.link_url}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="inline-block mt-2 font-semibold text-brand-600 hover:underline"
-                      >
-                        {aviso.link_texto || 'Acessar Link'} →
-                      </a>
-                    )}
-                  </div>
-                ))}
-              </div>
-            </div>
+                    Ver Todos <ArrowRight className="h-3.5 w-3.5" />
+                  </button>
+                </div>
 
-            {/* Próximos Eventos */}
-            <div className="rounded-2xl bg-white p-5 border border-slate-100 shadow-sm">
-              <div className="flex items-center justify-between pb-3 border-b border-slate-100 mb-3">
-                <h4 className="font-bold text-slate-900 text-sm flex items-center gap-2">
-                  <PartyPopper className="h-4 w-4 text-amber-500" />
-                  Bailes & Workshops
-                </h4>
+                <div className="space-y-2.5">
+                  {eventos.length === 0 ? (
+                    <p className="text-xs text-slate-400 text-center py-4">Nenhum evento agendado no momento.</p>
+                  ) : (
+                    eventos.slice(0, 2).map((evento) => (
+                      <div
+                        key={evento.id}
+                        className="p-3 rounded-xl bg-slate-50 border border-slate-100 flex items-center justify-between gap-3"
+                      >
+                        <div className="flex items-center gap-2.5">
+                          <img
+                            src={evento.foto_url}
+                            alt={evento.titulo}
+                            className="h-10 w-10 rounded-lg object-cover"
+                          />
+                          <div>
+                            <p className="font-bold text-xs text-slate-900 line-clamp-1">
+                              {evento.titulo}
+                            </p>
+                            <p className="text-[11px] text-slate-500">
+                              {evento.data_evento} às {evento.horario}
+                            </p>
+                          </div>
+                        </div>
+                        <span className="font-bold text-xs text-brand-700 shrink-0">
+                          R$ {evento.preco.toFixed(2)}
+                        </span>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+
+              <div className="mt-4 pt-3 border-t border-slate-100">
                 <button
                   onClick={() => navigate('/eventos')}
-                  className="text-xs font-semibold text-brand-600 hover:text-brand-700"
+                  className="w-full py-2.5 rounded-xl bg-brand-600 hover:bg-brand-700 text-white font-semibold text-xs transition-colors"
                 >
-                  Ver Todos
+                  Explorar Eventos & Inscrições
                 </button>
-              </div>
-              <div className="space-y-2.5">
-                {eventos.slice(0, 2).map((evento) => (
-                  <div
-                    key={evento.id}
-                    className="p-3 rounded-xl bg-slate-50 border border-slate-100 flex items-center justify-between gap-3"
-                  >
-                    <div className="flex items-center gap-2.5">
-                      <img
-                        src={evento.foto_url}
-                        alt={evento.titulo}
-                        className="h-10 w-10 rounded-lg object-cover"
-                      />
-                      <div>
-                        <p className="font-bold text-xs text-slate-900 line-clamp-1">
-                          {evento.titulo}
-                        </p>
-                        <p className="text-[11px] text-slate-500">
-                          {evento.data_evento} às {evento.horario}
-                        </p>
-                      </div>
-                    </div>
-                    <span className="font-bold text-xs text-brand-700 shrink-0">
-                      R$ {evento.preco.toFixed(2)}
-                    </span>
-                  </div>
-                ))}
               </div>
             </div>
           </div>

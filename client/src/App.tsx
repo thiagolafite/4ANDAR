@@ -38,6 +38,49 @@ const ProtectedAppLayout: React.FC = () => {
   return <AppLayout />;
 };
 
+interface RoleRouteProps {
+  children: React.ReactElement;
+  allowAluno?: boolean;
+  requiresMaster?: boolean;
+  requiredModule?: string;
+}
+
+const RoleRoute: React.FC<RoleRouteProps> = ({
+  children,
+  allowAluno = false,
+  requiresMaster = false,
+  requiredModule
+}) => {
+  const { currentUser, hasPermission } = useApp();
+  const isMaster = Boolean(currentUser.is_master || currentUser.role === 'master' || currentUser.tipo_usuario === 'AdminMaster');
+  const isAluno = currentUser.role === 'aluno' || (!isMaster && currentUser.role !== 'professor' && currentUser.tipo_usuario === 'Aluno');
+
+  // Master tem acesso total irrestrito a todas as páginas e ações
+  if (isMaster) return children;
+
+  // Rotas restritas exclusivamente para o Master Thiago Lafite
+  if (requiresMaster && !isMaster) {
+    return <Navigate to="/" replace />;
+  }
+
+  // Aluno tem acesso estritamente restrito:
+  // - os eventos que ele for convidado (/eventos)
+  // - as aulas dele (/proxima-aula)
+  // - o nivelamento dele (/meus-nivelamentos e /agendamento-nivelamento)
+  // - marcar presença na aula (/proxima-aula)
+  // Qualquer outro acesso é redirecionado para /proxima-aula
+  if (isAluno && !allowAluno) {
+    return <Navigate to="/proxima-aula" replace />;
+  }
+
+  // Se exigir módulo administrativo que o usuário não tem permissão
+  if (requiredModule && !hasPermission(requiredModule)) {
+    return <Navigate to="/" replace />;
+  }
+
+  return children;
+};
+
 export function App() {
   return (
     <AppProvider>
@@ -51,30 +94,30 @@ export function App() {
           <Route path="/" element={<ProtectedAppLayout />}>
             <Route index element={<DashboardPage />} />
             <Route path="home" element={<DashboardPage />} />
-            <Route path="usuarios" element={<UsuariosPage />} />
-            <Route path="gestao-usuarios" element={<UsuariosPage />} />
-            <Route path="cronograma" element={<CronogramaPage />} />
-            <Route path="planejamento" element={<CronogramaPage />} />
-            <Route path="planejamento-semanal" element={<CronogramaPage />} />
-            <Route path="presenca" element={<PresencaPage />} />
-            <Route path="proxima-aula" element={<ProximaAulaPage />} />
-            <Route path="proximaaula" element={<ProximaAulaPage />} />
-            <Route path="alunos" element={<AlunosPage />} />
-            <Route path="pagamentos" element={<PagamentosPage />} />
-            <Route path="meus-pagamentos" element={<MeusPagamentosPage />} />
-            <Route path="meuspagamentos" element={<MeusPagamentosPage />} />
-            <Route path="nivelamento" element={<NivelamentoPage />} />
-            <Route path="agendamento-nivelamento" element={<AgendamentoNivelamentoPage />} />
-            <Route path="agendamentonivelamento" element={<AgendamentoNivelamentoPage />} />
-            <Route path="meus-nivelamentos" element={<MeusNivelamentosPage />} />
-            <Route path="meusnivelamentos" element={<MeusNivelamentosPage />} />
-            <Route path="aulas" element={<AulasPage />} />
-            <Route path="eventos" element={<EventosPage />} />
-            <Route path="avisos" element={<AvisosPage />} />
-            <Route path="equipe" element={<EquipePage />} />
-            <Route path="agenda-google" element={<GoogleCalendarPage />} />
-            <Route path="agendagoogle" element={<GoogleCalendarPage />} />
-            <Route path="frequencia" element={<FrequenciaPage />} />
+            <Route path="usuarios" element={<RoleRoute requiresMaster><UsuariosPage /></RoleRoute>} />
+            <Route path="gestao-usuarios" element={<RoleRoute requiresMaster><UsuariosPage /></RoleRoute>} />
+            <Route path="cronograma" element={<RoleRoute requiredModule="cronograma"><CronogramaPage /></RoleRoute>} />
+            <Route path="planejamento" element={<RoleRoute requiredModule="cronograma"><CronogramaPage /></RoleRoute>} />
+            <Route path="planejamento-semanal" element={<RoleRoute requiredModule="cronograma"><CronogramaPage /></RoleRoute>} />
+            <Route path="presenca" element={<RoleRoute requiredModule="presenca"><PresencaPage /></RoleRoute>} />
+            <Route path="proxima-aula" element={<RoleRoute allowAluno><ProximaAulaPage /></RoleRoute>} />
+            <Route path="proximaaula" element={<RoleRoute allowAluno><ProximaAulaPage /></RoleRoute>} />
+            <Route path="alunos" element={<RoleRoute requiredModule="alunos"><AlunosPage /></RoleRoute>} />
+            <Route path="pagamentos" element={<RoleRoute requiredModule="pagamentos"><PagamentosPage /></RoleRoute>} />
+            <Route path="meus-pagamentos" element={<RoleRoute requiredModule="pagamentos"><MeusPagamentosPage /></RoleRoute>} />
+            <Route path="meuspagamentos" element={<RoleRoute requiredModule="pagamentos"><MeusPagamentosPage /></RoleRoute>} />
+            <Route path="nivelamento" element={<RoleRoute requiredModule="nivelamento"><NivelamentoPage /></RoleRoute>} />
+            <Route path="agendamento-nivelamento" element={<RoleRoute allowAluno><AgendamentoNivelamentoPage /></RoleRoute>} />
+            <Route path="agendamentonivelamento" element={<RoleRoute allowAluno><AgendamentoNivelamentoPage /></RoleRoute>} />
+            <Route path="meus-nivelamentos" element={<RoleRoute allowAluno><MeusNivelamentosPage /></RoleRoute>} />
+            <Route path="meusnivelamentos" element={<RoleRoute allowAluno><MeusNivelamentosPage /></RoleRoute>} />
+            <Route path="aulas" element={<RoleRoute requiredModule="aulas"><AulasPage /></RoleRoute>} />
+            <Route path="eventos" element={<RoleRoute allowAluno><EventosPage /></RoleRoute>} />
+            <Route path="avisos" element={<RoleRoute requiredModule="avisos"><AvisosPage /></RoleRoute>} />
+            <Route path="equipe" element={<RoleRoute requiredModule="equipe"><EquipePage /></RoleRoute>} />
+            <Route path="agenda-google" element={<RoleRoute><GoogleCalendarPage /></RoleRoute>} />
+            <Route path="agendagoogle" element={<RoleRoute><GoogleCalendarPage /></RoleRoute>} />
+            <Route path="frequencia" element={<RoleRoute><FrequenciaPage /></RoleRoute>} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Route>
         </Routes>

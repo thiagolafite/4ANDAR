@@ -61,31 +61,36 @@ export function getDefaultPermissions(role) {
     return {
       all: false,
       dashboard: { view: true },
-      alunos: { view: true, create: false, edit: false, delete: false },
+      alunos: { view: true, create: true, edit: true, delete: false },
       cronograma: { view: true, edit: true, import_excel: false },
       presenca: { view: true, manage: true, checkin: true },
       pagamentos: { view: false, manage: false, export: false },
       nivelamento: { view: true, evaluate: true, schedule: true },
-      aulas: { view: true, manage: false },
+      aulas: { view: true, manage: true },
       eventos: { view: true, manage: false },
-      avisos: { view: true, manage: false },
+      avisos: { view: true, manage: true },
       equipe: { view: true, manage: false },
       usuarios: { view: false, manage: false, approve: false }
     };
   }
 
-  // Aluno padrão
+  // Aluno: Acesso estritamente restrito:
+  // - os eventos que ele for convidado (eventos: view)
+  // - as aulas dele (aulas: view_own)
+  // - o nivelamento dele (nivelamento: schedule, view_own)
+  // - marcar presença na aula dele (presenca: checkin)
+  // Qualquer outro acesso é restrito para Master e Professor
   return {
     all: false,
     dashboard: { view: true },
     alunos: { view: false, create: false, edit: false, delete: false },
-    cronograma: { view: true, edit: false, import_excel: false },
-    presenca: { view: true, manage: false, checkin: true },
-    pagamentos: { view: false, manage: false, export: false }, // usa meus-pagamentos
-    nivelamento: { view: true, evaluate: false, schedule: true }, // usa meus-nivelamentos
-    aulas: { view: true, manage: false },
+    cronograma: { view: false, edit: false, import_excel: false },
+    presenca: { view: false, manage: false, checkin: true },
+    pagamentos: { view: false, manage: false, export: false },
+    nivelamento: { view: false, evaluate: false, schedule: true, view_own: true },
+    aulas: { view: false, manage: false, view_own: true },
     eventos: { view: true, manage: false },
-    avisos: { view: true, manage: false },
+    avisos: { view: false, manage: false },
     equipe: { view: false, manage: false },
     usuarios: { view: false, manage: false, approve: false }
   };

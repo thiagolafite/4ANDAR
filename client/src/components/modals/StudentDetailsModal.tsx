@@ -19,6 +19,7 @@ import {
 
 export const StudentDetailsModal: React.FC = () => {
   const {
+    currentUser,
     selectedAlunoModal,
     setSelectedAlunoModal,
     updateAluno,
@@ -29,6 +30,9 @@ export const StudentDetailsModal: React.FC = () => {
     registrarPagamento,
     nivelamentoSessoes
   } = useApp();
+
+  const isMaster = Boolean(currentUser.is_master || currentUser.role === 'master' || currentUser.tipo_usuario === 'AdminMaster');
+  const isAluno = currentUser.role === 'aluno' || (!isMaster && currentUser.role !== 'professor' && currentUser.tipo_usuario === 'Aluno');
 
   const [activeTab, setActiveTab] = useState<'dados' | 'pagamentos' | 'presencas' | 'nivelamento'>('dados');
   const [formData, setFormData] = useState<Aluno | null>(null);
@@ -42,7 +46,7 @@ export const StudentDetailsModal: React.FC = () => {
     }
   }, [selectedAlunoModal]);
 
-  if (!selectedAlunoModal || !formData) return null;
+  if (!selectedAlunoModal || !formData || isAluno) return null;
 
   const alunoPagamentos = pagamentos.filter((p) => p.aluno_id === formData.id);
   const alunoPresencas = presencas.filter((p) => p.aluno_id === formData.id);

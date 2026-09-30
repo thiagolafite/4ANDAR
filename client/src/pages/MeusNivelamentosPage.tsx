@@ -1,6 +1,7 @@
 import React from 'react';
 import { useApp } from '../context/AppContext';
 import { useNavigate } from 'react-router-dom';
+import { Aluno } from '../types';
 import {
   History,
   Award,
@@ -16,9 +17,23 @@ export const MeusNivelamentosPage: React.FC = () => {
   const { currentUser, alunos, nivelamentoSessoes } = useApp();
   const navigate = useNavigate();
 
-  const alunoLogado =
+  const alunoLogado: Aluno =
     alunos.find((a) => a.id === currentUser.aluno_id || a.email === currentUser.email) ||
-    alunos[0];
+    alunos[0] || {
+      id: currentUser.aluno_id || currentUser.id || 'aluno_temp',
+      nome: currentUser.nome || 'Aluno',
+      email: currentUser.email || '',
+      telefone: currentUser.telefone || '',
+      nivel_atual: 'B1' as const,
+      papel: 'Condutor' as const,
+      status: 'ativo' as const,
+      mensalidade_status: 'em_dia' as const,
+      mensalidade_valor: 150,
+      dia_vencimento: 10,
+      data_inicio_nivel: '2026-09-01',
+      frequencia_percentual: 100,
+      foto_url: currentUser.avatar_url || ''
+    };
 
   const minhasSessoes = nivelamentoSessoes.filter(
     (s) => s.aluno_id === alunoLogado.id

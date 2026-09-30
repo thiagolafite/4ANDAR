@@ -315,11 +315,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       if (!res.ok) {
         return { success: false, error: data.error || 'Erro ao realizar login', status: data.status };
       }
+      const mappedUser = {
+        ...data.user,
+        tipo_usuario: data.user.tipo_usuario || (data.user.is_master || data.user.role === 'master' ? 'AdminMaster' : (data.user.role === 'professor' || data.user.role === 'admin' ? 'Equipe' : 'Aluno'))
+      };
       setToken(data.token);
-      setCurrentUserState(data.user);
+      setCurrentUserState(mappedUser);
       setIsAuthenticated(true);
       localStorage.setItem('4andar_token', data.token);
-      localStorage.setItem('4andar_currentUser', JSON.stringify(data.user));
+      localStorage.setItem('4andar_currentUser', JSON.stringify(mappedUser));
       showToast(`Bem-vindo, ${data.user.nome.split(' ')[0]}!`, 'success');
       fetchUsuarios();
       return { success: true };
@@ -357,6 +361,24 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     if (!currentUser) return false;
     if (currentUser.is_master || currentUser.role === 'master' || currentUser.tipo_usuario === 'AdminMaster') return true;
     if (currentUser.permissoes?.all) return true;
+
+    // Regra estrita para Aluno:
+    // O cadastro de usuário Aluno só tem acesso a:
+    // 1. Os eventos que for convidado
+    // 2. As aulas dele
+    // 3. O nivelamento dele
+    // 4. Marcar presença na aula
+    // Qualquer outro acesso é restrito para Master e Professor
+    const isAluno = currentUser.role === 'aluno' || currentUser.tipo_usuario === 'Aluno';
+    if (isAluno) {
+      if (module === 'eventos') return true;
+      if (module === 'aulas' && (action === 'view_own' || !action)) return true;
+      if (module === 'proxima-aula') return true;
+      if (module === 'presenca' && action === 'checkin') return true;
+      if (module === 'nivelamento' && (action === 'schedule' || action === 'view_own' || !action)) return true;
+      if (module === 'dashboard') return true;
+      return false;
+    }
 
     const modPerms = (currentUser.permissoes as any)?.[module];
     if (!modPerms) return false;

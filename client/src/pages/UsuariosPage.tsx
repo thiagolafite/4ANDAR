@@ -85,31 +85,31 @@ export const UsuariosPage: React.FC = () => {
         all: false,
         dashboard: { view: true },
         alunos: { view: false, create: false, edit: false, delete: false },
-        cronograma: { view: true, edit: false, import_excel: false },
-        presenca: { view: true, checkin: true, manage: false },
+        cronograma: { view: false, edit: false, import_excel: false },
+        presenca: { view: false, checkin: true, manage: false },
         pagamentos: { view: false, manage: false, export: false },
-        nivelamento: { view: true, evaluate: false, schedule: true },
-        aulas: { view: true, manage: false },
+        nivelamento: { view: false, evaluate: false, schedule: true, view_own: true },
+        aulas: { view: false, manage: false, view_own: true },
         eventos: { view: true, manage: false },
-        avisos: { view: true, manage: false },
+        avisos: { view: false, manage: false },
         equipe: { view: false, manage: false },
         usuarios: { view: false, manage: false, approve: false }
       });
-      showToast('Predefinição de Aluno aplicada!', 'info');
+      showToast('Predefinição de Aluno aplicada (Acesso exclusivo a aulas, presença, nivelamento e eventos)', 'info');
     } else if (preset === 'professor') {
       setEditRole('professor');
       setEditCargo('Professor / Instrutor');
       setEditPerms({
         all: false,
         dashboard: { view: true },
-        alunos: { view: true, create: false, edit: false, delete: false },
+        alunos: { view: true, create: true, edit: true, delete: false },
         cronograma: { view: true, edit: true, import_excel: false },
         presenca: { view: true, checkin: true, manage: true },
         pagamentos: { view: false, manage: false, export: false },
         nivelamento: { view: true, evaluate: true, schedule: true },
-        aulas: { view: true, manage: false },
+        aulas: { view: true, manage: true },
         eventos: { view: true, manage: false },
-        avisos: { view: true, manage: false },
+        avisos: { view: true, manage: true },
         equipe: { view: true, manage: false },
         usuarios: { view: false, manage: false, approve: false }
       });

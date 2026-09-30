@@ -5,11 +5,15 @@ import { Aluno } from '../../types';
 
 export const GlobalSearchModal: React.FC = () => {
   const {
+    currentUser,
     searchModalOpen,
     setSearchModalOpen,
     alunos,
     setSelectedAlunoModal
   } = useApp();
+
+  const isMaster = Boolean(currentUser.is_master || currentUser.role === 'master' || currentUser.tipo_usuario === 'AdminMaster');
+  const isAluno = currentUser.role === 'aluno' || (!isMaster && currentUser.role !== 'professor' && currentUser.tipo_usuario === 'Aluno');
 
   const [query, setQuery] = useState('');
   const inputRef = useRef<HTMLInputElement>(null);
@@ -18,7 +22,9 @@ export const GlobalSearchModal: React.FC = () => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
         e.preventDefault();
-        setSearchModalOpen(true);
+        if (!isAluno) {
+          setSearchModalOpen(true);
+        }
       }
       if (e.key === 'Escape') {
         setSearchModalOpen(false);
@@ -26,7 +32,7 @@ export const GlobalSearchModal: React.FC = () => {
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [setSearchModalOpen]);
+  }, [setSearchModalOpen, isAluno]);
 
   useEffect(() => {
     if (searchModalOpen) {
@@ -38,7 +44,7 @@ export const GlobalSearchModal: React.FC = () => {
     }
   }, [searchModalOpen]);
 
-  if (!searchModalOpen) return null;
+  if (!searchModalOpen || isAluno) return null;
 
   const filteredAlunos = alunos.filter((aluno) => {
     const q = query.toLowerCase().trim();

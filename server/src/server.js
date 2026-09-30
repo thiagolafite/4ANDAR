@@ -116,6 +116,7 @@ app.post('/api/auth/login', async (req, res) => {
         telefone: user.telefone,
         cargo_pretendido: user.cargo_pretendido,
         role: user.role,
+        tipo_usuario: Boolean(user.is_master) ? 'AdminMaster' : (user.role === 'professor' || user.role === 'admin' ? 'Equipe' : 'Aluno'),
         is_master: Boolean(user.is_master),
         status: user.status,
         permissoes: permissoesObj,
@@ -216,6 +217,7 @@ app.get('/api/auth/me', authenticateToken, async (req, res) => {
     res.json({
       user: {
         ...user,
+        tipo_usuario: Boolean(user.is_master) ? 'AdminMaster' : (user.role === 'professor' || user.role === 'admin' ? 'Equipe' : 'Aluno'),
         is_master: Boolean(user.is_master),
         permissoes: permissoesObj
       }

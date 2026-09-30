@@ -34,41 +34,45 @@ interface NavItem {
 
 export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
   const { currentUser, hasPermission, pendingUsersCount } = useApp();
-  const isEquipe = currentUser.tipo_usuario === 'Equipe' || currentUser.is_master;
+  const isMaster = Boolean(currentUser.is_master || currentUser.role === 'master' || currentUser.tipo_usuario === 'AdminMaster');
+  const isAluno = currentUser.role === 'aluno' || (!isMaster && currentUser.role !== 'professor' && currentUser.tipo_usuario === 'Aluno');
+  const isProfessor = currentUser.role === 'professor';
 
-  // Navigation items matching design and permission system
-  const menuItems: NavItem[] = [
-    { label: 'Dashboard', to: '/', icon: LayoutGrid },
-    ...(currentUser.is_master || hasPermission('usuarios')
-      ? [
-          {
-            label: 'Gestão de Usuários',
-            to: '/usuarios',
-            icon: Shield,
-            badge: pendingUsersCount,
-            highlight: true
-          }
-        ]
-      : []),
-    ...(hasPermission('nivelamento')
-      ? [{ label: 'Nivelamento', to: isEquipe ? '/nivelamento' : '/meus-nivelamentos', icon: Crown }]
-      : []),
-    { label: 'Agendar Nivelamento', to: '/agendamento-nivelamento', icon: ClipboardList },
-    ...(hasPermission('alunos') ? [{ label: 'Alunos', to: '/alunos', icon: Contact }] : []),
-    ...(hasPermission('pagamentos')
-      ? [{ label: 'Pagamentos', to: isEquipe ? '/pagamentos' : '/meus-pagamentos', icon: DollarSign }]
-      : [{ label: 'Meus Pagamentos', to: '/meus-pagamentos', icon: DollarSign }]),
-    ...(hasPermission('avisos') ? [{ label: 'Avisos', to: '/avisos', icon: Megaphone }] : []),
-    ...(hasPermission('presenca')
-      ? [{ label: 'Presença', to: isEquipe ? '/presenca' : '/proxima-aula', icon: ClipboardCheck }]
-      : [{ label: 'Próxima Aula', to: '/proxima-aula', icon: ClipboardCheck }]),
-    { label: 'Frequência', to: '/frequencia', icon: BarChart3 },
-    ...(hasPermission('aulas') ? [{ label: 'Aulas', to: '/aulas', icon: Clock }] : []),
-    ...(hasPermission('cronograma') ? [{ label: 'Planejamento Semanal', to: '/cronograma', icon: Calendar }] : []),
-    { label: 'Minha Agenda', to: '/agenda-google', icon: CalendarClock },
-    ...(hasPermission('eventos') ? [{ label: 'Eventos & Bailes', to: '/eventos', icon: PartyPopper }] : []),
-    ...(hasPermission('equipe') ? [{ label: 'Equipe de Professores', to: '/equipe', icon: UserCheck }] : [])
-  ];
+  // Aluno: Acesso estritamente limitado aos seus próprios módulos
+  // Master e Professor: Gestão completa e módulos da escola
+  const menuItems: NavItem[] = isAluno
+    ? [
+        { label: 'Meu Painel', to: '/', icon: LayoutGrid },
+        { label: 'Minhas Aulas & Presença', to: '/proxima-aula', icon: Clock },
+        { label: 'Meu Nivelamento', to: '/meus-nivelamentos', icon: Crown },
+        { label: 'Agendar Nivelamento', to: '/agendamento-nivelamento', icon: ClipboardList },
+        { label: 'Eventos & Bailes', to: '/eventos', icon: PartyPopper }
+      ]
+    : [
+        { label: 'Dashboard', to: '/', icon: LayoutGrid },
+        ...(isMaster || hasPermission('usuarios')
+          ? [
+              {
+                label: 'Gestão de Usuários',
+                to: '/usuarios',
+                icon: Shield,
+                badge: pendingUsersCount,
+                highlight: true
+              }
+            ]
+          : []),
+        ...(hasPermission('alunos') ? [{ label: 'Alunos', to: '/alunos', icon: Contact }] : []),
+        ...(hasPermission('presenca') ? [{ label: 'Presença & Chamada', to: '/presenca', icon: ClipboardCheck }] : []),
+        ...(hasPermission('cronograma') ? [{ label: 'Planejamento Semanal', to: '/cronograma', icon: Calendar }] : []),
+        ...(hasPermission('aulas') ? [{ label: 'Aulas & Salas', to: '/aulas', icon: Clock }] : []),
+        ...(hasPermission('nivelamento') ? [{ label: 'Nivelamento', to: '/nivelamento', icon: Crown }] : []),
+        ...(hasPermission('frequencia') || isMaster || isProfessor ? [{ label: 'Frequência', to: '/frequencia', icon: BarChart3 }] : []),
+        ...(isMaster || hasPermission('pagamentos') ? [{ label: 'Pagamentos', to: '/pagamentos', icon: DollarSign }] : []),
+        ...(hasPermission('equipe') ? [{ label: 'Equipe de Professores', to: '/equipe', icon: UserCheck }] : []),
+        ...(hasPermission('eventos') ? [{ label: 'Eventos & Bailes', to: '/eventos', icon: PartyPopper }] : []),
+        ...(hasPermission('avisos') ? [{ label: 'Avisos', to: '/avisos', icon: Megaphone }] : []),
+        { label: 'Minha Agenda', to: '/agenda-google', icon: CalendarClock }
+      ];
 
   return (
     <>

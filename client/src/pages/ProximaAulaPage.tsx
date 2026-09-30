@@ -22,9 +22,23 @@ export const ProximaAulaPage: React.FC = () => {
     solicitarPresenca
   } = useApp();
 
-  const alunoLogado =
+  const alunoLogado: Aluno =
     alunos.find((a) => a.id === currentUser.aluno_id || a.email === currentUser.email) ||
-    alunos[0];
+    alunos[0] || {
+      id: currentUser.aluno_id || currentUser.id || 'aluno_temp',
+      nome: currentUser.nome || 'Aluno',
+      email: currentUser.email || '',
+      telefone: currentUser.telefone || '',
+      nivel_atual: 'B1' as const,
+      papel: 'Condutor' as const,
+      status: 'ativo' as const,
+      mensalidade_status: 'em_dia' as const,
+      mensalidade_valor: 150,
+      dia_vencimento: 10,
+      data_inicio_nivel: '2026-09-01',
+      frequencia_percentual: 100,
+      foto_url: currentUser.avatar_url || ''
+    };
 
   // Classes matching student's level
   const turmasNivel = aulas.filter((a) => a.nivel === alunoLogado.nivel_atual);
@@ -34,7 +48,7 @@ export const ProximaAulaPage: React.FC = () => {
       <div>
         <h2 className="text-2xl font-black text-slate-900 tracking-tight flex items-center gap-2.5">
           <Sparkles className="h-6 w-6 text-brand-600" />
-          Minhas Próximas Aulas
+          Minhas Próximas Aulas & Presença
         </h2>
         <p className="text-sm text-slate-500 mt-1">
           Confira o cronograma da sua turma e solicite sua presença com antecedência para organização dos pares.
@@ -62,9 +76,9 @@ export const ProximaAulaPage: React.FC = () => {
           </div>
         </div>
 
-        <div className="rounded-xl bg-white/20 backdrop-blur-md px-4 py-2.5 text-xs">
-          <span className="text-orange-100">Próximo Vencimento:</span>
-          <p className="font-bold text-white text-sm">Dia {alunoLogado.dia_vencimento}</p>
+        <div className="rounded-xl bg-white/20 backdrop-blur-md px-4 py-2.5 text-xs text-right">
+          <span className="text-orange-100">Frequência Escolar:</span>
+          <p className="font-bold text-white text-sm">{alunoLogado.frequencia_percentual}% de Presença</p>
         </div>
       </div>
 
