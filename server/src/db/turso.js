@@ -2,6 +2,7 @@ import { createClient } from '@libsql/client';
 import dotenv from 'dotenv';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { hashPassword, getDefaultPermissions } from '../services/authService.js';
 
 dotenv.config();
 
@@ -169,6 +170,82 @@ export const initTursoDatabase = async () => {
         autor TEXT
       );
     `);
+
+    // 10. Usuários e Controle de Acesso
+    await turso.execute(`
+      CREATE TABLE IF NOT EXISTS usuarios (
+        id TEXT PRIMARY KEY,
+        nome TEXT NOT NULL,
+        email TEXT NOT NULL UNIQUE,
+        senha_hash TEXT NOT NULL,
+        telefone TEXT,
+        cargo_pretendido TEXT DEFAULT 'Aluno',
+        role TEXT NOT NULL DEFAULT 'aluno',
+        status TEXT NOT NULL DEFAULT 'pendente',
+        is_master INTEGER DEFAULT 0,
+        permissoes TEXT NOT NULL,
+        motivo_recusa TEXT,
+        aprovado_por TEXT,
+        data_cadastro TEXT NOT NULL,
+        data_aprovacao TEXT,
+        ultimo_acesso TEXT,
+        avatar_url TEXT
+      );
+    `);
+
+    // Verifica se o Administrador Master existe
+    const masterCheck = await turso.execute({
+      sql: 'SELECT id FROM usuarios WHERE is_master = 1 OR email = ?',
+      args: ['thiago.lafite@4andar.com.br']
+    });
+
+    if (masterCheck.rows.length === 0) {
+      console.log('👑 Criando conta do Administrador Master (Thiago Lafite)...');
+      const masterSenha = hashPassword('admin123');
+      const masterPerms = JSON.stringify(getDefaultPermissions('master'));
+      await turso.execute({
+        sql: `INSERT INTO usuarios (id, nome, email, senha_hash, telefone, cargo_pretendido, role, status, is_master, permissoes, data_cadastro, data_aprovacao, avatar_url)
+              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        args: [
+          'usr_master_thiago',
+          'Thiago Lafite',
+          'thiago.lafite@4andar.com.br',
+          masterSenha,
+          '(11) 99999-4444',
+          'Administrador Master',
+          'master',
+          'aprovado',
+          1,
+          masterPerms,
+          new Date().toISOString().substring(0, 10),
+          new Date().toISOString().substring(0, 10),
+          'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150'
+        ]
+      });
+
+      // Cria um usuário pendente de demonstração para o Thiago poder aprovar e testar na interface
+      const demoSenha = hashPassword('123456');
+      const demoPerms = JSON.stringify(getDefaultPermissions('aluno'));
+      await turso.execute({
+        sql: `INSERT INTO usuarios (id, nome, email, senha_hash, telefone, cargo_pretendido, role, status, is_master, permissoes, data_cadastro, avatar_url)
+              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        args: [
+          'usr_demo_pendente',
+          'Juliana Mendes Ramos',
+          'juliana.mendes@email.com',
+          demoSenha,
+          '(11) 98711-2233',
+          'Aluno',
+          'aluno',
+          'pendente',
+          0,
+          demoPerms,
+          new Date().toISOString().substring(0, 10),
+          'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150'
+        ]
+      });
+      console.log('✅ Administrador Master Thiago Lafite configurado no Turso!');
+    }
 
     // Se a tabela de alunos estiver vazia, popula dados de demonstração
     const countCheck = await turso.execute('SELECT COUNT(*) as total FROM alunos');

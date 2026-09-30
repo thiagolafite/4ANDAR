@@ -37,9 +37,25 @@ interface ToastInfo {
 
 interface AppContextType {
   currentUser: User;
-  switchUserRole: (tipo: 'Equipe' | 'Aluno') => void;
+  switchUserRole: (tipo: 'Equipe' | 'Aluno' | 'AdminMaster') => void;
   setCurrentUser: (user: User) => void;
   users: User[];
+
+  // Autenticação & Sessão
+  isAuthenticated: boolean;
+  token: string | null;
+  login: (login: string, senha: string) => Promise<{ success: boolean; error?: string; status?: string }>;
+  register: (data: { nome: string; email: string; senha: string; telefone?: string; cargo_pretendido?: string }) => Promise<{ success: boolean; error?: string; status?: string; message?: string }>;
+  logout: () => void;
+  hasPermission: (module: string, action?: string) => boolean;
+
+  // Gestão de Usuários (Admin Master)
+  usuariosList: User[];
+  pendingUsersCount: number;
+  fetchUsuarios: () => Promise<void>;
+  updateUserStatus: (id: string, status: string, options?: { role?: string; permissoes?: any; motivo_recusa?: string }) => Promise<boolean>;
+  updateUserPermissions: (id: string, permissoes: any, role?: string, cargo_pretendido?: string) => Promise<boolean>;
+  deleteUser: (id: string) => Promise<boolean>;
 
   // Alunos
   alunos: Aluno[];
@@ -123,9 +139,18 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   };
 
+  const [token, setToken] = useState<string | null>(() => localStorage.getItem('4andar_token'));
   const [currentUser, setCurrentUserState] = useState<User>(() =>
     loadInitial('currentUser', mockUsers[0])
   );
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => {
+    const savedToken = localStorage.getItem('4andar_token');
+    const savedUser = localStorage.getItem('4andar_currentUser');
+    return Boolean(savedToken || savedUser);
+  });
+  const [usuariosList, setUsuariosList] = useState<User[]>([]);
+
+  const pendingUsersCount = usuariosList.filter((u) => u.status === 'pendente').length;
   const [users] = useState<User[]>(mockUsers);
   const [alunos, setAlunos] = useState<Aluno[]>(() => loadInitial('alunos', mockAlunos));
   const [equipe, setEquipe] = useState<Equipe[]>(() => loadInitial('equipe', mockEquipe));
@@ -237,19 +262,162 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   }, [avisos]);
 
   // Switch role helper
-  const switchUserRole = (tipo: 'Equipe' | 'Aluno') => {
-    if (tipo === 'Equipe') {
-      setCurrentUserState(mockUsers[0]); // Mariana Sol
-      showToast('Perfil alterado para Equipe (Admin/Professor)', 'info');
-    } else {
-      setCurrentUserState(mockUsers[1]); // Carlos Eduardo
-      showToast('Perfil alterado para Aluno (Carlos Eduardo - B1)', 'info');
+  const switchUserRole = (tipo: 'Equipe' | 'Aluno' | 'AdminMaster') => {
+    if (tipo === 'AdminMaster') {
+      const masterUser = mockUsers[0];
+      setCurrentUserState(masterUser);
+      localStorage.setItem('4andar_currentUser', JSON.stringify(masterUser));
+      showToast('Perfil alternado para Administrador Master (Thiago Lafite)', 'info');
+      return;
+    }
+    const found = mockUsers.find((u) => u.tipo_usuario === tipo);
+    if (found) {
+      setCurrentUserState(found);
+      localStorage.setItem('4andar_currentUser', JSON.stringify(found));
+      showToast(`Perfil alterado para ${tipo}`, 'info');
     }
   };
 
   const setCurrentUser = (user: User) => {
     setCurrentUserState(user);
     showToast(`Logado como ${user.nome} (${user.tipo_usuario})`, 'info');
+  };
+
+  // Auth & Permissions Handlers
+  const fetchUsuarios = async () => {
+    try {
+      const res = await fetch(`${API_URL}/usuarios`);
+      if (res.ok) {
+        const data = await res.json();
+        setUsuariosList(data);
+      }
+    } catch (err) {
+      console.warn('Erro ao carregar usuários:', err);
+    }
+  };
+
+  useEffect(() => {
+    fetchUsuarios();
+  }, []);
+
+  const login = async (loginId: string, senha: string) => {
+    try {
+      const res = await fetch(`${API_URL}/auth/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ login: loginId, senha })
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        return { success: false, error: data.error || 'Erro ao realizar login', status: data.status };
+      }
+      setToken(data.token);
+      setCurrentUserState(data.user);
+      setIsAuthenticated(true);
+      localStorage.setItem('4andar_token', data.token);
+      localStorage.setItem('4andar_currentUser', JSON.stringify(data.user));
+      showToast(`Bem-vindo, ${data.user.nome.split(' ')[0]}!`, 'success');
+      fetchUsuarios();
+      return { success: true };
+    } catch {
+      return { success: false, error: 'Falha de conexão com o servidor' };
+    }
+  };
+
+  const register = async (userData: { nome: string; email: string; senha: string; telefone?: string; cargo_pretendido?: string }) => {
+    try {
+      const res = await fetch(`${API_URL}/auth/register`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(userData)
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        return { success: false, error: data.error || 'Erro ao realizar cadastro' };
+      }
+      fetchUsuarios();
+      return { success: true, message: data.message, status: data.status };
+    } catch {
+      return { success: false, error: 'Falha de conexão com o servidor' };
+    }
+  };
+
+  const logout = () => {
+    setToken(null);
+    setIsAuthenticated(false);
+    localStorage.removeItem('4andar_token');
+    showToast('Você saiu do sistema.', 'info');
+  };
+
+  const hasPermission = (module: string, action?: string): boolean => {
+    if (!currentUser) return false;
+    if (currentUser.is_master || currentUser.role === 'master' || currentUser.tipo_usuario === 'AdminMaster') return true;
+    if (currentUser.permissoes?.all) return true;
+
+    const modPerms = (currentUser.permissoes as any)?.[module];
+    if (!modPerms) return false;
+    if (typeof modPerms === 'boolean') return modPerms;
+    if (!action) return Boolean(modPerms.view || modPerms.manage);
+    return Boolean(modPerms[action] ?? modPerms.view);
+  };
+
+  const updateUserStatus = async (id: string, status: string, options?: { role?: string; permissoes?: any; motivo_recusa?: string }) => {
+    try {
+      const res = await fetch(`${API_URL}/usuarios/${id}/status`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status, ...options })
+      });
+      if (res.ok) {
+        showToast(`Status atualizado para "${status}" com sucesso!`, 'success');
+        await fetchUsuarios();
+        return true;
+      }
+      const data = await res.json();
+      showToast(data.error || 'Erro ao atualizar status', 'error');
+      return false;
+    } catch {
+      showToast('Falha na comunicação com o servidor', 'error');
+      return false;
+    }
+  };
+
+  const updateUserPermissions = async (id: string, permissoes: any, role?: string, cargo_pretendido?: string) => {
+    try {
+      const res = await fetch(`${API_URL}/usuarios/${id}/permissoes`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ permissoes, role, cargo_pretendido })
+      });
+      if (res.ok) {
+        showToast('Permissões do usuário atualizadas com sucesso!', 'success');
+        await fetchUsuarios();
+        return true;
+      }
+      const data = await res.json();
+      showToast(data.error || 'Erro ao salvar permissões', 'error');
+      return false;
+    } catch {
+      showToast('Falha na comunicação com o servidor', 'error');
+      return false;
+    }
+  };
+
+  const deleteUser = async (id: string) => {
+    try {
+      const res = await fetch(`${API_URL}/usuarios/${id}`, { method: 'DELETE' });
+      if (res.ok) {
+        showToast('Usuário excluído com sucesso!', 'success');
+        await fetchUsuarios();
+        return true;
+      }
+      const data = await res.json();
+      showToast(data.error || 'Erro ao excluir usuário', 'error');
+      return false;
+    } catch {
+      showToast('Falha na comunicação com o servidor', 'error');
+      return false;
+    }
   };
 
   // Alunos handlers
@@ -704,6 +872,18 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         switchUserRole,
         setCurrentUser,
         users,
+        isAuthenticated,
+        token,
+        login,
+        register,
+        logout,
+        hasPermission,
+        usuariosList,
+        pendingUsersCount,
+        fetchUsuarios,
+        updateUserStatus,
+        updateUserPermissions,
+        deleteUser,
         alunos,
         addAluno,
         updateAluno,

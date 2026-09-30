@@ -15,6 +15,7 @@ import {
   CalendarClock,
   PartyPopper,
   UserCheck,
+  Shield,
   X
 } from 'lucide-react';
 
@@ -27,27 +28,46 @@ interface NavItem {
   label: string;
   to: string;
   icon: React.ComponentType<{ className?: string }>;
+  badge?: number;
+  highlight?: boolean;
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
-  const { currentUser } = useApp();
-  const isEquipe = currentUser.tipo_usuario === 'Equipe';
+  const { currentUser, hasPermission, pendingUsersCount } = useApp();
+  const isEquipe = currentUser.tipo_usuario === 'Equipe' || currentUser.is_master;
 
-  // Navigation items matching exactly the design from the reference screenshot
+  // Navigation items matching design and permission system
   const menuItems: NavItem[] = [
     { label: 'Dashboard', to: '/', icon: LayoutGrid },
-    { label: 'Nivelamento', to: isEquipe ? '/nivelamento' : '/meus-nivelamentos', icon: Crown },
+    ...(currentUser.is_master || hasPermission('usuarios')
+      ? [
+          {
+            label: 'Gestão de Usuários',
+            to: '/usuarios',
+            icon: Shield,
+            badge: pendingUsersCount,
+            highlight: true
+          }
+        ]
+      : []),
+    ...(hasPermission('nivelamento')
+      ? [{ label: 'Nivelamento', to: isEquipe ? '/nivelamento' : '/meus-nivelamentos', icon: Crown }]
+      : []),
     { label: 'Agendar Nivelamento', to: '/agendamento-nivelamento', icon: ClipboardList },
-    { label: 'Alunos', to: '/alunos', icon: Contact },
-    { label: 'Pagamentos', to: isEquipe ? '/pagamentos' : '/meus-pagamentos', icon: DollarSign },
-    { label: 'Avisos', to: '/avisos', icon: Megaphone },
-    { label: 'Presença', to: isEquipe ? '/presenca' : '/proxima-aula', icon: ClipboardCheck },
+    ...(hasPermission('alunos') ? [{ label: 'Alunos', to: '/alunos', icon: Contact }] : []),
+    ...(hasPermission('pagamentos')
+      ? [{ label: 'Pagamentos', to: isEquipe ? '/pagamentos' : '/meus-pagamentos', icon: DollarSign }]
+      : [{ label: 'Meus Pagamentos', to: '/meus-pagamentos', icon: DollarSign }]),
+    ...(hasPermission('avisos') ? [{ label: 'Avisos', to: '/avisos', icon: Megaphone }] : []),
+    ...(hasPermission('presenca')
+      ? [{ label: 'Presença', to: isEquipe ? '/presenca' : '/proxima-aula', icon: ClipboardCheck }]
+      : [{ label: 'Próxima Aula', to: '/proxima-aula', icon: ClipboardCheck }]),
     { label: 'Frequência', to: '/frequencia', icon: BarChart3 },
-    { label: 'Aulas', to: '/aulas', icon: Clock },
-    { label: 'Planejamento Semanal', to: '/cronograma', icon: Calendar },
+    ...(hasPermission('aulas') ? [{ label: 'Aulas', to: '/aulas', icon: Clock }] : []),
+    ...(hasPermission('cronograma') ? [{ label: 'Planejamento Semanal', to: '/cronograma', icon: Calendar }] : []),
     { label: 'Minha Agenda', to: '/agenda-google', icon: CalendarClock },
-    { label: 'Eventos & Bailes', to: '/eventos', icon: PartyPopper },
-    ...(isEquipe ? [{ label: 'Equipe de Professores', to: '/equipe', icon: UserCheck }] : [])
+    ...(hasPermission('eventos') ? [{ label: 'Eventos & Bailes', to: '/eventos', icon: PartyPopper }] : []),
+    ...(hasPermission('equipe') ? [{ label: 'Equipe de Professores', to: '/equipe', icon: UserCheck }] : [])
   ];
 
   return (
@@ -125,7 +145,12 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
                             : 'text-[#475569] group-hover:text-[#9a3412]'
                         }`}
                       />
-                      <span className="truncate">{item.label}</span>
+                      <span className="truncate flex-1">{item.label}</span>
+                      {typeof item.badge === 'number' && item.badge > 0 && (
+                        <span className="ml-auto flex h-5 min-w-[20px] items-center justify-center rounded-full bg-amber-500 px-1.5 text-[10px] font-black text-white shadow-xs animate-pulse">
+                          {item.badge}
+                        </span>
+                      )}
                     </>
                   )}
                 </NavLink>

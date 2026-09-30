@@ -2,26 +2,60 @@ export type NivelForro = 'B1' | 'B2' | 'I1' | 'I2';
 
 export type PapelDanca = 'Condutor' | 'Conduzido' | 'Ambos';
 
-export type TipoUsuario = 'Equipe' | 'Aluno';
+export type TipoUsuario = 'Equipe' | 'Aluno' | 'AdminMaster';
 
-export type StatusPresenca = 'pendente' | 'confirmada' | 'ausente';
+export type UserRole = 'master' | 'admin' | 'professor' | 'aluno';
 
-export type MetodoPagamento = 'PIX' | 'Dinheiro' | 'Cartão';
+export type UserStatus = 'pendente' | 'aprovado' | 'rejeitado' | 'bloqueado';
 
-export type StatusPagamento = 'Pago' | 'Pendente' | 'Atrasado';
+export interface PermissaoModulo {
+  view?: boolean;
+  create?: boolean;
+  edit?: boolean;
+  delete?: boolean;
+  manage?: boolean;
+  checkin?: boolean;
+  export?: boolean;
+  evaluate?: boolean;
+  schedule?: boolean;
+  import_excel?: boolean;
+  approve?: boolean;
+}
 
-export type StatusNivelamento = 'Agendado' | 'Concluído' | 'Cancelado';
-
-export type ResultadoNivelamento = 'Aprovado' | 'Reprovado';
+export interface PermissoesUsuario {
+  all?: boolean;
+  dashboard?: PermissaoModulo;
+  alunos?: PermissaoModulo;
+  cronograma?: PermissaoModulo;
+  presenca?: PermissaoModulo;
+  pagamentos?: PermissaoModulo;
+  nivelamento?: PermissaoModulo;
+  aulas?: PermissaoModulo;
+  eventos?: PermissaoModulo;
+  avisos?: PermissaoModulo;
+  equipe?: PermissaoModulo;
+  usuarios?: PermissaoModulo;
+}
 
 export interface User {
   id: string;
   nome: string;
   email: string;
+  telefone?: string;
+  cargo_pretendido?: string;
   tipo_usuario: TipoUsuario;
+  role: UserRole;
+  status: UserStatus;
+  is_master: boolean;
+  permissoes: PermissoesUsuario;
   avatar_url?: string;
   aluno_id?: string;
   equipe_id?: string;
+  motivo_recusa?: string;
+  aprovado_por?: string;
+  data_cadastro?: string;
+  data_aprovacao?: string;
+  ultimo_acesso?: string;
 }
 
 export interface Aluno {

@@ -5,6 +5,13 @@ import dotenv from 'dotenv';
 import { turso, initTursoDatabase } from './db/turso.js';
 import { enviarLembreteMensalidade } from './services/emailService.js';
 import { sincronizarAulasCalendar } from './services/googleCalendarService.js';
+import {
+  hashPassword,
+  verifyPassword,
+  getDefaultPermissions,
+  createSessionToken,
+  verifySessionToken
+} from './services/authService.js';
 
 dotenv.config();
 
@@ -13,6 +20,382 @@ const PORT = process.env.PORT || 3001;
 
 app.use(cors());
 app.use(express.json());
+
+// ==========================================
+// 0. AUTENTICAÇÃO E CONTROLE DE ACESSO (MASTER ADMIN)
+// ==========================================
+
+const authenticateToken = (req, res, next) => {
+  const authHeader = req.headers['authorization'];
+  const token = authHeader && authHeader.split(' ')[1];
+  if (!token) return res.status(401).json({ error: 'Token não fornecido' });
+  const payload = verifySessionToken(token);
+  if (!payload) return res.status(403).json({ error: 'Sessão inválida ou expirada' });
+  req.user = payload;
+  next();
+};
+
+// 0.1 Login
+app.post('/api/auth/login', async (req, res) => {
+  try {
+    const { login, senha } = req.body;
+    if (!login || !senha) {
+      return res.status(400).json({ error: 'Informe usuário/e-mail e senha' });
+    }
+
+    const cleanLogin = login.trim().toLowerCase();
+    
+    // Busca usuário pelo e-mail ou se for master permite 'thiagolafite' ou 'admin@4andar.com.br'
+    let query;
+    let args;
+    if (cleanLogin === 'thiagolafite' || cleanLogin === 'admin@4andar.com.br' || cleanLogin === 'thiago.lafite@4andar.com.br') {
+      query = 'SELECT * FROM usuarios WHERE is_master = 1 OR email = ?';
+      args = ['thiago.lafite@4andar.com.br'];
+    } else {
+      query = 'SELECT * FROM usuarios WHERE LOWER(email) = ?';
+      args = [cleanLogin];
+    }
+
+    const result = await turso.execute({ sql: query, args });
+    if (result.rows.length === 0) {
+      return res.status(401).json({ error: 'E-mail/usuário ou senha incorretos' });
+    }
+
+    const user = result.rows[0];
+
+    // Validação da senha
+    const isPasswordValid = verifyPassword(senha, user.senha_hash);
+    if (!isPasswordValid) {
+      return res.status(401).json({ error: 'E-mail/usuário ou senha incorretos' });
+    }
+
+    // Validação do status de aprovação
+    if (user.status === 'pendente') {
+      return res.status(403).json({
+        error: 'Seu cadastro está aguardando aprovação do Administrador Master (Thiago Lafite).',
+        status: 'pendente'
+      });
+    }
+
+    if (user.status === 'rejeitado') {
+      return res.status(403).json({
+        error: `Seu cadastro não foi aprovado pela administração.${user.motivo_recusa ? ' Motivo: ' + user.motivo_recusa : ''}`,
+        status: 'rejeitado'
+      });
+    }
+
+    if (user.status === 'bloqueado') {
+      return res.status(403).json({
+        error: 'Seu acesso foi temporariamente suspenso pela administração.',
+        status: 'bloqueado'
+      });
+    }
+
+    // Atualiza último acesso
+    const now = new Date().toISOString();
+    await turso.execute({
+      sql: 'UPDATE usuarios SET ultimo_acesso = ? WHERE id = ?',
+      args: [now, user.id]
+    });
+
+    const token = createSessionToken(user);
+    let permissoesObj = {};
+    try {
+      permissoesObj = JSON.parse(user.permissoes);
+    } catch {
+      permissoesObj = getDefaultPermissions(user.role);
+    }
+
+    res.json({
+      message: 'Login realizado com sucesso',
+      token,
+      user: {
+        id: user.id,
+        nome: user.nome,
+        email: user.email,
+        telefone: user.telefone,
+        cargo_pretendido: user.cargo_pretendido,
+        role: user.role,
+        is_master: Boolean(user.is_master),
+        status: user.status,
+        permissoes: permissoesObj,
+        avatar_url: user.avatar_url,
+        ultimo_acesso: now
+      }
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// 0.2 Cadastro de Novo Usuário (Entra como 'pendente' para aprovação do Master)
+app.post('/api/auth/register', async (req, res) => {
+  try {
+    const { nome, email, senha, telefone, cargo_pretendido } = req.body;
+    if (!nome || !email || !senha) {
+      return res.status(400).json({ error: 'Preencha nome, e-mail e senha' });
+    }
+
+    if (senha.length < 6) {
+      return res.status(400).json({ error: 'A senha deve ter no mínimo 6 caracteres' });
+    }
+
+    const cleanEmail = email.trim().toLowerCase();
+
+    // Verifica se já existe
+    const exists = await turso.execute({
+      sql: 'SELECT id FROM usuarios WHERE LOWER(email) = ?',
+      args: [cleanEmail]
+    });
+
+    if (exists.rows.length > 0) {
+      return res.status(409).json({ error: 'Este e-mail já está cadastrado no sistema.' });
+    }
+
+    const id = `usr_${Date.now()}`;
+    const senhaHash = hashPassword(senha);
+    const role = (cargo_pretendido || 'aluno').toLowerCase().includes('prof') ? 'professor' : 'aluno';
+    const initialPerms = JSON.stringify(getDefaultPermissions(role));
+    const dataCadastro = new Date().toISOString().substring(0, 10);
+
+    await turso.execute({
+      sql: `INSERT INTO usuarios (id, nome, email, senha_hash, telefone, cargo_pretendido, role, status, is_master, permissoes, data_cadastro, avatar_url)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      args: [
+        id,
+        nome.trim(),
+        cleanEmail,
+        senhaHash,
+        telefone || null,
+        cargo_pretendido || 'Aluno',
+        role,
+        'pendente', // Sempre entra como pendente para aprovação do Master Thiago Lafite
+        0,
+        initialPerms,
+        dataCadastro,
+        'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150'
+      ]
+    });
+
+    res.status(201).json({
+      message: 'Cadastro recebido com sucesso! Aguarde a aprovação do Administrador Master (Thiago Lafite) para acessar o sistema.',
+      status: 'pendente',
+      user: {
+        id,
+        nome,
+        email: cleanEmail,
+        cargo_pretendido,
+        status: 'pendente'
+      }
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// 0.3 Obter usuário logado atual (/me)
+app.get('/api/auth/me', authenticateToken, async (req, res) => {
+  try {
+    const result = await turso.execute({
+      sql: 'SELECT id, nome, email, telefone, cargo_pretendido, role, status, is_master, permissoes, avatar_url, data_cadastro, data_aprovacao, ultimo_acesso FROM usuarios WHERE id = ?',
+      args: [req.user.userId]
+    });
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Usuário não encontrado' });
+    }
+
+    const user = result.rows[0];
+    let permissoesObj = {};
+    try {
+      permissoesObj = JSON.parse(user.permissoes);
+    } catch {
+      permissoesObj = getDefaultPermissions(user.role);
+    }
+
+    res.json({
+      user: {
+        ...user,
+        is_master: Boolean(user.is_master),
+        permissoes: permissoesObj
+      }
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// 0.4 Listar todos os usuários (Para painel do Master Admin)
+app.get('/api/usuarios', async (req, res) => {
+  try {
+    const { status, role } = req.query;
+    let sql = 'SELECT id, nome, email, telefone, cargo_pretendido, role, status, is_master, permissoes, motivo_recusa, aprovado_por, data_cadastro, data_aprovacao, ultimo_acesso, avatar_url FROM usuarios WHERE 1=1';
+    const args = [];
+
+    if (status) {
+      sql += ' AND status = ?';
+      args.push(status);
+    }
+    if (role) {
+      sql += ' AND role = ?';
+      args.push(role);
+    }
+
+    // Ordenação: Pendentes primeiro, depois Master, depois os mais recentes
+    sql += ' ORDER BY CASE status WHEN \'pendente\' THEN 1 ELSE 2 END, is_master DESC, data_cadastro DESC';
+
+    const result = await turso.execute({ sql, args });
+    const formatted = result.rows.map((u) => {
+      let permissoesObj = {};
+      try {
+        permissoesObj = JSON.parse(u.permissoes);
+      } catch {
+        permissoesObj = getDefaultPermissions(u.role);
+      }
+      return {
+        ...u,
+        is_master: Boolean(u.is_master),
+        permissoes: permissoesObj
+      };
+    });
+
+    res.json(formatted);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// 0.5 Aprovar, Rejeitar ou Alterar Status do Usuário
+app.put('/api/usuarios/:id/status', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { status, role, permissoes, motivo_recusa, aprovado_por } = req.body;
+
+    if (!['aprovado', 'rejeitado', 'bloqueado', 'pendente'].includes(status)) {
+      return res.status(400).json({ error: 'Status inválido' });
+    }
+
+    const targetCheck = await turso.execute({
+      sql: 'SELECT is_master FROM usuarios WHERE id = ?',
+      args: [id]
+    });
+
+    if (targetCheck.rows.length === 0) {
+      return res.status(404).json({ error: 'Usuário não encontrado' });
+    }
+
+    if (targetCheck.rows[0].is_master === 1 && status !== 'aprovado') {
+      return res.status(400).json({ error: 'O Administrador Master não pode ter o status alterado para bloqueado ou rejeitado.' });
+    }
+
+    const updates = ['status = ?'];
+    const args = [status];
+
+    if (status === 'aprovado') {
+      updates.push('data_aprovacao = ?');
+      args.push(new Date().toISOString().substring(0, 10));
+      updates.push('aprovado_por = ?');
+      args.push(aprovado_por || 'Thiago Lafite (Master)');
+    }
+
+    if (motivo_recusa !== undefined) {
+      updates.push('motivo_recusa = ?');
+      args.push(motivo_recusa || null);
+    }
+
+    if (role) {
+      updates.push('role = ?');
+      args.push(role);
+    }
+
+    if (permissoes) {
+      updates.push('permissoes = ?');
+      args.push(typeof permissoes === 'string' ? permissoes : JSON.stringify(permissoes));
+    } else if (status === 'aprovado' && role) {
+      updates.push('permissoes = ?');
+      args.push(JSON.stringify(getDefaultPermissions(role)));
+    }
+
+    args.push(id);
+    await turso.execute({
+      sql: `UPDATE usuarios SET ${updates.join(', ')} WHERE id = ?`,
+      args
+    });
+
+    res.json({ message: `Status do usuário atualizado para "${status}" com sucesso!`, id, status });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// 0.6 Atualizar Permissões Granulares do Usuário
+app.put('/api/usuarios/:id/permissoes', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { permissoes, role, cargo_pretendido } = req.body;
+
+    const targetCheck = await turso.execute({
+      sql: 'SELECT is_master FROM usuarios WHERE id = ?',
+      args: [id]
+    });
+
+    if (targetCheck.rows.length === 0) {
+      return res.status(404).json({ error: 'Usuário não encontrado' });
+    }
+
+    const updates = ['permissoes = ?'];
+    const args = [typeof permissoes === 'string' ? permissoes : JSON.stringify(permissoes)];
+
+    if (role && targetCheck.rows[0].is_master !== 1) {
+      updates.push('role = ?');
+      args.push(role);
+    }
+
+    if (cargo_pretendido) {
+      updates.push('cargo_pretendido = ?');
+      args.push(cargo_pretendido);
+    }
+
+    args.push(id);
+    await turso.execute({
+      sql: `UPDATE usuarios SET ${updates.join(', ')} WHERE id = ?`,
+      args
+    });
+
+    res.json({ message: 'Permissões atualizadas com sucesso!', id });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// 0.7 Excluir Usuário
+app.delete('/api/usuarios/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const targetCheck = await turso.execute({
+      sql: 'SELECT is_master FROM usuarios WHERE id = ?',
+      args: [id]
+    });
+
+    if (targetCheck.rows.length === 0) {
+      return res.status(404).json({ error: 'Usuário não encontrado' });
+    }
+
+    if (targetCheck.rows[0].is_master === 1) {
+      return res.status(400).json({ error: 'O Administrador Master não pode ser excluído.' });
+    }
+
+    await turso.execute({
+      sql: 'DELETE FROM usuarios WHERE id = ?',
+      args: [id]
+    });
+
+    res.json({ message: 'Usuário removido com sucesso!', id });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
 
 // ==========================================
 // 1. HEALTH & METADATA

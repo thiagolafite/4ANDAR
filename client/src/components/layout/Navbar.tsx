@@ -1,6 +1,7 @@
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useApp } from '../../context/AppContext';
-import { Search, UserCheck, Shield, PanelLeft, Bell } from 'lucide-react';
+import { Search, UserCheck, Shield, PanelLeft, Bell, Crown, LogOut } from 'lucide-react';
 
 interface NavbarProps {
   sidebarOpen: boolean;
@@ -8,12 +9,15 @@ interface NavbarProps {
 }
 
 export const Navbar: React.FC<NavbarProps> = ({ sidebarOpen, onToggleSidebar }) => {
+  const navigate = useNavigate();
   const {
     currentUser,
     switchUserRole,
     setSearchModalOpen,
     presencas,
-    pagamentos
+    pagamentos,
+    pendingUsersCount,
+    logout
   } = useApp();
 
   const isEquipe = currentUser.tipo_usuario === 'Equipe';
@@ -73,30 +77,52 @@ export const Navbar: React.FC<NavbarProps> = ({ sidebarOpen, onToggleSidebar }) 
         </button>
 
         {/* Notifications / Pending Alerts Badge */}
+        {/* Notifications / Pending Alerts Badge */}
         <div className="relative">
           <button
+            onClick={() => {
+              if (pendingUsersCount > 0) navigate('/usuarios');
+            }}
             className="rounded-lg p-2 text-slate-500 hover:bg-orange-50 hover:text-brand-600 transition-colors"
             title={
-              pendenciasCount > 0
-                ? `${pendenciasCount} pendência(s) aguardando atenção`
+              pendingUsersCount > 0
+                ? `${pendingUsersCount} cadastro(s) aguardando aprovação do Master`
+                : pendenciasCount > 0
+                ? `${pendenciasCount} pendência(s) na escola`
                 : 'Sem pendências'
             }
           >
             <Bell className="h-5 w-5" />
-            {pendenciasCount > 0 && (
+            {pendingUsersCount > 0 ? (
+              <span className="absolute top-1.5 right-1.5 flex h-4 w-4 items-center justify-center rounded-full bg-amber-500 text-[10px] font-black text-white ring-2 ring-white animate-bounce">
+                {pendingUsersCount}
+              </span>
+            ) : pendenciasCount > 0 ? (
               <span className="absolute top-1.5 right-1.5 flex h-4 w-4 items-center justify-center rounded-full bg-rose-500 text-[10px] font-bold text-white ring-2 ring-white animate-pulse">
                 {pendenciasCount}
               </span>
-            )}
+            ) : null}
           </button>
         </div>
 
         {/* Profile Switcher Simulator */}
         <div className="flex items-center rounded-xl bg-orange-50/90 p-1 border border-orange-200/80 text-xs">
           <button
+            onClick={() => switchUserRole('AdminMaster')}
+            className={`flex items-center gap-1 rounded-lg px-2 py-1 font-medium transition-all ${
+              currentUser.is_master || currentUser.tipo_usuario === 'AdminMaster'
+                ? 'bg-amber-500 text-white shadow-xs font-bold'
+                : 'text-amber-800 hover:bg-amber-100/70'
+            }`}
+            title="Alternar para Administrador Master (Thiago Lafite)"
+          >
+            <Crown className="h-3.5 w-3.5 text-amber-200" />
+            <span className="hidden sm:inline">Master</span>
+          </button>
+          <button
             onClick={() => switchUserRole('Equipe')}
-            className={`flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 font-medium transition-all ${
-              isEquipe
+            className={`flex items-center gap-1 rounded-lg px-2 py-1 font-medium transition-all ${
+              !currentUser.is_master && isEquipe
                 ? 'bg-brand-600 text-white shadow-xs font-semibold'
                 : 'text-slate-600 hover:text-brand-700 hover:bg-orange-100/70'
             }`}
@@ -107,8 +133,8 @@ export const Navbar: React.FC<NavbarProps> = ({ sidebarOpen, onToggleSidebar }) 
           </button>
           <button
             onClick={() => switchUserRole('Aluno')}
-            className={`flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 font-medium transition-all ${
-              !isEquipe
+            className={`flex items-center gap-1 rounded-lg px-2 py-1 font-medium transition-all ${
+              !currentUser.is_master && !isEquipe
                 ? 'bg-brand-600 text-white shadow-xs font-semibold'
                 : 'text-slate-600 hover:text-brand-700 hover:bg-orange-100/70'
             }`}
@@ -124,19 +150,40 @@ export const Navbar: React.FC<NavbarProps> = ({ sidebarOpen, onToggleSidebar }) 
           <img
             src={
               currentUser.avatar_url ||
-              'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100'
+              'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=100'
             }
             alt={currentUser.nome}
-            className="h-8 w-8 rounded-full object-cover ring-2 ring-brand-500/30"
+            className={`h-8 w-8 rounded-full object-cover ${
+              currentUser.is_master ? 'ring-2 ring-amber-400' : 'ring-2 ring-brand-500/30'
+            }`}
           />
           <div className="hidden xl:block text-left">
-            <p className="text-xs font-semibold text-slate-800 leading-tight">
-              {currentUser.nome.split(' ')[0]} {currentUser.nome.split(' ')[1] || ''}
+            <p className="text-xs font-semibold text-slate-800 leading-tight flex items-center gap-1">
+              <span>{currentUser.nome.split(' ')[0]}</span>
+              {currentUser.is_master && <Crown className="h-3 w-3 text-amber-500" />}
             </p>
             <p className="text-[10px] text-brand-600 font-medium">
-              {currentUser.tipo_usuario === 'Equipe' ? 'Admin / Professor' : 'Aluno'}
+              {currentUser.is_master
+                ? 'Admin Master'
+                : currentUser.tipo_usuario === 'Equipe'
+                ? 'Admin / Professor'
+                : 'Aluno'}
             </p>
           </div>
+
+          {/* Logout Button */}
+          <button
+            onClick={() => {
+              if (window.confirm('Deseja realmente sair do sistema?')) {
+                logout();
+                navigate('/login');
+              }
+            }}
+            className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors ml-1"
+            title="Sair do Sistema (Logout)"
+          >
+            <LogOut className="h-4 w-4" />
+          </button>
         </div>
       </div>
     </header>

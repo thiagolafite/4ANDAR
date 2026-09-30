@@ -2,28 +2,65 @@ import { Aluno, Equipe, Aula, Cronograma, Presenca, Pagamento, CriterioNivelamen
 
 export const mockUsers: User[] = [
   {
+    id: 'usr_master_thiago',
+    nome: 'Thiago Lafite',
+    email: 'thiago.lafite@4andar.com.br',
+    tipo_usuario: 'AdminMaster',
+    role: 'master',
+    status: 'aprovado',
+    is_master: true,
+    cargo_pretendido: 'Administrador Master',
+    avatar_url: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150',
+    permissoes: {
+      all: true,
+      dashboard: { view: true },
+      alunos: { view: true, create: true, edit: true, delete: true },
+      cronograma: { view: true, edit: true, import_excel: true },
+      presenca: { view: true, manage: true, checkin: true },
+      pagamentos: { view: true, manage: true, export: true },
+      nivelamento: { view: true, evaluate: true, schedule: true },
+      aulas: { view: true, manage: true },
+      eventos: { view: true, manage: true },
+      avisos: { view: true, manage: true },
+      equipe: { view: true, manage: true },
+      usuarios: { view: true, manage: true, approve: true }
+    }
+  },
+  {
     id: 'usr_admin',
     nome: 'Mariana Sol (Professora & Coordenação)',
     email: 'mariana.sol@4andar.com.br',
     tipo_usuario: 'Equipe',
+    role: 'professor',
+    status: 'aprovado',
+    is_master: false,
+    cargo_pretendido: 'Professor',
     avatar_url: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
     equipe_id: 'eq_1',
+    permissoes: {
+      dashboard: { view: true },
+      cronograma: { view: true, edit: true },
+      presenca: { view: true, manage: true },
+      nivelamento: { view: true, evaluate: true },
+      aulas: { view: true }
+    }
   },
   {
     id: 'usr_aluno_1',
     nome: 'Carlos Eduardo Oliveira',
     email: 'carlos.oliveira@email.com',
     tipo_usuario: 'Aluno',
+    role: 'aluno',
+    status: 'aprovado',
+    is_master: false,
+    cargo_pretendido: 'Aluno',
     avatar_url: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=80',
     aluno_id: 'al_1',
-  },
-  {
-    id: 'usr_aluno_2',
-    nome: 'Camila Santos Rocha',
-    email: 'camila.rocha@email.com',
-    tipo_usuario: 'Aluno',
-    avatar_url: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150&auto=format&fit=crop&q=80',
-    aluno_id: 'al_2',
+    permissoes: {
+      dashboard: { view: true },
+      presenca: { view: true, checkin: true },
+      cronograma: { view: true }
+    }
   }
 ];
 

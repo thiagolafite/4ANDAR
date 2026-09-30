@@ -1,9 +1,14 @@
 import React from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-import { AppProvider } from './context/AppContext';
+import { AppProvider, useApp } from './context/AppContext';
 import { AppLayout } from './components/layout/AppLayout';
 
-// Pages
+// Auth Pages
+import { LoginPage } from './pages/LoginPage';
+import { CadastroPage } from './pages/CadastroPage';
+import { UsuariosPage } from './pages/UsuariosPage';
+
+// System Pages
 import { DashboardPage } from './pages/DashboardPage';
 import { CronogramaPage } from './pages/CronogramaPage';
 import { PresencaPage } from './pages/PresencaPage';
@@ -21,14 +26,33 @@ import { EquipePage } from './pages/EquipePage';
 import { GoogleCalendarPage } from './pages/GoogleCalendarPage';
 import { FrequenciaPage } from './pages/FrequenciaPage';
 
+// Guard for protected routes
+const ProtectedAppLayout: React.FC = () => {
+  const { isAuthenticated, currentUser } = useApp();
+
+  // Permite acesso se estiver autenticado ou tiver currentUser inicializado (ex: Thiago Lafite Master)
+  if (!isAuthenticated && !currentUser) {
+    return <Navigate to="/login" replace />;
+  }
+
+  return <AppLayout />;
+};
+
 export function App() {
   return (
     <AppProvider>
       <BrowserRouter>
         <Routes>
-          <Route path="/" element={<AppLayout />}>
+          {/* Public Auth Routes */}
+          <Route path="/login" element={<LoginPage />} />
+          <Route path="/cadastro" element={<CadastroPage />} />
+
+          {/* Protected System Routes */}
+          <Route path="/" element={<ProtectedAppLayout />}>
             <Route index element={<DashboardPage />} />
             <Route path="home" element={<DashboardPage />} />
+            <Route path="usuarios" element={<UsuariosPage />} />
+            <Route path="gestao-usuarios" element={<UsuariosPage />} />
             <Route path="cronograma" element={<CronogramaPage />} />
             <Route path="planejamento" element={<CronogramaPage />} />
             <Route path="planejamento-semanal" element={<CronogramaPage />} />
