@@ -16,6 +16,7 @@ import {
   PartyPopper,
   UserCheck,
   Shield,
+  FileSpreadsheet,
   X
 } from 'lucide-react';
 
@@ -63,7 +64,12 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
           : []),
         ...(hasPermission('alunos') ? [{ label: 'Alunos', to: '/alunos', icon: Contact }] : []),
         ...(hasPermission('presenca') ? [{ label: 'Presença & Chamada', to: '/presenca', icon: ClipboardCheck }] : []),
-        ...(hasPermission('cronograma') ? [{ label: 'Planejamento Semanal', to: '/cronograma', icon: Calendar }] : []),
+        ...(hasPermission('cronograma')
+          ? [
+              { label: 'Planejamento Semanal / Anual', to: '/cronograma', icon: Calendar },
+              { label: 'Importar Excel (Grade)', to: '/cronograma?importar=true', icon: FileSpreadsheet }
+            ]
+          : []),
         ...(hasPermission('aulas') ? [{ label: 'Aulas & Salas', to: '/aulas', icon: Clock }] : []),
         ...(hasPermission('nivelamento') ? [{ label: 'Nivelamento', to: '/nivelamento', icon: Crown }] : []),
         ...(hasPermission('frequencia') || isMaster || isProfessor ? [{ label: 'Frequência', to: '/frequencia', icon: BarChart3 }] : []),

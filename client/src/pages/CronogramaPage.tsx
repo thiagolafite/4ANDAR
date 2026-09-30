@@ -1,4 +1,5 @@
-import React, { useState, useMemo, useRef } from 'react';
+import React, { useState, useMemo, useRef, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { useApp } from '../context/AppContext';
 import {
   CalendarDays,
@@ -46,7 +47,25 @@ export const CronogramaPage: React.FC = () => {
     importCronogramaExcel
   } = useApp();
 
-  const isEquipe = currentUser.tipo_usuario === 'Equipe';
+  const isEquipe = Boolean(
+    currentUser.is_master ||
+    currentUser.role === 'master' ||
+    currentUser.role === 'admin' ||
+    currentUser.role === 'professor' ||
+    currentUser.tipo_usuario === 'Equipe' ||
+    currentUser.tipo_usuario === 'AdminMaster'
+  );
+
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  useEffect(() => {
+    if (searchParams.get('importar') === 'true' || searchParams.get('import') === 'true') {
+      setExcelFile(null);
+      setParseResult(null);
+      setIsImportModalOpen(true);
+      setSearchParams({}, { replace: true });
+    }
+  }, [searchParams, setSearchParams]);
 
   // View modes: 'anual' (Data × Turmas matrix like screenshots) or 'semanal' (card view)
   const [viewMode, setViewMode] = useState<'anual' | 'semanal'>('anual');
@@ -367,19 +386,17 @@ export const CronogramaPage: React.FC = () => {
         {/* Action Buttons Bar */}
         <div className="flex flex-wrap items-center gap-2.5">
           {/* PROMINENT IMPORT EXCEL BUTTON */}
-          {isEquipe && (
-            <button
-              onClick={() => {
-                setExcelFile(null);
-                setParseResult(null);
-                setIsImportModalOpen(true);
-              }}
-              className="flex items-center gap-2 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-700 hover:from-emerald-700 hover:to-teal-800 text-white px-4 py-2.5 text-xs font-bold shadow-md hover:shadow-lg transition-all active:scale-95"
-            >
-              <FileSpreadsheet className="h-4 w-4 shrink-0 text-white" />
-              <span>Importar Planilha Excel</span>
-            </button>
-          )}
+          <button
+            onClick={() => {
+              setExcelFile(null);
+              setParseResult(null);
+              setIsImportModalOpen(true);
+            }}
+            className="flex items-center gap-2 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-700 hover:from-emerald-700 hover:to-teal-800 text-white px-4 py-2.5 text-xs font-bold shadow-md hover:shadow-lg transition-all active:scale-95 cursor-pointer ring-2 ring-emerald-500/20"
+          >
+            <FileSpreadsheet className="h-4 w-4 shrink-0 text-white" />
+            <span>Importar Planilha Excel</span>
+          </button>
 
           {/* Download Template Button */}
           <button
