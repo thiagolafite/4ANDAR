@@ -16,7 +16,8 @@ import {
   Clock,
   PartyPopper,
   Megaphone,
-  UserCheck
+  UserCheck,
+  FileSpreadsheet
 } from 'lucide-react';
 
 export const DashboardPage: React.FC = () => {
@@ -227,7 +228,15 @@ export const DashboardPage: React.FC = () => {
                 className="inline-flex items-center gap-1.5 rounded-xl bg-slate-100 px-3.5 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-200 transition-colors"
               >
                 <Calendar className="h-3.5 w-3.5 text-slate-500" />
-                Editar Temas da Semana
+                Planejamento Semanal
+              </button>
+
+              <button
+                onClick={() => navigate('/cronograma')}
+                className="inline-flex items-center gap-1.5 rounded-xl bg-emerald-50 border border-emerald-200 px-3.5 py-2 text-xs font-semibold text-emerald-800 hover:bg-emerald-100 transition-colors"
+              >
+                <FileSpreadsheet className="h-3.5 w-3.5 text-emerald-600" />
+                Importar Grade Excel
               </button>
 
               <button

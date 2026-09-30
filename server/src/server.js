@@ -202,6 +202,138 @@ app.put('/api/cronograma', async (req, res) => {
   }
 });
 
+// Importação em massa de cronograma via Excel
+app.post('/api/cronograma/bulk', async (req, res) => {
+  try {
+    const { items, turmasNovas } = req.body;
+
+    // Se houver turmas novas que foram criadas no Excel e não existiam no banco
+    if (turmasNovas && Array.isArray(turmasNovas)) {
+      for (const t of turmasNovas) {
+        const check = await turso.execute({
+          sql: 'SELECT id FROM aulas WHERE id = ?',
+          args: [t.id]
+        });
+        if (check.rows.length === 0) {
+          await turso.execute({
+            sql: `INSERT INTO aulas (id, nome, nivel, turno, dia_semana, horario_inicio, horario_fim, sala, equipe_id, capacidade_maxima)
+                  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            args: [
+              t.id,
+              t.nome,
+              t.nivel || 'B1',
+              t.turno || 'Manhã',
+              t.dia_semana || 'Sábado',
+              t.horario_inicio || '10:00',
+              t.horario_fim || '11:30',
+              t.sala || 'Salão Principal',
+              t.equipe_id || 'eq_1',
+              t.capacidade_maxima || 24
+            ]
+          });
+        }
+      }
+    }
+
+    // Processa os itens do cronograma
+    let upsertedCount = 0;
+    if (items && Array.isArray(items)) {
+      for (const item of items) {
+        const existing = await turso.execute({
+          sql: 'SELECT id FROM cronogramas WHERE aula_id = ? AND data_aula = ?',
+          args: [item.aula_id, item.data_aula]
+        });
+
+        if (existing.rows.length > 0) {
+          await turso.execute({
+            sql: 'UPDATE cronogramas SET tema_aula = ?, observacoes = ? WHERE id = ?',
+            args: [item.tema_aula, item.observacoes || null, existing.rows[0].id]
+          });
+        } else {
+          const id = item.id || `crono_${Date.now()}_${Math.random().toString(36).substr(2, 6)}`;
+          await turso.execute({
+            sql: 'INSERT INTO cronogramas (id, aula_id, data_aula, tema_aula, observacoes) VALUES (?, ?, ?, ?, ?)',
+            args: [id, item.aula_id, item.data_aula, item.tema_aula, item.observacoes || null]
+          });
+        }
+        upsertedCount++;
+      }
+    }
+
+    res.json({ success: true, count: upsertedCount });
+  } catch (err) {
+    console.error('Erro ao importar cronogramas em lote no Turso:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Excluir célula de cronograma por aula_id e data_aula
+app.delete('/api/cronograma/cell', async (req, res) => {
+  try {
+    const { aula_id, data_aula } = req.query;
+    if (!aula_id || !data_aula) {
+      return res.status(400).json({ error: 'aula_id e data_aula são obrigatórios' });
+    }
+    await turso.execute({
+      sql: 'DELETE FROM cronogramas WHERE aula_id = ? AND data_aula = ?',
+      args: [aula_id, data_aula]
+    });
+    res.json({ success: true, deleted: { aula_id, data_aula } });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Excluir todas as aulas de uma data específica
+app.delete('/api/cronograma/data/:data_aula', async (req, res) => {
+  try {
+    const { data_aula } = req.params;
+    await turso.execute({
+      sql: 'DELETE FROM cronogramas WHERE data_aula = ?',
+      args: [data_aula]
+    });
+    res.json({ success: true, data_aula });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Excluir cronograma por ID
+app.delete('/api/cronograma/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    await turso.execute({
+      sql: 'DELETE FROM cronogramas WHERE id = ?',
+      args: [id]
+    });
+    res.json({ success: true, id });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Excluir turma inteira
+app.delete('/api/aulas/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    await turso.execute({
+      sql: 'DELETE FROM cronogramas WHERE aula_id = ?',
+      args: [id]
+    });
+    await turso.execute({
+      sql: 'DELETE FROM presencas WHERE aula_id = ?',
+      args: [id]
+    });
+    await turso.execute({
+      sql: 'DELETE FROM aulas WHERE id = ?',
+      args: [id]
+    });
+    res.json({ success: true, id });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // ==========================================
 // 5. PRESENÇAS & CHAMADAS (TURSO)
 // ==========================================

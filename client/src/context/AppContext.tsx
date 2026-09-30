@@ -27,6 +27,7 @@ import {
   mockEventos,
   mockAvisos
 } from '../data/mockData';
+import { ExcelParseResult } from '../utils/excelImport';
 
 interface ToastInfo {
   id: string;
@@ -57,8 +58,12 @@ interface AppContextType {
   aulas: Aula[];
   addAula: (aula: Omit<Aula, 'id'>) => void;
   updateAula: (id: string, updates: Partial<Aula>) => void;
+  deleteAula: (id: string) => void;
   cronogramas: Cronograma[];
   updateTemaCronograma: (aulaId: string, dataAula: string, tema: string, obs?: string) => void;
+  deleteCronogramaCell: (aulaId: string, dataAula: string) => void;
+  deleteCronogramaRow: (dataAula: string) => void;
+  importCronogramaExcel: (parsed: ExcelParseResult) => Promise<number>;
 
   // Presenças
   presencas: Presenca[];
@@ -124,10 +129,20 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [users] = useState<User[]>(mockUsers);
   const [alunos, setAlunos] = useState<Aluno[]>(() => loadInitial('alunos', mockAlunos));
   const [equipe, setEquipe] = useState<Equipe[]>(() => loadInitial('equipe', mockEquipe));
-  const [aulas, setAulas] = useState<Aula[]>(() => loadInitial('aulas', mockAulas));
-  const [cronogramas, setCronogramas] = useState<Cronograma[]>(() =>
-    loadInitial('cronogramas', mockCronogramas)
-  );
+  const [aulas, setAulas] = useState<Aula[]>(() => {
+    const local = loadInitial('aulas', mockAulas);
+    if (Array.isArray(local) && local.length < mockAulas.length) {
+      return mockAulas;
+    }
+    return local;
+  });
+  const [cronogramas, setCronogramas] = useState<Cronograma[]>(() => {
+    const local = loadInitial('cronogramas', mockCronogramas);
+    if (Array.isArray(local) && local.length <= 10 && mockCronogramas.length > local.length) {
+      return mockCronogramas;
+    }
+    return local;
+  });
   const [presencas, setPresencas] = useState<Presenca[]>(() =>
     loadInitial('presencas', mockPresencas)
   );
@@ -310,6 +325,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     showToast('Turma atualizada com sucesso!');
   };
 
+  const deleteAula = (id: string) => {
+    setAulas((prev) => prev.filter((a) => a.id !== id));
+    setCronogramas((prev) => prev.filter((c) => c.aula_id !== id));
+    setPresencas((prev) => prev.filter((p) => p.aula_id !== id));
+    fetch(`${API_URL}/aulas/${id}`, { method: 'DELETE' }).catch(() => {});
+    showToast('Turma excluída com sucesso!');
+  };
+
   const updateTemaCronograma = (
     aulaId: string,
     dataAula: string,
@@ -337,7 +360,138 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         return [...prev, novo];
       }
     });
+
+    // Salva no backend Turso
+    fetch(`${API_URL}/cronograma`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        aula_id: aulaId,
+        data_aula: dataAula,
+        tema_aula: tema,
+        observacoes: obs
+      })
+    }).catch(() => {});
+
     showToast('Tema da aula salvo no cronograma!');
+  };
+
+  const deleteCronogramaCell = (aulaId: string, dataAula: string) => {
+    setCronogramas((prev) =>
+      prev.filter((c) => !(c.aula_id === aulaId && c.data_aula === dataAula))
+    );
+    fetch(`${API_URL}/cronograma/cell?aula_id=${aulaId}&data_aula=${dataAula}`, {
+      method: 'DELETE'
+    }).catch(() => {});
+    showToast('Aula removida do planejamento desta data.', 'info');
+  };
+
+  const deleteCronogramaRow = (dataAula: string) => {
+    setCronogramas((prev) => prev.filter((c) => c.data_aula !== dataAula));
+    fetch(`${API_URL}/cronograma/data/${dataAula}`, {
+      method: 'DELETE'
+    }).catch(() => {});
+    showToast(`Planejamento de ${dataAula} excluído com sucesso.`, 'info');
+  };
+
+  const importCronogramaExcel = async (parsed: ExcelParseResult): Promise<number> => {
+    // 1. Cria turmas que não existirem
+    const currentAulas = [...aulas];
+    const newAulasToCreate: Aula[] = [];
+
+    parsed.turmas.forEach((pt) => {
+      const exists = currentAulas.find(
+        (a) => a.nome.trim().toLowerCase() === pt.nome.trim().toLowerCase()
+      );
+      if (!exists) {
+        const newAula: Aula = {
+          id: `aul_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
+          nome: pt.nome,
+          nivel: pt.nivel,
+          turno: pt.turno,
+          dia_semana: 'Sábado',
+          horario_inicio: pt.turno === 'Manhã' ? '10:00' : pt.turno === 'Tarde' ? '14:00' : '19:30',
+          horario_fim: pt.turno === 'Manhã' ? '11:30' : pt.turno === 'Tarde' ? '15:30' : '21:00',
+          sala: 'Salão Principal',
+          equipe_id: 'eq_1',
+          capacidade_maxima: 22
+        };
+        currentAulas.push(newAula);
+        newAulasToCreate.push(newAula);
+      }
+    });
+
+    if (newAulasToCreate.length > 0) {
+      setAulas(currentAulas);
+    }
+
+    // 2. Mapeia e atualiza/insere os temas das aulas
+    const updatedCronos = [...cronogramas];
+    const bulkItemsForBackend: Array<{
+      id: string;
+      aula_id: string;
+      data_aula: string;
+      tema_aula: string;
+      observacoes?: string;
+    }> = [];
+
+    parsed.entries.forEach((entry) => {
+      const targetAula = currentAulas.find(
+        (a) => a.nome.trim().toLowerCase() === entry.turma_nome.trim().toLowerCase()
+      );
+      if (!targetAula) return;
+
+      const existingIndex = updatedCronos.findIndex(
+        (c) => c.aula_id === targetAula.id && c.data_aula === entry.data_aula
+      );
+
+      if (existingIndex >= 0) {
+        updatedCronos[existingIndex] = {
+          ...updatedCronos[existingIndex],
+          tema_aula: entry.tema_aula,
+          observacoes: entry.observacoes ?? updatedCronos[existingIndex].observacoes
+        };
+        bulkItemsForBackend.push({
+          id: updatedCronos[existingIndex].id,
+          aula_id: targetAula.id,
+          data_aula: entry.data_aula,
+          tema_aula: entry.tema_aula,
+          observacoes: entry.observacoes
+        });
+      } else {
+        const newCrono: Cronograma = {
+          id: `crono_${Date.now()}_${Math.random().toString(36).substr(2, 6)}`,
+          aula_id: targetAula.id,
+          data_aula: entry.data_aula,
+          tema_aula: entry.tema_aula,
+          observacoes: entry.observacoes
+        };
+        updatedCronos.push(newCrono);
+        bulkItemsForBackend.push(newCrono);
+      }
+    });
+
+    setCronogramas(updatedCronos);
+
+    // 3. Persiste no backend Turso
+    try {
+      await fetch(`${API_URL}/cronograma/bulk`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          items: bulkItemsForBackend,
+          turmasNovas: newAulasToCreate
+        })
+      });
+    } catch (e) {
+      console.warn('Erro ao sincronizar com backend Turso:', e);
+    }
+
+    showToast(
+      `Planilha importada! ${bulkItemsForBackend.length} aulas sincronizadas para ${parsed.turmas.length} turmas.`,
+      'success'
+    );
+    return bulkItemsForBackend.length;
   };
 
   // Presenças
@@ -562,8 +716,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         aulas,
         addAula,
         updateAula,
+        deleteAula,
         cronogramas,
         updateTemaCronograma,
+        deleteCronogramaCell,
+        deleteCronogramaRow,
+        importCronogramaExcel,
         presencas,
         solicitarPresenca,
         confirmarPresenca,

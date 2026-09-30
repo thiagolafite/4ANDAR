@@ -9,12 +9,13 @@ import {
   Users,
   X,
   Check,
-  Edit2
+  Edit2,
+  Trash2
 } from 'lucide-react';
 import { Aula, NivelForro } from '../types';
 
 export const AulasPage: React.FC = () => {
-  const { aulas, equipe, alunos, addAula, updateAula } = useApp();
+  const { aulas, equipe, alunos, addAula, updateAula, deleteAula } = useApp();
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingAula, setEditingAula] = useState<Aula | null>(null);
@@ -161,7 +162,19 @@ export const AulasPage: React.FC = () => {
                 </div>
               </div>
 
-              <div className="mt-5 pt-3 border-t border-slate-100 flex justify-end">
+              <div className="mt-5 pt-3 border-t border-slate-100 flex items-center justify-between">
+                <button
+                  onClick={() => {
+                    if (confirm(`Deseja realmente excluir a turma "${aula.nome}" e todas as aulas do cronograma associadas a ela?`)) {
+                      deleteAula(aula.id);
+                    }
+                  }}
+                  className="flex items-center gap-1 text-xs font-semibold text-rose-600 hover:text-rose-700 transition-colors"
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                  <span>Excluir Turma</span>
+                </button>
+
                 <button
                   onClick={() => handleOpenEdit(aula)}
                   className="flex items-center gap-1.5 text-xs font-semibold text-slate-600 hover:text-brand-600 transition-colors"

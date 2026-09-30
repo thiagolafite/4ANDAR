@@ -44,7 +44,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
     { label: 'Presença', to: isEquipe ? '/presenca' : '/proxima-aula', icon: ClipboardCheck },
     { label: 'Frequência', to: '/frequencia', icon: BarChart3 },
     { label: 'Aulas', to: '/aulas', icon: Clock },
-    { label: 'Cronograma', to: '/cronograma', icon: Calendar },
+    { label: 'Planejamento Semanal', to: '/cronograma', icon: Calendar },
     { label: 'Minha Agenda', to: '/agenda-google', icon: CalendarClock },
     { label: 'Eventos & Bailes', to: '/eventos', icon: PartyPopper },
     ...(isEquipe ? [{ label: 'Equipe de Professores', to: '/equipe', icon: UserCheck }] : [])

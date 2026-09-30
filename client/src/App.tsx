@@ -29,8 +29,9 @@ export function App() {
           <Route path="/" element={<AppLayout />}>
             <Route index element={<DashboardPage />} />
             <Route path="home" element={<DashboardPage />} />
-            <Route path="dashboard" element={<DashboardPage />} />
             <Route path="cronograma" element={<CronogramaPage />} />
+            <Route path="planejamento" element={<CronogramaPage />} />
+            <Route path="planejamento-semanal" element={<CronogramaPage />} />
             <Route path="presenca" element={<PresencaPage />} />
             <Route path="proxima-aula" element={<ProximaAulaPage />} />
             <Route path="proximaaula" element={<ProximaAulaPage />} />

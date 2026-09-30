@@ -5,7 +5,9 @@
   "type": "module",
   "scripts": {
     "dev": "node --watch src/server.js",
-    "start": "node src/server.js"
+    "start": "node src/server.js",
+    "db:push": "node src/scripts/migrate_turso.js",
+    "db:export": "node src/scripts/export_sql.js"
   },
   "dependencies": {
     "@libsql/client": "^0.18.0",

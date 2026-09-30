@@ -165,7 +165,95 @@ export const mockAlunos: Aluno[] = [
   }
 ];
 
+import { buildInitialCronogramas } from './annualScheduleData';
+
 export const mockAulas: Aula[] = [
+  // Turmas da Planilha Oficial (Sábados)
+  {
+    id: 'aul_i2_manha',
+    nome: 'I2 Manhã',
+    nivel: 'I2',
+    turno: 'Manhã',
+    dia_semana: 'Sábado',
+    horario_inicio: '10:00',
+    horario_fim: '11:30',
+    sala: 'Salão Principal (Gonzagão)',
+    equipe_id: 'eq_2',
+    capacidade_maxima: 20
+  },
+  {
+    id: 'aul_i1_tarde',
+    nome: 'I1 Tarde',
+    nivel: 'I1',
+    turno: 'Tarde',
+    dia_semana: 'Sábado',
+    horario_inicio: '14:00',
+    horario_fim: '15:30',
+    sala: 'Salão 2 (Dominguinhos)',
+    equipe_id: 'eq_1',
+    capacidade_maxima: 22
+  },
+  {
+    id: 'aul_b1_manha',
+    nome: 'B1 Manhã',
+    nivel: 'B1',
+    turno: 'Manhã',
+    dia_semana: 'Sábado',
+    horario_inicio: '10:00',
+    horario_fim: '11:30',
+    sala: 'Salão 2 (Dominguinhos)',
+    equipe_id: 'eq_2',
+    capacidade_maxima: 24
+  },
+  {
+    id: 'aul_b2_manha',
+    nome: 'B2 Manhã',
+    nivel: 'B2',
+    turno: 'Manhã',
+    dia_semana: 'Sábado',
+    horario_inicio: '11:30',
+    horario_fim: '13:00',
+    sala: 'Salão Principal (Gonzagão)',
+    equipe_id: 'eq_1',
+    capacidade_maxima: 22
+  },
+  {
+    id: 'aul_b2_tarde',
+    nome: 'B2 Tarde',
+    nivel: 'B2',
+    turno: 'Tarde',
+    dia_semana: 'Sábado',
+    horario_inicio: '15:30',
+    horario_fim: '17:00',
+    sala: 'Salão Principal (Gonzagão)',
+    equipe_id: 'eq_1',
+    capacidade_maxima: 22
+  },
+  {
+    id: 'aul_i1_manha',
+    nome: 'I1 Manhã',
+    nivel: 'I1',
+    turno: 'Manhã',
+    dia_semana: 'Sábado',
+    horario_inicio: '11:30',
+    horario_fim: '13:00',
+    sala: 'Salão 2 (Dominguinhos)',
+    equipe_id: 'eq_2',
+    capacidade_maxima: 20
+  },
+  {
+    id: 'aul_b1_tarde',
+    nome: 'B1 Tarde',
+    nivel: 'B1',
+    turno: 'Tarde',
+    dia_semana: 'Sábado',
+    horario_inicio: '14:00',
+    horario_fim: '15:30',
+    sala: 'Salão Principal (Gonzagão)',
+    equipe_id: 'eq_2',
+    capacidade_maxima: 24
+  },
+  // Turmas Noturnas Semanais
   {
     id: 'aul_b1_noite',
     nome: 'Básico 1 — Terça & Quinta (Noite)',
@@ -177,18 +265,6 @@ export const mockAulas: Aula[] = [
     sala: 'Salão Principal (Gonzagão)',
     equipe_id: 'eq_2',
     capacidade_maxima: 24
-  },
-  {
-    id: 'aul_b1_sabado',
-    nome: 'Básico 1 — Sábado (Manhã)',
-    nivel: 'B1',
-    turno: 'Manhã',
-    dia_semana: 'Sábado',
-    horario_inicio: '10:00',
-    horario_fim: '11:30',
-    sala: 'Salão 2 (Dominguinhos)',
-    equipe_id: 'eq_3',
-    capacidade_maxima: 20
   },
   {
     id: 'aul_b2_noite',
@@ -213,65 +289,10 @@ export const mockAulas: Aula[] = [
     sala: 'Salão Principal (Gonzagão)',
     equipe_id: 'eq_1',
     capacidade_maxima: 20
-  },
-  {
-    id: 'aul_i2_sabado',
-    nome: 'Intermediário 2 — Sábado (Tarde Especial)',
-    nivel: 'I2',
-    turno: 'Tarde',
-    dia_semana: 'Sábado',
-    horario_inicio: '15:00',
-    horario_fim: '17:00',
-    sala: 'Salão Principal (Gonzagão)',
-    equipe_id: 'eq_2',
-    capacidade_maxima: 18
   }
 ];
 
-export const mockCronogramas: Cronograma[] = [
-  {
-    id: 'crono_1',
-    aula_id: 'aul_b1_noite',
-    data_aula: '2026-09-29',
-    tema_aula: 'Giro simples e caminhadas no tempo 1 do Xote',
-    observacoes: 'Trazer foco no abraço e relaxamento dos ombros.'
-  },
-  {
-    id: 'crono_2',
-    aula_id: 'aul_b2_noite',
-    data_aula: '2026-09-30',
-    tema_aula: 'Giro invertido com saída em travessia',
-    observacoes: 'Trabalho de tônus de braço na condução.'
-  },
-  {
-    id: 'crono_3',
-    aula_id: 'aul_i1_noite',
-    data_aula: '2026-10-01',
-    tema_aula: 'Sacadas de perna e variação de velocidade no Baião',
-    observacoes: 'Uso do contratempo musical.'
-  },
-  {
-    id: 'crono_4',
-    aula_id: 'aul_b1_sabado',
-    data_aula: '2026-10-03',
-    tema_aula: 'Conexão corporal e postura no abraço fechado',
-    observacoes: 'Exercício com troca constante de par.'
-  },
-  {
-    id: 'crono_5',
-    aula_id: 'aul_i2_sabado',
-    data_aula: '2026-10-03',
-    tema_aula: 'Interpretação de instrumentos: Triângulo vs Zabumba no salão',
-    observacoes: 'Prática de improvisação e dinâmica contínua.'
-  },
-  {
-    id: 'crono_6',
-    aula_id: 'aul_b1_noite',
-    data_aula: '2026-10-06',
-    tema_aula: 'Transição suave entre passos de base e giro da conduzida',
-    observacoes: 'Revisão dos pontos de apoio.'
-  }
-];
+export const mockCronogramas: Cronograma[] = buildInitialCronogramas(mockAulas);
 
 export const mockPresencas: Presenca[] = [
   {
