@@ -23,7 +23,7 @@ const initialData = {
       data_matricula: '2026-06-10',
       data_inicio_nivel: '2026-06-10',
       status: 'ativo',
-      foto_url: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150'
+      foto_url: ''
     },
     {
       id: 'al_2',
@@ -37,7 +37,7 @@ const initialData = {
       data_matricula: '2026-02-15',
       data_inicio_nivel: '2026-05-20',
       status: 'ativo',
-      foto_url: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150'
+      foto_url: ''
     },
     {
       id: 'al_3',
@@ -51,7 +51,7 @@ const initialData = {
       data_matricula: '2025-08-01',
       data_inicio_nivel: '2026-03-12',
       status: 'ativo',
-      foto_url: 'https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?w=150'
+      foto_url: ''
     }
   ],
   equipe: [
@@ -64,7 +64,7 @@ const initialData = {
       especialidades: ['Forró Universitário', 'Conexão & Abraço', 'Nivelamento'],
       google_calendar_conectado: true,
       ativo: true,
-      foto_url: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150'
+      foto_url: ''
     },
     {
       id: 'eq_2',
@@ -75,7 +75,7 @@ const initialData = {
       especialidades: ['Pé de Serra', 'Baião & Arrasta-pé'],
       google_calendar_conectado: true,
       ativo: true,
-      foto_url: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150'
+      foto_url: ''
     }
   ],
   aulas: [

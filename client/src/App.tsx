@@ -30,8 +30,8 @@ import { AvisosPopUpModal } from './components/modals/AvisosPopUpModal';
 const ProtectedAppLayout: React.FC = () => {
   const { isAuthenticated, currentUser } = useApp();
 
-  // Permite acesso se estiver autenticado ou tiver currentUser inicializado (ex: Thiago Lafite Master)
-  if (!isAuthenticated && !currentUser) {
+  // Permite acesso ESTRITAMENTE se estiver autenticado E com usuário carregado
+  if (!isAuthenticated || !currentUser) {
     return <Navigate to="/login" replace />;
   }
 
@@ -57,6 +57,11 @@ const RoleRoute: React.FC<RoleRouteProps> = ({
   requiredModule
 }) => {
   const { currentUser, hasPermission } = useApp();
+
+  if (!currentUser) {
+    return <Navigate to="/login" replace />;
+  }
+
   const isMaster = Boolean(currentUser.is_master || currentUser.role === 'master' || currentUser.tipo_usuario === 'AdminMaster');
   const isAluno = currentUser.role === 'aluno' || (!isMaster && currentUser.role !== 'professor' && currentUser.tipo_usuario === 'Aluno');
 

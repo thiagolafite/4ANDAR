@@ -17,6 +17,8 @@ import {
 
 export const AvisosPopUpModal: React.FC = () => {
   const { currentUser, avisos } = useApp();
+  if (!currentUser) return null;
+
   const [activeAvisoIndex, setActiveAvisoIndex] = useState(0);
   const [isOpen, setIsOpen] = useState(false);
   const [lidosIds, setLidosIds] = useState<string[]>([]);

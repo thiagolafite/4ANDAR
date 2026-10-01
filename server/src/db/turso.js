@@ -234,6 +234,12 @@ export const initTursoDatabase = async () => {
       await turso.execute('ALTER TABLE cronogramas ADD COLUMN professor_nome TEXT;');
     } catch {}
 
+    try {
+      await turso.execute("UPDATE usuarios SET avatar_url = '' WHERE avatar_url LIKE '%unsplash%';");
+      await turso.execute("UPDATE alunos SET foto_url = '' WHERE foto_url LIKE '%unsplash%';");
+      await turso.execute("UPDATE equipe SET foto_url = '' WHERE foto_url LIKE '%unsplash%';");
+    } catch {}
+
     // Verifica se o Administrador Master existe
     const masterCheck = await turso.execute({
       sql: 'SELECT id FROM usuarios WHERE is_master = 1 OR email = ?',
@@ -260,7 +266,7 @@ export const initTursoDatabase = async () => {
           masterPerms,
           new Date().toISOString().substring(0, 10),
           new Date().toISOString().substring(0, 10),
-          'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150'
+          ''
         ]
       });
       console.log('✅ Administrador Master Thiago Lafite configurado no Turso!');

@@ -5,7 +5,14 @@ import { Lock, Mail, Eye, EyeOff, ShieldCheck, Clock, AlertCircle, ArrowRight, S
 
 export const LoginPage: React.FC = () => {
   const navigate = useNavigate();
-  const { login } = useApp();
+  const { login, isAuthenticated, currentUser } = useApp();
+
+  // Se já estiver logado, redireciona diretamente para o sistema
+  React.useEffect(() => {
+    if (isAuthenticated && currentUser) {
+      navigate('/', { replace: true });
+    }
+  }, [isAuthenticated, currentUser, navigate]);
 
   const [identifier, setIdentifier] = useState('');
   const [senha, setSenha] = useState('');

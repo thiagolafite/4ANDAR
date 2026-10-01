@@ -41,6 +41,8 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
   const { currentUser, hasPermission, pendingUsersCount } = useApp();
   const location = useLocation();
 
+  if (!currentUser) return null;
+
   const isMaster = Boolean(currentUser.is_master || currentUser.role === 'master' || currentUser.tipo_usuario === 'AdminMaster');
   const isAluno = currentUser.role === 'aluno' || (!isMaster && currentUser.role !== 'professor' && currentUser.tipo_usuario === 'Aluno');
   const isProfessor = currentUser.role === 'professor';

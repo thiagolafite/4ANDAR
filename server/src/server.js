@@ -592,6 +592,41 @@ app.post('/api/usuarios/:id/vincular-aluno', async (req, res) => {
   }
 });
 
+// 0.65 Atualizar Perfil e Foto do Usuário
+app.put('/api/usuarios/:id/perfil', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { nome, telefone, avatar_url } = req.body;
+
+    const updates = [];
+    const args = [];
+    if (nome !== undefined) { updates.push('nome = ?'); args.push(nome); }
+    if (telefone !== undefined) { updates.push('telefone = ?'); args.push(telefone); }
+    if (avatar_url !== undefined) { updates.push('avatar_url = ?'); args.push(avatar_url); }
+
+    if (updates.length > 0) {
+      args.push(id);
+      await turso.execute({ sql: `UPDATE usuarios SET ${updates.join(', ')} WHERE id = ?`, args });
+    }
+
+    if (avatar_url !== undefined) {
+      await turso.execute({
+        sql: 'UPDATE alunos SET foto_url = ? WHERE user_id = ? OR id = ?',
+        args: [avatar_url || '', id, id]
+      });
+      await turso.execute({
+        sql: 'UPDATE equipe SET foto_url = ? WHERE user_id = ? OR id = ?',
+        args: [avatar_url || '', id, id]
+      });
+    }
+
+    const updated = await turso.execute({ sql: 'SELECT * FROM usuarios WHERE id = ?', args: [id] });
+    res.json(updated.rows[0]);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // 0.7 Excluir Usuário
 app.delete('/api/usuarios/:id', async (req, res) => {
   try {
@@ -731,7 +766,7 @@ app.put('/api/alunos/:id', async (req, res) => {
     const { id } = req.params;
     const {
       user_id, nome, telefone, email, nivel_atual, papel,
-      mensalidade_valor, dia_vencimento, status, observacoes
+      mensalidade_valor, dia_vencimento, status, observacoes, foto_url
     } = req.body;
 
     await turso.execute({
@@ -745,9 +780,10 @@ app.put('/api/alunos/:id', async (req, res) => {
             mensalidade_valor = COALESCE(?, mensalidade_valor),
             dia_vencimento = COALESCE(?, dia_vencimento),
             status = COALESCE(?, status),
+            foto_url = COALESCE(?, foto_url),
             observacoes = COALESCE(?, observacoes)
             WHERE id = ?`,
-      args: [user_id || null, nome, telefone, email, nivel_atual, papel, mensalidade_valor, dia_vencimento, status, observacoes, id]
+      args: [user_id || null, nome, telefone, email, nivel_atual, papel, mensalidade_valor, dia_vencimento, status, foto_url !== undefined ? foto_url : null, observacoes, id]
     });
 
     if (user_id) {

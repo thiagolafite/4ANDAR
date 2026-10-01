@@ -15,6 +15,7 @@ import {
   FileText
 } from 'lucide-react';
 import { MetodoPagamento, Pagamento, StatusPagamento } from '../types';
+import { UserAvatar } from '../components/common/UserAvatar';
 
 export const PagamentosPage: React.FC = () => {
   const {
@@ -231,13 +232,11 @@ export const PagamentosPage: React.FC = () => {
                           onClick={() => aluno && setSelectedAlunoModal(aluno)}
                           className="cursor-pointer flex items-center gap-3 group"
                         >
-                          <img
-                            src={
-                              aluno?.foto_url ||
-                              'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100'
-                            }
-                            alt={aluno?.nome}
-                            className="h-9 w-9 rounded-full object-cover ring-2 ring-slate-100 group-hover:ring-brand-500"
+                          <UserAvatar
+                            name={aluno?.nome || 'Aluno'}
+                            fotoUrl={aluno?.foto_url}
+                            size="sm"
+                            className="ring-2 ring-slate-100 group-hover:ring-brand-500"
                           />
                           <div>
                             <p className="font-bold text-sm text-slate-900 group-hover:text-brand-600">

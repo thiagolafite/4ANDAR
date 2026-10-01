@@ -21,6 +21,8 @@ import {
   BookOpen
 } from 'lucide-react';
 
+import { UserAvatar } from '../components/common/UserAvatar';
+
 export const DashboardPage: React.FC = () => {
   const {
     currentUser,
@@ -521,13 +523,11 @@ export const DashboardPage: React.FC = () => {
                             onClick={() => aluno && setSelectedAlunoModal(aluno)}
                             className="cursor-pointer flex items-center gap-2.5"
                           >
-                            <img
-                              src={
-                                aluno?.foto_url ||
-                                'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100'
-                              }
-                              alt={aluno?.nome}
-                              className="h-9 w-9 rounded-full object-cover ring-2 ring-amber-300"
+                            <UserAvatar
+                              name={aluno?.nome || 'Aluno'}
+                              fotoUrl={aluno?.foto_url}
+                              size="sm"
+                              className="ring-2 ring-amber-300"
                             />
                             <div>
                               <p className="text-xs font-bold text-slate-900 hover:text-brand-600">

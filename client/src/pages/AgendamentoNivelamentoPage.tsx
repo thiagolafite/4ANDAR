@@ -11,6 +11,7 @@ import {
   ArrowRight
 } from 'lucide-react';
 import { NivelForro, PapelDanca, Aluno } from '../types';
+import { UserAvatar } from '../components/common/UserAvatar';
 
 export const AgendamentoNivelamentoPage: React.FC = () => {
   const { currentUser, alunos, alunosCadastrados, agendarNivelamento, showToast } = useApp();
@@ -136,13 +137,11 @@ export const AgendamentoNivelamentoPage: React.FC = () => {
         )}
 
         <div className="flex items-center gap-4 pb-6 border-b border-slate-100">
-          <img
-            src={
-              targetAluno.foto_url ||
-              'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=120'
-            }
-            alt={targetAluno.nome}
-            className="h-14 w-14 rounded-full object-cover ring-4 ring-orange-100"
+          <UserAvatar
+            name={targetAluno.nome}
+            fotoUrl={targetAluno.foto_url}
+            size="xl"
+            className="ring-4 ring-orange-100"
           />
           <div>
             <h3 className="font-bold text-lg text-slate-900">{targetAluno.nome}</h3>

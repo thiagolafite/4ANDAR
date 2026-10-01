@@ -1,7 +1,9 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useApp } from '../../context/AppContext';
-import { Search, UserCheck, Shield, PanelLeft, Bell, Crown, LogOut } from 'lucide-react';
+import { Search, UserCheck, Shield, PanelLeft, Bell, Crown, LogOut, Camera } from 'lucide-react';
+import { UserAvatar } from '../common/UserAvatar';
+import { ProfilePhotoModal } from '../modals/ProfilePhotoModal';
 
 interface NavbarProps {
   sidebarOpen: boolean;
@@ -10,6 +12,7 @@ interface NavbarProps {
 
 export const Navbar: React.FC<NavbarProps> = ({ sidebarOpen, onToggleSidebar }) => {
   const navigate = useNavigate();
+  const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
   const {
     currentUser,
     switchUserRole,
@@ -19,6 +22,8 @@ export const Navbar: React.FC<NavbarProps> = ({ sidebarOpen, onToggleSidebar }) 
     pendingUsersCount,
     logout
   } = useApp();
+
+  if (!currentUser) return null;
 
   const isMaster = Boolean(currentUser.is_master || currentUser.role === 'master' || currentUser.tipo_usuario === 'AdminMaster');
   const isAluno = currentUser.role === 'aluno' || (!isMaster && currentUser.role !== 'professor' && currentUser.tipo_usuario === 'Aluno');
@@ -156,31 +161,39 @@ export const Navbar: React.FC<NavbarProps> = ({ sidebarOpen, onToggleSidebar }) 
           </div>
         )}
 
-        {/* Active User Avatar */}
+        {/* Active User Avatar & Profile Trigger */}
         <div className="flex items-center gap-2 pl-2 border-l border-slate-200">
-          <img
-            src={
-              currentUser.avatar_url ||
-              'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=100'
-            }
-            alt={currentUser.nome}
-            className={`h-8 w-8 rounded-full object-cover ${
-              currentUser.is_master ? 'ring-2 ring-amber-400' : 'ring-2 ring-brand-500/30'
-            }`}
-          />
-          <div className="hidden xl:block text-left">
-            <p className="text-xs font-semibold text-slate-800 leading-tight flex items-center gap-1">
-              <span>{currentUser.nome.split(' ')[0]}</span>
-              {currentUser.is_master && <Crown className="h-3 w-3 text-amber-500" />}
-            </p>
-            <p className="text-[10px] text-brand-600 font-medium">
-              {currentUser.is_master
-                ? 'Admin Master'
-                : currentUser.tipo_usuario === 'Equipe'
-                ? 'Admin / Professor'
-                : 'Aluno'}
-            </p>
-          </div>
+          <button
+            type="button"
+            onClick={() => setIsProfileModalOpen(true)}
+            className="flex items-center gap-2 group hover:opacity-90 transition-opacity text-left cursor-pointer"
+            title="Alterar ou incluir foto de perfil"
+          >
+            <div className="relative">
+              <UserAvatar
+                name={currentUser.nome}
+                fotoUrl={currentUser.avatar_url}
+                size="sm"
+                isMaster={Boolean(currentUser.is_master || currentUser.role === 'master')}
+              />
+              <span className="absolute -bottom-0.5 -right-0.5 bg-white text-slate-500 rounded-full p-0.5 shadow-xs border border-slate-200 group-hover:text-brand-600 transition-colors">
+                <Camera className="h-2.5 w-2.5" />
+              </span>
+            </div>
+            <div className="hidden xl:block text-left">
+              <p className="text-xs font-semibold text-slate-800 leading-tight flex items-center gap-1 group-hover:text-brand-600 transition-colors">
+                <span>{currentUser.nome.split(' ')[0]}</span>
+                {currentUser.is_master && <Crown className="h-3 w-3 text-amber-500" />}
+              </p>
+              <p className="text-[10px] text-brand-600 font-medium">
+                {currentUser.is_master
+                  ? 'Admin Master'
+                  : currentUser.tipo_usuario === 'Equipe'
+                  ? 'Admin / Professor'
+                  : 'Aluno'}
+              </p>
+            </div>
+          </button>
 
           {/* Logout Button */}
           <button
@@ -190,13 +203,18 @@ export const Navbar: React.FC<NavbarProps> = ({ sidebarOpen, onToggleSidebar }) 
                 navigate('/login');
               }
             }}
-            className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors ml-1"
+            className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors ml-1 cursor-pointer"
             title="Sair do Sistema (Logout)"
           >
             <LogOut className="h-4 w-4" />
           </button>
         </div>
       </div>
+
+      <ProfilePhotoModal
+        isOpen={isProfileModalOpen}
+        onClose={() => setIsProfileModalOpen(false)}
+      />
     </header>
   );
 };

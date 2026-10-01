@@ -15,6 +15,7 @@ import {
   Sparkles
 } from 'lucide-react';
 import { NivelamentoSessao } from '../types';
+import { UserAvatar } from '../components/common/UserAvatar';
 
 export const NivelamentoPage: React.FC = () => {
   const {
@@ -143,13 +144,11 @@ export const NivelamentoPage: React.FC = () => {
                     </div>
 
                     <div className="flex items-center gap-3">
-                      <img
-                        src={
-                          aluno?.foto_url ||
-                          'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100'
-                        }
-                        alt={aluno?.nome}
-                        className="h-12 w-12 rounded-full object-cover ring-2 ring-slate-100"
+                      <UserAvatar
+                        name={aluno?.nome || 'Aluno'}
+                        fotoUrl={aluno?.foto_url}
+                        size="lg"
+                        className="ring-2 ring-slate-100"
                       />
                       <div>
                         <h4 className="font-bold text-base text-slate-900">
@@ -208,13 +207,11 @@ export const NivelamentoPage: React.FC = () => {
                   className="rounded-2xl bg-white p-5 border border-slate-200 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4"
                 >
                   <div className="flex items-center gap-4">
-                    <img
-                      src={
-                        aluno?.foto_url ||
-                        'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100'
-                      }
-                      alt={aluno?.nome}
-                      className="h-12 w-12 rounded-full object-cover ring-2 ring-slate-100"
+                    <UserAvatar
+                      name={aluno?.nome || 'Aluno'}
+                      fotoUrl={aluno?.foto_url}
+                      size="lg"
+                      className="ring-2 ring-slate-100"
                     />
                     <div>
                       <div className="flex items-center gap-2">

@@ -19,8 +19,11 @@ import {
   Sparkles,
   Calendar,
   X,
-  FileSpreadsheet
+  FileSpreadsheet,
+  Upload,
+  Camera
 } from 'lucide-react';
+import { UserAvatar } from '../components/common/UserAvatar';
 
 export const UsuariosPage: React.FC = () => {
   const {
@@ -390,10 +393,11 @@ export const UsuariosPage: React.FC = () => {
                   >
                     <div className="flex items-start justify-between gap-3">
                       <div className="flex items-center gap-3">
-                        <img
-                          src={user.avatar_url || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100'}
-                          alt={user.nome}
-                          className="h-12 w-12 rounded-full object-cover ring-2 ring-amber-300"
+                        <UserAvatar
+                          name={user.nome}
+                          fotoUrl={user.avatar_url}
+                          size="lg"
+                          className="ring-2 ring-amber-300"
                         />
                         <div>
                           <h4 className="text-sm font-bold text-slate-800">{user.nome}</h4>
@@ -470,12 +474,12 @@ export const UsuariosPage: React.FC = () => {
                     <tr key={user.id} className="hover:bg-slate-50/80 transition-colors">
                       <td className="py-3.5 px-3">
                         <div className="flex items-center gap-3">
-                          <img
-                            src={user.avatar_url || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100'}
-                            alt={user.nome}
-                            className={`h-9 w-9 rounded-full object-cover ${
-                              master ? 'ring-2 ring-amber-400' : 'ring-1 ring-slate-200'
-                            }`}
+                          <UserAvatar
+                            name={user.nome}
+                            fotoUrl={user.avatar_url}
+                            size="sm"
+                            isMaster={master}
+                            className={master ? 'ring-2 ring-amber-400' : 'ring-1 ring-slate-200'}
                           />
                           <div>
                             <div className="flex items-center gap-1.5 font-bold text-slate-800 text-sm">
@@ -616,9 +620,11 @@ export const UsuariosPage: React.FC = () => {
                 {filterList(bloqueados).map((user) => (
                   <div key={user.id} className="p-4 flex items-center justify-between gap-4 bg-white">
                     <div className="flex items-center gap-3">
-                      <div className="h-9 w-9 rounded-full bg-slate-200 text-slate-500 flex items-center justify-center font-bold">
-                        {user.nome[0]}
-                      </div>
+                      <UserAvatar
+                        name={user.nome}
+                        fotoUrl={user.avatar_url}
+                        size="sm"
+                      />
                       <div>
                         <div className="flex items-center gap-2">
                           <h4 className="text-sm font-bold text-slate-800">{user.nome}</h4>

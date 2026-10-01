@@ -15,6 +15,7 @@ import {
   FileSpreadsheet
 } from 'lucide-react';
 import { Presenca, StatusPresenca } from '../types';
+import { UserAvatar } from '../components/common/UserAvatar';
 
 export const PresencaPage: React.FC = () => {
   const {
@@ -286,13 +287,11 @@ export const PresencaPage: React.FC = () => {
                     <tr key={pres.id} className="hover:bg-slate-50/60 transition-colors">
                       <td className="p-4">
                         <div className="flex items-center gap-3">
-                          <img
-                            src={
-                              aluno.foto_url ||
-                              'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100'
-                            }
-                            alt={aluno.nome}
-                            className="h-10 w-10 rounded-full object-cover ring-2 ring-slate-100"
+                          <UserAvatar
+                            name={aluno.nome}
+                            fotoUrl={aluno.foto_url}
+                            size="md"
+                            className="ring-2 ring-slate-100"
                           />
                           <div>
                             <p className="font-bold text-sm text-slate-900">

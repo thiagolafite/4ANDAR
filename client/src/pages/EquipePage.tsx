@@ -10,9 +10,11 @@ import {
   X,
   Sparkles,
   BookOpen,
-  Trash2
+  Trash2,
+  Upload
 } from 'lucide-react';
 import { Equipe } from '../types';
+import { UserAvatar } from '../components/common/UserAvatar';
 
 export const EquipePage: React.FC = () => {
   const { equipe, aulas, addEquipe, deleteEquipe, usuariosList } = useApp();
@@ -27,7 +29,7 @@ export const EquipePage: React.FC = () => {
     especialidades: ['Forró Tradicional'],
     google_calendar_conectado: false,
     ativo: true,
-    foto_url: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150'
+    foto_url: ''
   });
 
   const [especialidadesInput, setEspecialidadesInput] = useState('Pé de Serra, Xote, Conexão');
@@ -80,7 +82,7 @@ export const EquipePage: React.FC = () => {
       especialidades: ['Forró Tradicional'],
       google_calendar_conectado: false,
       ativo: true,
-      foto_url: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150'
+      foto_url: ''
     });
   };
 
@@ -135,10 +137,11 @@ export const EquipePage: React.FC = () => {
                 <div>
                   <div className="flex items-start justify-between gap-3">
                     <div className="flex items-center gap-4">
-                      <img
-                        src={membro.foto_url}
-                        alt={membro.nome}
-                        className="h-16 w-16 rounded-full object-cover ring-4 ring-orange-100"
+                      <UserAvatar
+                        name={membro.nome}
+                        fotoUrl={membro.foto_url}
+                        size="xl"
+                        className="ring-4 ring-orange-100"
                       />
                       <div>
                         <h3 className="font-bold text-lg text-slate-900 leading-tight">
@@ -315,6 +318,49 @@ export const EquipePage: React.FC = () => {
                   placeholder="professor@4andar.com.br"
                   className="w-full rounded-xl border border-slate-300 p-2 text-sm outline-none focus:border-brand-500"
                 />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
+                  Foto do Professor (Opcional)
+                </label>
+                <div className="flex items-center gap-3 p-3 bg-slate-50 border border-slate-200 rounded-xl">
+                  <UserAvatar
+                    name={novoMembro.nome || 'Professor'}
+                    fotoUrl={novoMembro.foto_url}
+                    size="md"
+                  />
+                  <div className="flex-1">
+                    <label className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-orange-200 bg-white hover:bg-orange-50 text-brand-700 text-xs font-bold cursor-pointer transition-colors">
+                      <Upload className="h-3.5 w-3.5" />
+                      <span>Escolher foto do computador</span>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) {
+                            const reader = new FileReader();
+                            reader.onload = () => {
+                              setNovoMembro({ ...novoMembro, foto_url: reader.result as string });
+                            };
+                            reader.readAsDataURL(file);
+                          }
+                        }}
+                      />
+                    </label>
+                    {novoMembro.foto_url && (
+                      <button
+                        type="button"
+                        onClick={() => setNovoMembro({ ...novoMembro, foto_url: '' })}
+                        className="text-[11px] text-rose-600 hover:underline block mt-1"
+                      >
+                        Remover foto
+                      </button>
+                    )}
+                  </div>
+                </div>
               </div>
 
               <div>

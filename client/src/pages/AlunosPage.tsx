@@ -12,9 +12,11 @@ import {
   DollarSign,
   ArrowRight,
   X,
-  Check
+  Check,
+  Upload
 } from 'lucide-react';
 import { Aluno, NivelForro, PapelDanca } from '../types';
+import { UserAvatar } from '../components/common/UserAvatar';
 
 export const AlunosPage: React.FC = () => {
   const { alunos, addAluno, setSelectedAlunoModal, usuariosList } = useApp();
@@ -263,13 +265,11 @@ export const AlunosPage: React.FC = () => {
               <div>
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex items-center gap-3">
-                    <img
-                      src={
-                        aluno.foto_url ||
-                        'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100'
-                      }
-                      alt={aluno.nome}
-                      className="h-12 w-12 rounded-full object-cover ring-2 ring-slate-100 group-hover:ring-brand-500 transition-all"
+                    <UserAvatar
+                      name={aluno.nome}
+                      fotoUrl={aluno.foto_url}
+                      size="lg"
+                      className="ring-2 ring-slate-100 group-hover:ring-brand-500 transition-all"
                     />
                     <div>
                       <h4 className="font-bold text-sm text-slate-900 group-hover:text-brand-600 transition-colors">
@@ -515,6 +515,49 @@ export const AlunosPage: React.FC = () => {
                     }
                     className="w-full rounded-xl border border-slate-300 px-3.5 py-2 text-sm outline-none focus:border-brand-500 bg-white"
                   />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
+                  Foto do Aluno (Opcional)
+                </label>
+                <div className="flex items-center gap-3 p-3 bg-slate-50 border border-slate-200 rounded-xl">
+                  <UserAvatar
+                    name={newStudent.nome || 'Aluno'}
+                    fotoUrl={newStudent.foto_url}
+                    size="md"
+                  />
+                  <div className="flex-1">
+                    <label className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-orange-200 bg-white hover:bg-orange-50 text-brand-700 text-xs font-bold cursor-pointer transition-colors">
+                      <Upload className="h-3.5 w-3.5" />
+                      <span>Escolher foto do computador</span>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) {
+                            const reader = new FileReader();
+                            reader.onload = () => {
+                              setNewStudent({ ...newStudent, foto_url: reader.result as string });
+                            };
+                            reader.readAsDataURL(file);
+                          }
+                        }}
+                      />
+                    </label>
+                    {newStudent.foto_url && (
+                      <button
+                        type="button"
+                        onClick={() => setNewStudent({ ...newStudent, foto_url: '' })}
+                        className="text-[11px] text-rose-600 hover:underline block mt-1"
+                      >
+                        Remover foto
+                      </button>
+                    )}
+                  </div>
                 </div>
               </div>
 

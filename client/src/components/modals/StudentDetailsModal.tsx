@@ -14,8 +14,11 @@ import {
   AlertCircle,
   Save,
   Trash2,
-  FileText
+  FileText,
+  Upload,
+  Camera
 } from 'lucide-react';
+import { UserAvatar } from '../common/UserAvatar';
 
 export const StudentDetailsModal: React.FC = () => {
   const {
@@ -31,8 +34,8 @@ export const StudentDetailsModal: React.FC = () => {
     nivelamentoSessoes
   } = useApp();
 
-  const isMaster = Boolean(currentUser.is_master || currentUser.role === 'master' || currentUser.tipo_usuario === 'AdminMaster');
-  const isAluno = currentUser.role === 'aluno' || (!isMaster && currentUser.role !== 'professor' && currentUser.tipo_usuario === 'Aluno');
+  const isMaster = Boolean(currentUser?.is_master || currentUser?.role === 'master' || currentUser?.tipo_usuario === 'AdminMaster');
+  const isAluno = currentUser?.role === 'aluno' || (!isMaster && currentUser?.role !== 'professor' && currentUser?.tipo_usuario === 'Aluno');
 
   const [activeTab, setActiveTab] = useState<'dados' | 'pagamentos' | 'presencas' | 'nivelamento'>('dados');
   const [formData, setFormData] = useState<Aluno | null>(null);
@@ -82,13 +85,11 @@ export const StudentDetailsModal: React.FC = () => {
           </button>
 
           <div className="flex items-center gap-4">
-            <img
-              src={
-                formData.foto_url ||
-                'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150'
-              }
-              alt={formData.nome}
-              className="h-16 w-16 rounded-full object-cover ring-4 ring-white/30 shadow-lg"
+            <UserAvatar
+              name={formData.nome}
+              fotoUrl={formData.foto_url}
+              size="xl"
+              className="ring-4 ring-white/30 shadow-lg"
             />
             <div>
               <div className="flex items-center gap-2">
@@ -158,6 +159,56 @@ export const StudentDetailsModal: React.FC = () => {
           {/* TAB 1: DADOS CADASTRAIS (EDITÁVEIS) */}
           {activeTab === 'dados' && (
             <form onSubmit={handleSave} className="space-y-4">
+              {/* Seção Foto do Aluno */}
+              <div className="p-3 bg-slate-50 border border-slate-200 rounded-2xl flex items-center justify-between gap-4">
+                <div className="flex items-center gap-3">
+                  <UserAvatar
+                    name={formData.nome}
+                    fotoUrl={formData.foto_url}
+                    size="md"
+                  />
+                  <div>
+                    <h5 className="text-xs font-bold text-slate-800">Foto do Aluno</h5>
+                    <p className="text-[11px] text-slate-500">
+                      {formData.foto_url ? 'Foto personalizada cadastrada' : 'Sem foto cadastrada'}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <label className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-orange-200 bg-white hover:bg-orange-50 text-brand-700 text-xs font-bold cursor-pointer transition-colors shadow-2xs">
+                    <Upload className="h-3.5 w-3.5" />
+                    <span>{formData.foto_url ? 'Alterar foto' : 'Enviar foto'}</span>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) {
+                          const reader = new FileReader();
+                          reader.onload = () => {
+                            setFormData({ ...formData, foto_url: reader.result as string });
+                          };
+                          reader.readAsDataURL(file);
+                        }
+                      }}
+                    />
+                  </label>
+
+                  {formData.foto_url && (
+                    <button
+                      type="button"
+                      onClick={() => setFormData({ ...formData, foto_url: '' })}
+                      className="p-1.5 rounded-xl text-rose-500 hover:bg-rose-50 hover:text-rose-700 text-xs transition-colors"
+                      title="Remover foto (ficar sem foto)"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </button>
+                  )}
+                </div>
+              </div>
+
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">

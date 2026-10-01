@@ -10,6 +10,7 @@ import {
   AlertCircle,
   ArrowRight
 } from 'lucide-react';
+import { UserAvatar } from '../components/common/UserAvatar';
 
 export const ProximaAulaPage: React.FC = () => {
   const {
@@ -61,13 +62,11 @@ export const ProximaAulaPage: React.FC = () => {
       {/* Student Status Header */}
       <div className="rounded-2xl bg-gradient-to-r from-orange-500 to-amber-500 p-6 text-white shadow-md flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div className="flex items-center gap-4">
-          <img
-            src={
-              alunoLogado.foto_url ||
-              'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=120'
-            }
-            alt={alunoLogado.nome}
-            className="h-14 w-14 rounded-full object-cover ring-4 ring-white/30"
+          <UserAvatar
+            name={alunoLogado.nome}
+            fotoUrl={alunoLogado.foto_url}
+            size="xl"
+            className="ring-4 ring-white/30"
           />
           <div>
             <h3 className="text-lg font-bold">{alunoLogado.nome}</h3>
