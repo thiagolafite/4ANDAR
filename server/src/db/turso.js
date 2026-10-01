@@ -9,11 +9,12 @@ dotenv.config();
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
+const defaultTursoUrl = 'libsql://quartoandar-thiagolafite.aws-us-east-1.turso.io';
+const defaultTursoToken = 'eyJhbGciOiJFZERTQSIsInR5cCI6IkpXVCJ9.eyJhIjoicnciLCJpYXQiOjE3OTA3MjY5NDEsImlkIjoiMDFhMGVmYTItZTMwMS03OWJhLWJjZjctNDk1ZjRjMGQ4OGE2Iiwia2lkIjoiZE1fbVhMaUFjLWFYOWJFcXNCcmt6UjFYOWJBOUpncm9mOWNVYUZCZS11MCIsInJpZCI6ImVjYmEwNTM0LTBjMmYtNDgxOC1hY2RlLWZlZjY3ZTc3MDUxOSJ9.jaom4pcbPiz-0PdJgV1FtbyeM1coHsp5r8umRaXxKct7RtSe4obLzzO1cBGnFu3vloXvnvmFxrGe1Cmn_Q3bBA';
+
 // Turso Connection Options:
-// - Se TURSO_DATABASE_URL for informado (ex.: libsql://meu-banco.turso.io) com TURSO_AUTH_TOKEN, conecta à nuvem do Turso.
-// - Se não informado, utiliza arquivo local libSQL compatível (data/turso_local.db)
-const dbUrl = process.env.TURSO_DATABASE_URL || `file:${path.join(__dirname, '../../data/turso_local.db')}`;
-const authToken = process.env.TURSO_AUTH_TOKEN || undefined;
+const dbUrl = process.env.TURSO_DATABASE_URL || defaultTursoUrl;
+const authToken = process.env.TURSO_AUTH_TOKEN || defaultTursoToken;
 
 console.log(`🔌 Conectando ao Turso Database: ${dbUrl.startsWith('file:') ? 'Arquivo Local libSQL' : dbUrl}`);
 

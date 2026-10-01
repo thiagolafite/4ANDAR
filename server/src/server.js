@@ -21,10 +21,34 @@ const PORT = process.env.PORT || 3001;
 app.use(cors());
 app.use(express.json());
 
+let isTursoReady = false;
+let tursoInitPromise = null;
+
+const ensureTursoReady = async () => {
+  if (!isTursoReady) {
+    if (!tursoInitPromise) {
+      tursoInitPromise = initTursoDatabase()
+        .then(() => {
+          isTursoReady = true;
+        })
+        .catch((e) => {
+          console.warn('Falha na inicialização do Turso:', e.message);
+        });
+    }
+    await tursoInitPromise;
+  }
+};
+
 // Compatibilidade de roteamento para Vercel Serverless (garante que /api/ rotas batam perfeitamente)
-app.use((req, res, next) => {
+app.use(async (req, res, next) => {
+  if (req.url === '/api' && req.originalUrl && req.originalUrl !== '/api') {
+    req.url = req.originalUrl;
+  }
   if (!req.url.startsWith('/api') && req.url !== '/' && !req.url.startsWith('/index.html')) {
     req.url = '/api' + req.url;
+  }
+  if (req.url.startsWith('/api')) {
+    await ensureTursoReady();
   }
   next();
 });
@@ -1452,18 +1476,7 @@ app.delete('/api/avisos/:id', async (req, res) => {
   }
 });
 
-let isTursoReady = false;
-app.use(async (req, res, next) => {
-  if (!isTursoReady) {
-    try {
-      await initTursoDatabase();
-      isTursoReady = true;
-    } catch (e) {
-      console.warn('Turso init check:', e.message);
-    }
-  }
-  next();
-});
+
 
 // ==========================================
 // INICIALIZAÇÃO DO SERVIDOR COM TURSO
