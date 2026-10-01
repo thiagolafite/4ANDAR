@@ -62,7 +62,40 @@ export const AlunosPage: React.FC = () => {
     }
   };
 
-  const filteredAlunos = alunos.filter((aluno) => {
+  // Combina a lista de alunos com usuários aprovados como aluno, garantindo que nenhum fique de fora
+  const todosAlunos = React.useMemo(() => {
+    const list = [...alunos];
+    usuariosList.forEach((u) => {
+      const isAlunoUser = (u.role === 'aluno' || /alun/i.test(u.cargo_pretendido || '')) && u.status === 'aprovado';
+      if (isAlunoUser) {
+        const jaEstaNaLista = list.some(
+          (a) => (u.aluno_id && a.id === u.aluno_id) ||
+                 (a.user_id && a.user_id === u.id) ||
+                 (a.email && u.email && a.email.toLowerCase() === u.email.toLowerCase())
+        );
+        if (!jaEstaNaLista) {
+          list.push({
+            id: u.aluno_id || `al_${u.id}`,
+            user_id: u.id,
+            nome: u.nome,
+            email: u.email,
+            telefone: u.telefone || '',
+            nivel_atual: 'B1',
+            papel: 'Condutor',
+            mensalidade_valor: 190.0,
+            dia_vencimento: 5,
+            data_matricula: u.data_cadastro ? u.data_cadastro.substring(0, 10) : '2026-09-30',
+            data_inicio_nivel: u.data_cadastro ? u.data_cadastro.substring(0, 10) : '2026-09-30',
+            status: 'ativo',
+            foto_url: u.avatar_url
+          });
+        }
+      }
+    });
+    return list;
+  }, [alunos, usuariosList]);
+
+  const filteredAlunos = todosAlunos.filter((aluno) => {
     if (filterNivel !== 'todos' && aluno.nivel_atual !== filterNivel) return false;
     if (filterPapel !== 'todos' && aluno.papel !== filterPapel) return false;
     if (!searchTerm.trim()) return true;
@@ -137,14 +170,14 @@ export const AlunosPage: React.FC = () => {
           <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
             Total Alunos
           </span>
-          <p className="text-xl font-black text-slate-900 mt-1">{alunos.length}</p>
+          <p className="text-xl font-black text-slate-900 mt-1">{todosAlunos.length}</p>
         </div>
         <div className="rounded-2xl bg-white p-3.5 border border-slate-100 shadow-sm">
           <span className="text-[11px] font-bold uppercase tracking-wider text-amber-600">
             Nível B1
           </span>
           <p className="text-xl font-black text-amber-700 mt-1">
-            {alunos.filter((a) => a.nivel_atual === 'B1').length}
+            {todosAlunos.filter((a) => a.nivel_atual === 'B1').length}
           </p>
         </div>
         <div className="rounded-2xl bg-white p-3.5 border border-slate-100 shadow-sm">
@@ -152,7 +185,7 @@ export const AlunosPage: React.FC = () => {
             Nível B2
           </span>
           <p className="text-xl font-black text-blue-700 mt-1">
-            {alunos.filter((a) => a.nivel_atual === 'B2').length}
+            {todosAlunos.filter((a) => a.nivel_atual === 'B2').length}
           </p>
         </div>
         <div className="rounded-2xl bg-white p-3.5 border border-slate-100 shadow-sm">
@@ -160,7 +193,7 @@ export const AlunosPage: React.FC = () => {
             Nível I1
           </span>
           <p className="text-xl font-black text-purple-700 mt-1">
-            {alunos.filter((a) => a.nivel_atual === 'I1').length}
+            {todosAlunos.filter((a) => a.nivel_atual === 'I1').length}
           </p>
         </div>
         <div className="rounded-2xl bg-white p-3.5 border border-slate-100 shadow-sm col-span-2 sm:col-span-1">
@@ -168,7 +201,7 @@ export const AlunosPage: React.FC = () => {
             Nível I2
           </span>
           <p className="text-xl font-black text-emerald-700 mt-1">
-            {alunos.filter((a) => a.nivel_atual === 'I2').length}
+            {todosAlunos.filter((a) => a.nivel_atual === 'I2').length}
           </p>
         </div>
       </div>

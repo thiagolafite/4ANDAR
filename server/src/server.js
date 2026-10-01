@@ -267,6 +267,129 @@ app.get('/api/usuarios', async (req, res) => {
   }
 });
 
+// ----------------------------------------------------
+// Helpers de Sincronização Automática Usuário -> Aluno / Equipe
+// ----------------------------------------------------
+async function syncAlunosFromUsuarios() {
+  try {
+    const usersResult = await turso.execute(`
+      SELECT id, nome, email, telefone, data_cadastro, role, cargo_pretendido, status, aluno_id
+      FROM usuarios
+      WHERE (role = 'aluno' OR cargo_pretendido LIKE '%alun%')
+        AND status != 'rejeitado'
+        AND status != 'bloqueado'
+    `);
+
+    const alunosResult = await turso.execute('SELECT id, user_id, email FROM alunos');
+    const existingAlunos = alunosResult.rows;
+
+    for (const u of usersResult.rows) {
+      const match = existingAlunos.find(
+        (a) => (a.user_id && a.user_id === u.id) ||
+               (a.email && a.email.toLowerCase() === u.email.toLowerCase()) ||
+               (u.aluno_id && a.id === u.aluno_id)
+      );
+
+      if (match) {
+        if (!match.user_id) {
+          await turso.execute({
+            sql: 'UPDATE alunos SET user_id = ? WHERE id = ?',
+            args: [u.id, match.id]
+          });
+        }
+        if (!u.aluno_id || u.aluno_id !== match.id) {
+          await turso.execute({
+            sql: 'UPDATE usuarios SET aluno_id = ? WHERE id = ?',
+            args: [match.id, u.id]
+          });
+        }
+      } else {
+        const newId = `al_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
+        const dataHoje = new Date().toISOString().substring(0, 10);
+        await turso.execute({
+          sql: `INSERT INTO alunos (id, user_id, nome, telefone, email, nivel_atual, papel, mensalidade_valor, dia_vencimento, data_matricula, data_inicio_nivel, status)
+                VALUES (?, ?, ?, ?, ?, 'B1', 'Condutor', 190.0, 5, ?, ?, 'ativo')`,
+          args: [
+            newId,
+            u.id,
+            u.nome,
+            u.telefone || '',
+            u.email,
+            u.data_cadastro ? u.data_cadastro.substring(0, 10) : dataHoje,
+            u.data_cadastro ? u.data_cadastro.substring(0, 10) : dataHoje
+          ]
+        });
+        await turso.execute({
+          sql: 'UPDATE usuarios SET aluno_id = ? WHERE id = ?',
+          args: [newId, u.id]
+        });
+        existingAlunos.push({ id: newId, user_id: u.id, email: u.email });
+      }
+    }
+  } catch (err) {
+    console.error('Erro em syncAlunosFromUsuarios:', err);
+  }
+}
+
+async function syncEquipeFromUsuarios() {
+  try {
+    const usersResult = await turso.execute(`
+      SELECT id, nome, email, telefone, role, cargo_pretendido, status, equipe_id
+      FROM usuarios
+      WHERE (role = 'professor' OR cargo_pretendido LIKE '%prof%')
+        AND status != 'rejeitado'
+        AND status != 'bloqueado'
+    `);
+
+    const equipeResult = await turso.execute('SELECT id, user_id, email FROM equipe');
+    const existingEquipe = equipeResult.rows;
+
+    for (const u of usersResult.rows) {
+      const match = existingEquipe.find(
+        (e) => (e.user_id && e.user_id === u.id) ||
+               (e.email && e.email.toLowerCase() === u.email.toLowerCase()) ||
+               (u.equipe_id && e.id === u.equipe_id)
+      );
+
+      if (match) {
+        if (!match.user_id) {
+          await turso.execute({
+            sql: 'UPDATE equipe SET user_id = ? WHERE id = ?',
+            args: [u.id, match.id]
+          });
+        }
+        if (!u.equipe_id || u.equipe_id !== match.id) {
+          await turso.execute({
+            sql: 'UPDATE usuarios SET equipe_id = ? WHERE id = ?',
+            args: [match.id, u.id]
+          });
+        }
+      } else {
+        const newId = `eq_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
+        await turso.execute({
+          sql: `INSERT INTO equipe (id, user_id, nome, email, telefone, papel_equipe, especialidades, status)
+                VALUES (?, ?, ?, ?, ?, ?, '["Forró Tradicional", "Universitário"]', 'ativo')`,
+          args: [
+            newId,
+            u.id,
+            u.nome,
+            u.email,
+            u.telefone || '',
+            u.cargo_pretendido || 'Professor'
+          ]
+        });
+        await turso.execute({
+          sql: 'UPDATE usuarios SET equipe_id = ? WHERE id = ?',
+          args: [newId, u.id]
+        });
+        existingEquipe.push({ id: newId, user_id: u.id, email: u.email });
+      }
+    }
+  } catch (err) {
+    console.error('Erro em syncEquipeFromUsuarios:', err);
+  }
+}
+
 // 0.5 Aprovar, Rejeitar ou Alterar Status do Usuário
 app.put('/api/usuarios/:id/status', async (req, res) => {
   try {
@@ -278,7 +401,7 @@ app.put('/api/usuarios/:id/status', async (req, res) => {
     }
 
     const targetCheck = await turso.execute({
-      sql: 'SELECT is_master FROM usuarios WHERE id = ?',
+      sql: 'SELECT is_master, role, cargo_pretendido FROM usuarios WHERE id = ?',
       args: [id]
     });
 
@@ -323,6 +446,16 @@ app.put('/api/usuarios/:id/status', async (req, res) => {
       sql: `UPDATE usuarios SET ${updates.join(', ')} WHERE id = ?`,
       args
     });
+
+    // Se aprovado, dispara sincronização automática para Alunos e Professores
+    if (status === 'aprovado') {
+      const finalRole = role || targetCheck.rows[0].role;
+      if (finalRole === 'aluno' || /alun/i.test(targetCheck.rows[0].cargo_pretendido || '')) {
+        await syncAlunosFromUsuarios();
+      } else if (finalRole === 'professor' || /prof/i.test(targetCheck.rows[0].cargo_pretendido || '')) {
+        await syncEquipeFromUsuarios();
+      }
+    }
 
     res.json({ message: `Status do usuário atualizado para "${status}" com sucesso!`, id, status });
   } catch (err) {
@@ -374,7 +507,60 @@ app.put('/api/usuarios/:id/permissoes', async (req, res) => {
       args
     });
 
+    // Sincroniza se o papel for aluno ou professor
+    if (role === 'aluno' || (cargo_pretendido && /alun/i.test(cargo_pretendido))) {
+      await syncAlunosFromUsuarios();
+    } else if (role === 'professor' || (cargo_pretendido && /prof/i.test(cargo_pretendido))) {
+      await syncEquipeFromUsuarios();
+    }
+
     res.json({ message: 'Permissões atualizadas com sucesso!', id });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// 0.6.1 Criar / Vincular Aluno explicitamente
+app.post('/api/usuarios/:id/vincular-aluno', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const userResult = await turso.execute({
+      sql: 'SELECT id, nome, email, telefone, data_cadastro, aluno_id FROM usuarios WHERE id = ?',
+      args: [id]
+    });
+    if (userResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Usuário não encontrado' });
+    }
+    const user = userResult.rows[0];
+
+    // Procura aluno existente por aluno_id ou email
+    let aluno = null;
+    if (user.aluno_id) {
+      const aRes = await turso.execute({ sql: 'SELECT * FROM alunos WHERE id = ?', args: [user.aluno_id] });
+      if (aRes.rows.length > 0) aluno = aRes.rows[0];
+    }
+    if (!aluno) {
+      const byEmail = await turso.execute({ sql: 'SELECT * FROM alunos WHERE LOWER(email) = LOWER(?)', args: [user.email] });
+      if (byEmail.rows.length > 0) aluno = byEmail.rows[0];
+    }
+
+    if (aluno) {
+      await turso.execute({ sql: 'UPDATE alunos SET user_id = ? WHERE id = ?', args: [user.id, aluno.id] });
+      await turso.execute({ sql: 'UPDATE usuarios SET aluno_id = ? WHERE id = ?', args: [aluno.id, user.id] });
+      return res.json({ message: 'Aluno já existente vinculado à conta!', aluno });
+    }
+
+    const newId = `al_${Date.now()}`;
+    const dataHoje = new Date().toISOString().substring(0, 10);
+    await turso.execute({
+      sql: `INSERT INTO alunos (id, user_id, nome, telefone, email, nivel_atual, papel, mensalidade_valor, dia_vencimento, data_matricula, data_inicio_nivel, status)
+            VALUES (?, ?, ?, ?, ?, 'B1', 'Condutor', 190.0, 5, ?, ?, 'ativo')`,
+      args: [newId, user.id, user.nome, user.telefone || '', user.email, user.data_cadastro ? user.data_cadastro.substring(0, 10) : dataHoje, dataHoje]
+    });
+    await turso.execute({ sql: 'UPDATE usuarios SET aluno_id = ? WHERE id = ?', args: [newId, user.id] });
+
+    const created = await turso.execute({ sql: 'SELECT * FROM alunos WHERE id = ?', args: [newId] });
+    res.status(201).json({ message: 'Ficha de aluno criada e vinculada com sucesso!', aluno: created.rows[0] });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -427,6 +613,7 @@ app.get('/api/health', (req, res) => {
 // ==========================================
 app.get('/api/alunos', async (req, res) => {
   try {
+    await syncAlunosFromUsuarios();
     const result = await turso.execute('SELECT * FROM alunos ORDER BY nome ASC');
     res.json(result.rows);
   } catch (err) {
@@ -437,12 +624,55 @@ app.get('/api/alunos', async (req, res) => {
 app.post('/api/alunos', async (req, res) => {
   try {
     const {
+      id: customId,
       user_id, nome, telefone, email, nivel_atual, papel,
       mensalidade_valor, dia_vencimento, data_matricula,
       data_inicio_nivel, status, foto_url, observacoes
     } = req.body;
 
-    const id = `al_${Date.now()}`;
+    const id = customId || `al_${Date.now()}`;
+
+    // Procura se já existe um aluno com esse user_id ou email
+    let existingCheck = null;
+    if (user_id) {
+      existingCheck = await turso.execute({
+        sql: 'SELECT id FROM alunos WHERE user_id = ?',
+        args: [user_id]
+      });
+    }
+    if ((!existingCheck || existingCheck.rows.length === 0) && email) {
+      existingCheck = await turso.execute({
+        sql: 'SELECT id FROM alunos WHERE LOWER(email) = LOWER(?)',
+        args: [email]
+      });
+    }
+
+    if (existingCheck && existingCheck.rows.length > 0) {
+      const existingId = existingCheck.rows[0].id;
+      await turso.execute({
+        sql: `UPDATE alunos SET
+              user_id = COALESCE(?, user_id),
+              nome = COALESCE(?, nome),
+              telefone = COALESCE(?, telefone),
+              email = COALESCE(?, email),
+              nivel_atual = COALESCE(?, nivel_atual),
+              papel = COALESCE(?, papel),
+              mensalidade_valor = COALESCE(?, mensalidade_valor),
+              dia_vencimento = COALESCE(?, dia_vencimento),
+              status = COALESCE(?, status),
+              observacoes = COALESCE(?, observacoes)
+              WHERE id = ?`,
+        args: [user_id || null, nome, telefone, email, nivel_atual, papel, mensalidade_valor, dia_vencimento, status, observacoes, existingId]
+      });
+      if (user_id) {
+        await turso.execute({
+          sql: 'UPDATE usuarios SET aluno_id = ? WHERE id = ?',
+          args: [existingId, user_id]
+        });
+      }
+      const updated = await turso.execute({ sql: 'SELECT * FROM alunos WHERE id = ?', args: [existingId] });
+      return res.status(200).json(updated.rows[0]);
+    }
 
     await turso.execute({
       sql: `INSERT INTO alunos (id, user_id, nome, telefone, email, nivel_atual, papel, mensalidade_valor, dia_vencimento, data_matricula, data_inicio_nivel, status, foto_url, observacoes)
@@ -456,6 +686,13 @@ app.post('/api/alunos', async (req, res) => {
       ]
     });
 
+    if (user_id) {
+      await turso.execute({
+        sql: 'UPDATE usuarios SET aluno_id = ? WHERE id = ?',
+        args: [id, user_id]
+      });
+    }
+
     const aluno = await turso.execute({ sql: 'SELECT * FROM alunos WHERE id = ?', args: [id] });
     res.status(201).json(aluno.rows[0]);
   } catch (err) {
@@ -467,12 +704,13 @@ app.put('/api/alunos/:id', async (req, res) => {
   try {
     const { id } = req.params;
     const {
-      nome, telefone, email, nivel_atual, papel,
+      user_id, nome, telefone, email, nivel_atual, papel,
       mensalidade_valor, dia_vencimento, status, observacoes
     } = req.body;
 
     await turso.execute({
       sql: `UPDATE alunos SET 
+            user_id = COALESCE(?, user_id),
             nome = COALESCE(?, nome),
             telefone = COALESCE(?, telefone),
             email = COALESCE(?, email),
@@ -483,8 +721,15 @@ app.put('/api/alunos/:id', async (req, res) => {
             status = COALESCE(?, status),
             observacoes = COALESCE(?, observacoes)
             WHERE id = ?`,
-      args: [nome, telefone, email, nivel_atual, papel, mensalidade_valor, dia_vencimento, status, observacoes, id]
+      args: [user_id || null, nome, telefone, email, nivel_atual, papel, mensalidade_valor, dia_vencimento, status, observacoes, id]
     });
+
+    if (user_id) {
+      await turso.execute({
+        sql: 'UPDATE usuarios SET aluno_id = ? WHERE id = ?',
+        args: [id, user_id]
+      });
+    }
 
     const updated = await turso.execute({ sql: 'SELECT * FROM alunos WHERE id = ?', args: [id] });
     res.json(updated.rows[0]);
@@ -496,6 +741,7 @@ app.put('/api/alunos/:id', async (req, res) => {
 app.delete('/api/alunos/:id', async (req, res) => {
   try {
     const { id } = req.params;
+    await turso.execute({ sql: 'UPDATE usuarios SET aluno_id = NULL WHERE aluno_id = ?', args: [id] });
     await turso.execute({ sql: 'DELETE FROM alunos WHERE id = ?', args: [id] });
     res.json({ success: true, message: 'Aluno removido com sucesso do Turso' });
   } catch (err) {
@@ -508,6 +754,7 @@ app.delete('/api/alunos/:id', async (req, res) => {
 // ==========================================
 app.get('/api/equipe', async (req, res) => {
   try {
+    await syncEquipeFromUsuarios();
     const result = await turso.execute('SELECT * FROM equipe ORDER BY nome ASC');
     const rows = result.rows.map((row) => ({
       ...row,

@@ -57,6 +57,7 @@ interface AppContextType {
   fetchUsuarios: () => Promise<void>;
   updateUserStatus: (id: string, status: string, options?: { role?: string; permissoes?: any; motivo_recusa?: string }) => Promise<boolean>;
   updateUserPermissions: (id: string, permissoes: any, role?: string, cargo_pretendido?: string) => Promise<boolean>;
+  vincularAlunoUsuario: (userId: string) => Promise<boolean>;
   deleteUser: (id: string) => Promise<boolean>;
 
   // Alunos & Professores Unificados (Usuários Cadastrados)
@@ -516,6 +517,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       if (res.ok) {
         showToast(`Status atualizado para "${status}" com sucesso!`, 'success');
         await fetchUsuarios();
+        const [tursoAlunos, tursoEquipe] = await Promise.all([
+          fetch(`${API_URL}/alunos`).then((r) => r.json()).catch(() => null),
+          fetch(`${API_URL}/equipe`).then((r) => r.json()).catch(() => null)
+        ]);
+        if (Array.isArray(tursoAlunos)) setAlunos(tursoAlunos);
+        if (Array.isArray(tursoEquipe)) setEquipe(tursoEquipe);
         return true;
       }
       const data = await res.json();
@@ -537,10 +544,35 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       if (res.ok) {
         showToast('Permissões do usuário atualizadas com sucesso!', 'success');
         await fetchUsuarios();
+        const [tursoAlunos, tursoEquipe] = await Promise.all([
+          fetch(`${API_URL}/alunos`).then((r) => r.json()).catch(() => null),
+          fetch(`${API_URL}/equipe`).then((r) => r.json()).catch(() => null)
+        ]);
+        if (Array.isArray(tursoAlunos)) setAlunos(tursoAlunos);
+        if (Array.isArray(tursoEquipe)) setEquipe(tursoEquipe);
         return true;
       }
       const data = await res.json();
       showToast(data.error || 'Erro ao salvar permissões', 'error');
+      return false;
+    } catch {
+      showToast('Falha na comunicação com o servidor', 'error');
+      return false;
+    }
+  };
+
+  const vincularAlunoUsuario = async (userId: string) => {
+    try {
+      const res = await fetch(`${API_URL}/usuarios/${userId}/vincular-aluno`, { method: 'POST' });
+      const data = await res.json();
+      if (res.ok) {
+        showToast('Aluno vinculado e cadastrado com sucesso!', 'success');
+        await fetchUsuarios();
+        const tursoAlunos = await fetch(`${API_URL}/alunos`).then((r) => r.json()).catch(() => null);
+        if (Array.isArray(tursoAlunos)) setAlunos(tursoAlunos);
+        return true;
+      }
+      showToast(data.error || 'Erro ao vincular aluno', 'error');
       return false;
     } catch {
       showToast('Falha na comunicação com o servidor', 'error');
@@ -1135,6 +1167,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         fetchUsuarios,
         updateUserStatus,
         updateUserPermissions,
+        vincularAlunoUsuario,
         deleteUser,
         professoresCadastrados,
         alunosCadastrados,

@@ -26,9 +26,11 @@ export const UsuariosPage: React.FC = () => {
   const {
     currentUser,
     usuariosList,
+    alunos,
     fetchUsuarios,
     updateUserStatus,
     updateUserPermissions,
+    vincularAlunoUsuario,
     deleteUser,
     showToast
   } = useApp();
@@ -494,6 +496,31 @@ export const UsuariosPage: React.FC = () => {
                         <span className="px-2.5 py-1 rounded-lg bg-slate-100 font-semibold text-slate-700">
                           {user.cargo_pretendido || (user.role === 'master' ? 'Administrador Master' : user.role)}
                         </span>
+                        {/* Status da Ficha no Sistema */}
+                        {user.role === 'aluno' && (
+                          <div className="mt-1">
+                            {user.aluno_id || alunos.some(a => a.user_id === user.id || a.email.toLowerCase() === user.email.toLowerCase()) ? (
+                              <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
+                                🎓 Ficha de Aluno Ativa
+                              </span>
+                            ) : (
+                              <button
+                                onClick={() => vincularAlunoUsuario(user.id)}
+                                className="inline-flex items-center gap-1 text-[10px] font-bold text-amber-800 bg-amber-100 hover:bg-amber-200 px-2 py-0.5 rounded border border-amber-300 transition-colors cursor-pointer"
+                                title="Criar ficha de aluno e matricular no sistema"
+                              >
+                                ⚡ Associar como Aluno
+                              </button>
+                            )}
+                          </div>
+                        )}
+                        {user.role === 'professor' && (
+                          <div className="mt-1">
+                            <span className="inline-flex items-center gap-1 text-[10px] font-bold text-blue-700 bg-blue-50 px-2 py-0.5 rounded border border-blue-200">
+                              👨‍🏫 Membro da Equipe
+                            </span>
+                          </div>
+                        )}
                       </td>
 
                       <td className="py-3.5 px-3">
@@ -747,6 +774,31 @@ export const UsuariosPage: React.FC = () => {
                   </select>
                 </div>
               </div>
+
+              {/* Informação de Sincronização Automática */}
+              {editRole === 'aluno' && (
+                <div className="rounded-xl bg-emerald-50 border border-emerald-200 p-3 text-xs text-emerald-800 flex items-center gap-2.5">
+                  <CheckCircle className="h-4 w-4 text-emerald-600 shrink-0" />
+                  <div>
+                    <span className="font-bold">Sincronização Automática de Aluno:</span>
+                    <p className="text-[11px] text-emerald-700 mt-0.5">
+                      Ao salvar este usuário como Aluno, o sistema criará/vinculará automaticamente sua ficha de aluno no menu <strong>Alunos</strong> (com matrícula ativa e nível inicial B1).
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {editRole === 'professor' && (
+                <div className="rounded-xl bg-blue-50 border border-blue-200 p-3 text-xs text-blue-800 flex items-center gap-2.5">
+                  <CheckCircle className="h-4 w-4 text-blue-600 shrink-0" />
+                  <div>
+                    <span className="font-bold">Sincronização Automática de Professor:</span>
+                    <p className="text-[11px] text-blue-700 mt-0.5">
+                      Ao salvar este usuário como Professor, ele será automaticamente vinculado como membro da equipe e estará disponível na seleção de professores do Cronograma e Turmas.
+                    </p>
+                  </div>
+                </div>
+              )}
 
               {/* Permissões Granulares por Módulo */}
               <div>
