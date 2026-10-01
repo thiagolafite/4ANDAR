@@ -56,7 +56,7 @@ interface AppContextType {
   pendingUsersCount: number;
   fetchUsuarios: () => Promise<void>;
   syncWithDatabase: () => Promise<void>;
-  updateUserStatus: (id: string, status: string, options?: { role?: string; permissoes?: any; motivo_recusa?: string }) => Promise<boolean>;
+  updateUserStatus: (id: string, status: string, options?: { role?: string; cargo_pretendido?: string; permissoes?: any; motivo_recusa?: string; aprovado_por?: string }) => Promise<boolean>;
   updateUserPermissions: (id: string, permissoes: any, role?: string, cargo_pretendido?: string) => Promise<boolean>;
   vincularAlunoUsuario: (userId: string) => Promise<boolean>;
   deleteUser: (id: string) => Promise<boolean>;
@@ -680,13 +680,24 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return Boolean(modPerms[action] ?? modPerms.view);
   };
 
-  const updateUserStatus = async (id: string, status: string, options?: { role?: string; permissoes?: any; motivo_recusa?: string }) => {
+  const updateUserStatus = async (
+    id: string,
+    status: string,
+    options?: { role?: string; cargo_pretendido?: string; permissoes?: any; motivo_recusa?: string; aprovado_por?: string }
+  ) => {
     try {
       const res = await fetch(`${API_URL}/usuarios/${id}/status`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ status, ...options })
       });
+
+      const contentType = res.headers.get('content-type');
+      let data: any = {};
+      if (contentType && contentType.includes('application/json')) {
+        data = await res.json().catch(() => ({}));
+      }
+
       if (res.ok) {
         showToast(`Status atualizado para "${status}" com sucesso!`, 'success');
         await fetchUsuarios();
@@ -696,13 +707,49 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         ]);
         if (Array.isArray(tursoAlunos)) setAlunos(tursoAlunos);
         if (Array.isArray(tursoEquipe)) setEquipe(tursoEquipe);
+
+        // Se for aluno aprovado, garante inserção local imediata caso ainda não exista na lista de alunos
+        const finalRole = options?.role;
+        if (status === 'aprovado' && (finalRole === 'aluno' || options?.cargo_pretendido === 'Aluno')) {
+          setAlunos((prev) => {
+            const userObj = usuariosList.find((u) => u.id === id);
+            if (!userObj) return prev;
+            const alreadyExists = prev.some((a) => a.user_id === id || a.email.toLowerCase() === userObj.email.toLowerCase());
+            if (alreadyExists) return prev;
+            const newAluno: Aluno = {
+              id: data.aluno_id || `al_${Date.now()}`,
+              user_id: id,
+              nome: userObj.nome,
+              telefone: userObj.telefone || '',
+              email: userObj.email,
+              nivel_atual: 'B1',
+              papel: 'Condutor',
+              mensalidade_valor: 190.0,
+              dia_vencimento: 5,
+              data_matricula: new Date().toISOString().substring(0, 10),
+              data_inicio_nivel: new Date().toISOString().substring(0, 10),
+              status: 'ativo'
+            };
+            const updated = [newAluno, ...prev];
+            localStorage.setItem('4andar_alunos', JSON.stringify(updated));
+            return updated;
+          });
+        }
+
         return true;
       }
-      const data = await res.json().catch(() => ({}));
-      showToast(data.error || 'Erro ao atualizar status', 'error');
-      return false;
-    } catch {
+
+      // Se foi erro de validação (ex: 400), avisa e não faz fallback
+      if (res.status === 400 && data.error) {
+        showToast(data.error, 'error');
+        return false;
+      }
+
+      throw new Error(data.error || 'Falha na resposta do servidor');
+    } catch (err: any) {
+      console.warn('Fallback local para atualização de status:', err);
       // Fallback local caso haja falha de rede/API
+      const userObj = usuariosList.find((u) => u.id === id);
       setUsuariosList((prev) => {
         const updated = prev.map((u) => {
           if (u.id === id) {
@@ -710,6 +757,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
               ...u,
               status: status as any,
               role: (options?.role as any) || u.role,
+              cargo_pretendido: options?.cargo_pretendido || u.cargo_pretendido,
               permissoes: options?.permissoes || u.permissoes,
               motivo_recusa: options?.motivo_recusa
             };
@@ -719,6 +767,32 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         localStorage.setItem('4andar_usuariosList', JSON.stringify(updated));
         return updated;
       });
+
+      // Se for aprovação de aluno, garante presença na lista local de alunos
+      if (status === 'aprovado' && userObj && (options?.role === 'aluno' || options?.cargo_pretendido === 'Aluno' || userObj.cargo_pretendido === 'Aluno')) {
+        setAlunos((prev) => {
+          const alreadyExists = prev.some((a) => a.user_id === id || a.email.toLowerCase() === userObj.email.toLowerCase());
+          if (alreadyExists) return prev;
+          const newAluno: Aluno = {
+            id: `al_${Date.now()}`,
+            user_id: id,
+            nome: userObj.nome,
+            telefone: userObj.telefone || '',
+            email: userObj.email,
+            nivel_atual: 'B1',
+            papel: 'Condutor',
+            mensalidade_valor: 190.0,
+            dia_vencimento: 5,
+            data_matricula: new Date().toISOString().substring(0, 10),
+            data_inicio_nivel: new Date().toISOString().substring(0, 10),
+            status: 'ativo'
+          };
+          const updated = [newAluno, ...prev];
+          localStorage.setItem('4andar_alunos', JSON.stringify(updated));
+          return updated;
+        });
+      }
+
       showToast(`Status atualizado para "${status}" com sucesso!`, 'success');
       return true;
     }

@@ -457,14 +457,14 @@ async function syncEquipeFromUsuarios() {
 app.put('/api/usuarios/:id/status', async (req, res) => {
   try {
     const { id } = req.params;
-    const { status, role, permissoes, motivo_recusa, aprovado_por } = req.body;
+    const { status, role, permissoes, motivo_recusa, aprovado_por, cargo_pretendido } = req.body;
 
     if (!['aprovado', 'rejeitado', 'bloqueado', 'pendente'].includes(status)) {
       return res.status(400).json({ error: 'Status inválido' });
     }
 
     const targetCheck = await turso.execute({
-      sql: 'SELECT is_master, role, cargo_pretendido FROM usuarios WHERE id = ?',
+      sql: 'SELECT is_master, role, cargo_pretendido, email, nome FROM usuarios WHERE id = ?',
       args: [id]
     });
 
@@ -496,6 +496,11 @@ app.put('/api/usuarios/:id/status', async (req, res) => {
       args.push(role);
     }
 
+    if (cargo_pretendido) {
+      updates.push('cargo_pretendido = ?');
+      args.push(cargo_pretendido);
+    }
+
     if (permissoes) {
       updates.push('permissoes = ?');
       args.push(typeof permissoes === 'string' ? permissoes : JSON.stringify(permissoes));
@@ -511,18 +516,40 @@ app.put('/api/usuarios/:id/status', async (req, res) => {
     });
 
     // Se aprovado, dispara sincronização automática para Alunos e Professores
+    let alunoId = null;
+    let equipeId = null;
     if (status === 'aprovado') {
       const finalRole = role || targetCheck.rows[0].role;
-      if (finalRole === 'aluno' || /alun/i.test(targetCheck.rows[0].cargo_pretendido || '')) {
+      const finalCargo = cargo_pretendido || targetCheck.rows[0].cargo_pretendido || '';
+      if (finalRole === 'aluno' || /alun/i.test(finalCargo)) {
         await syncAlunosFromUsuarios();
-      } else if (finalRole === 'professor' || /prof/i.test(targetCheck.rows[0].cargo_pretendido || '')) {
+        const aRes = await turso.execute({
+          sql: 'SELECT id FROM alunos WHERE user_id = ? OR email = ? LIMIT 1',
+          args: [id, targetCheck.rows[0].email]
+        });
+        if (aRes.rows.length > 0) alunoId = aRes.rows[0].id;
+      } else if (finalRole === 'professor' || /prof/i.test(finalCargo)) {
         await syncEquipeFromUsuarios();
+        const eRes = await turso.execute({
+          sql: 'SELECT id FROM equipe WHERE user_id = ? OR email = ? LIMIT 1',
+          args: [id, targetCheck.rows[0].email]
+        });
+        if (eRes.rows.length > 0) equipeId = eRes.rows[0].id;
       }
     }
 
-    res.json({ message: `Status do usuário atualizado para "${status}" com sucesso!`, id, status });
+    res.json({
+      success: true,
+      message: `Status do usuário atualizado para "${status}" com sucesso!`,
+      id,
+      status,
+      role: role || targetCheck.rows[0].role,
+      aluno_id: alunoId,
+      equipe_id: equipeId
+    });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error('Erro em PUT /api/usuarios/:id/status:', err);
+    res.status(500).json({ error: err.message || 'Erro ao atualizar status' });
   }
 });
 

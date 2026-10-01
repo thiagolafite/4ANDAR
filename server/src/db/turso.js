@@ -28,6 +28,13 @@ export const turso = createClient({
  */
 export const initTursoDatabase = async () => {
   try {
+    // Verificação rápida: se a tabela de usuários já existe, o banco já está inicializado
+    const quickCheck = await turso.execute('SELECT 1 FROM usuarios LIMIT 1').catch(() => null);
+    if (quickCheck) {
+      console.log('✅ Banco de dados Turso já conectado e pronto.');
+      return;
+    }
+
     // 1. Alunos
     await turso.execute(`
       CREATE TABLE IF NOT EXISTS alunos (

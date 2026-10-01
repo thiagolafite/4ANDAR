@@ -44,6 +44,7 @@ export const UsuariosPage: React.FC = () => {
   // Modal State for Approving / Editing Permissions
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [modalMode, setModalMode] = useState<'approve' | 'edit'>('approve');
+  const [selectedPreset, setSelectedPreset] = useState<'aluno' | 'professor' | 'admin' | 'full' | 'custom'>('aluno');
   const [editRole, setEditRole] = useState<UserRole>('aluno');
   const [editCargo, setEditCargo] = useState('Aluno');
   const [editPerms, setEditPerms] = useState<PermissoesUsuario>({});
@@ -79,10 +80,22 @@ export const UsuariosPage: React.FC = () => {
     setEditRole(user.role || 'aluno');
     setEditCargo(user.cargo_pretendido || 'Aluno');
     setEditPerms(user.permissoes ? JSON.parse(JSON.stringify(user.permissoes)) : {});
+
+    if (user.role === 'professor' || /prof/i.test(user.cargo_pretendido || '')) {
+      setSelectedPreset('professor');
+    } else if (user.role === 'admin' || /secretar|admin/i.test(user.cargo_pretendido || '')) {
+      setSelectedPreset('admin');
+    } else {
+      setSelectedPreset('aluno');
+      if (mode === 'approve' && (!user.permissoes || Object.keys(user.permissoes).length === 0)) {
+        applyPreset('aluno');
+      }
+    }
   };
 
   // Quick Preset Helper
   const applyPreset = (preset: 'aluno' | 'professor' | 'admin' | 'full') => {
+    setSelectedPreset(preset);
     if (preset === 'aluno') {
       setEditRole('aluno');
       setEditCargo('Aluno');
@@ -91,16 +104,16 @@ export const UsuariosPage: React.FC = () => {
         dashboard: { view: true },
         alunos: { view: false, create: false, edit: false, delete: false },
         cronograma: { view: false, edit: false, import_excel: false },
-        presenca: { view: false, checkin: true, manage: false },
+        presenca: { view: true, checkin: true, manage: false },
         pagamentos: { view: false, manage: false, export: false },
-        nivelamento: { view: false, evaluate: false, schedule: true, view_own: true },
-        aulas: { view: false, manage: false, view_own: true },
+        nivelamento: { view: true, evaluate: false, schedule: true, view_own: true },
+        aulas: { view: true, manage: false, view_own: true },
         eventos: { view: true, manage: false },
-        avisos: { view: false, manage: false },
+        avisos: { view: true, manage: false },
         equipe: { view: false, manage: false },
         usuarios: { view: false, manage: false, approve: false }
       });
-      showToast('Predefinição de Aluno aplicada (Acesso exclusivo a aulas, presença, nivelamento e eventos)', 'info');
+      showToast('Predefinição de Aluno selecionada e aplicada com sucesso!', 'info');
     } else if (preset === 'professor') {
       setEditRole('professor');
       setEditCargo('Professor / Instrutor');
@@ -159,6 +172,7 @@ export const UsuariosPage: React.FC = () => {
   };
 
   const handleToggleModulePerm = (module: keyof PermissoesUsuario, action: string) => {
+    setSelectedPreset('custom');
     setEditPerms((prev) => {
       const copy = { ...prev };
       const mod = { ...((copy as any)[module] || {}) };
@@ -176,13 +190,24 @@ export const UsuariosPage: React.FC = () => {
     if (modalMode === 'approve') {
       const ok = await updateUserStatus(selectedUser.id, 'aprovado', {
         role: editRole,
+        cargo_pretendido: editCargo,
         permissoes: editPerms,
-        aprovado_por: currentUser.nome
+        aprovado_por: currentUser?.nome || 'Thiago Lafite (Master)'
       });
-      if (ok) setSelectedUser(null);
+      if (ok) {
+        if (editRole === 'aluno') {
+          await vincularAlunoUsuario(selectedUser.id).catch(() => null);
+        }
+        setSelectedUser(null);
+      }
     } else {
       const ok = await updateUserPermissions(selectedUser.id, editPerms, editRole, editCargo);
-      if (ok) setSelectedUser(null);
+      if (ok) {
+        if (editRole === 'aluno') {
+          await vincularAlunoUsuario(selectedUser.id).catch(() => null);
+        }
+        setSelectedUser(null);
+      }
     }
 
     setProcessing(false);
@@ -708,44 +733,102 @@ export const UsuariosPage: React.FC = () => {
                 <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-2">
                   1. Predefinições Rápidas de Acesso
                 </label>
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
                   <button
                     type="button"
                     onClick={() => applyPreset('aluno')}
-                    className="p-2.5 rounded-xl border border-slate-200 hover:border-brand-500 hover:bg-orange-50/50 text-left text-xs font-semibold text-slate-700 transition-all cursor-pointer"
+                    className={`p-3 rounded-2xl border text-left text-xs font-semibold transition-all cursor-pointer relative ${
+                      selectedPreset === 'aluno'
+                        ? 'border-brand-500 bg-orange-50/90 shadow-md ring-2 ring-brand-500/20 text-brand-950 font-bold'
+                        : 'border-slate-200 hover:border-brand-300 hover:bg-orange-50/30 text-slate-700'
+                    }`}
                   >
-                    <div className="text-brand-600 font-bold mb-0.5">Aluno</div>
-                    <div className="text-[10px] text-slate-400 font-normal">Minhas Aulas, Presença & Pagamentos</div>
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="text-brand-600 font-extrabold text-sm flex items-center gap-1.5">
+                        🎓 Aluno
+                      </span>
+                      {selectedPreset === 'aluno' && (
+                        <span className="px-1.5 py-0.5 rounded-full bg-brand-600 text-white text-[9px] font-black uppercase tracking-wider">
+                          Ativo
+                        </span>
+                      )}
+                    </div>
+                    <div className="text-[11px] text-slate-500 font-normal leading-tight">
+                      Minhas Aulas, Presença & Nivelamento
+                    </div>
                   </button>
 
                   <button
                     type="button"
                     onClick={() => applyPreset('professor')}
-                    className="p-2.5 rounded-xl border border-slate-200 hover:border-brand-500 hover:bg-orange-50/50 text-left text-xs font-semibold text-slate-700 transition-all cursor-pointer"
+                    className={`p-3 rounded-2xl border text-left text-xs font-semibold transition-all cursor-pointer relative ${
+                      selectedPreset === 'professor'
+                        ? 'border-brand-500 bg-orange-50/90 shadow-md ring-2 ring-brand-500/20 text-brand-950 font-bold'
+                        : 'border-slate-200 hover:border-brand-300 hover:bg-orange-50/30 text-slate-700'
+                    }`}
                   >
-                    <div className="text-brand-600 font-bold mb-0.5">Professor</div>
-                    <div className="text-[10px] text-slate-400 font-normal">Chamada, Cronograma & Nivelamento</div>
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="text-brand-600 font-extrabold text-sm flex items-center gap-1.5">
+                        👨‍🏫 Professor
+                      </span>
+                      {selectedPreset === 'professor' && (
+                        <span className="px-1.5 py-0.5 rounded-full bg-brand-600 text-white text-[9px] font-black uppercase tracking-wider">
+                          Ativo
+                        </span>
+                      )}
+                    </div>
+                    <div className="text-[11px] text-slate-500 font-normal leading-tight">
+                      Chamada, Cronograma & Nivelamento
+                    </div>
                   </button>
 
                   <button
                     type="button"
                     onClick={() => applyPreset('admin')}
-                    className="p-2.5 rounded-xl border border-slate-200 hover:border-brand-500 hover:bg-orange-50/50 text-left text-xs font-semibold text-slate-700 transition-all cursor-pointer"
+                    className={`p-3 rounded-2xl border text-left text-xs font-semibold transition-all cursor-pointer relative ${
+                      selectedPreset === 'admin'
+                        ? 'border-brand-500 bg-orange-50/90 shadow-md ring-2 ring-brand-500/20 text-brand-950 font-bold'
+                        : 'border-slate-200 hover:border-brand-300 hover:bg-orange-50/30 text-slate-700'
+                    }`}
                   >
-                    <div className="text-brand-600 font-bold mb-0.5">Secretaria</div>
-                    <div className="text-[10px] text-slate-400 font-normal">Alunos, Pagamentos & Grade</div>
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="text-brand-600 font-extrabold text-sm flex items-center gap-1.5">
+                        📋 Secretaria
+                      </span>
+                      {selectedPreset === 'admin' && (
+                        <span className="px-1.5 py-0.5 rounded-full bg-brand-600 text-white text-[9px] font-black uppercase tracking-wider">
+                          Ativo
+                        </span>
+                      )}
+                    </div>
+                    <div className="text-[11px] text-slate-500 font-normal leading-tight">
+                      Alunos, Pagamentos & Grade
+                    </div>
                   </button>
 
                   <button
                     type="button"
                     onClick={() => applyPreset('full')}
-                    className="p-2.5 rounded-xl border border-amber-200 bg-amber-50/40 hover:bg-amber-100/50 text-left text-xs font-semibold text-amber-900 transition-all cursor-pointer"
+                    className={`p-3 rounded-2xl border text-left text-xs font-semibold transition-all cursor-pointer relative ${
+                      selectedPreset === 'full'
+                        ? 'border-amber-500 bg-amber-100/70 shadow-md ring-2 ring-amber-500/20 text-amber-950 font-bold'
+                        : 'border-amber-200 bg-amber-50/40 hover:bg-amber-100/50 text-amber-900'
+                    }`}
                   >
-                    <div className="text-amber-700 font-bold mb-0.5 flex items-center gap-1">
-                      <Sparkles className="h-3 w-3" />
-                      <span>Total</span>
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="text-amber-700 font-extrabold text-sm flex items-center gap-1.5">
+                        <Sparkles className="h-3.5 w-3.5" />
+                        Total
+                      </span>
+                      {selectedPreset === 'full' && (
+                        <span className="px-1.5 py-0.5 rounded-full bg-amber-700 text-white text-[9px] font-black uppercase tracking-wider">
+                          Ativo
+                        </span>
+                      )}
                     </div>
-                    <div className="text-[10px] text-amber-700/80 font-normal">Acesso completo aos módulos</div>
+                    <div className="text-[11px] text-amber-800/80 font-normal leading-tight">
+                      Acesso completo aos módulos
+                    </div>
                   </button>
                 </div>
               </div>
@@ -771,7 +854,13 @@ export const UsuariosPage: React.FC = () => {
                   </label>
                   <select
                     value={editRole}
-                    onChange={(e) => setEditRole(e.target.value as UserRole)}
+                    onChange={(e) => {
+                      const newRole = e.target.value as UserRole;
+                      setEditRole(newRole);
+                      if (newRole === 'aluno') applyPreset('aluno');
+                      else if (newRole === 'professor') applyPreset('professor');
+                      else if (newRole === 'admin') applyPreset('admin');
+                    }}
                     className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-brand-500"
                   >
                     <option value="aluno">Aluno</option>
@@ -783,25 +872,146 @@ export const UsuariosPage: React.FC = () => {
 
               {/* Informação de Sincronização Automática */}
               {editRole === 'aluno' && (
-                <div className="rounded-xl bg-emerald-50 border border-emerald-200 p-3 text-xs text-emerald-800 flex items-center gap-2.5">
-                  <CheckCircle className="h-4 w-4 text-emerald-600 shrink-0" />
+                <div className="rounded-2xl bg-emerald-50 border border-emerald-200 p-4 text-xs text-emerald-800 flex items-start gap-3">
+                  <CheckCircle className="h-5 w-5 text-emerald-600 shrink-0 mt-0.5" />
                   <div>
-                    <span className="font-bold">Sincronização Automática de Aluno:</span>
-                    <p className="text-[11px] text-emerald-700 mt-0.5">
-                      Ao salvar este usuário como Aluno, o sistema criará/vinculará automaticamente sua ficha de aluno no menu <strong>Alunos</strong> (com matrícula ativa e nível inicial B1).
+                    <span className="font-bold text-sm text-emerald-900">Sincronização Automática de Aluno:</span>
+                    <p className="text-xs text-emerald-700 mt-1 leading-relaxed">
+                      Ao confirmar este usuário como Aluno, o sistema criará e vinculará automaticamente sua ficha de aluno no menu <strong>Alunos</strong> (com matrícula ativa e nível inicial B1). O aluno já poderá entrar na sua conta e ver suas aulas e presenças.
                     </p>
                   </div>
                 </div>
               )}
 
               {editRole === 'professor' && (
-                <div className="rounded-xl bg-blue-50 border border-blue-200 p-3 text-xs text-blue-800 flex items-center gap-2.5">
-                  <CheckCircle className="h-4 w-4 text-blue-600 shrink-0" />
+                <div className="rounded-2xl bg-blue-50 border border-blue-200 p-4 text-xs text-blue-800 flex items-start gap-3">
+                  <CheckCircle className="h-5 w-5 text-blue-600 shrink-0 mt-0.5" />
                   <div>
-                    <span className="font-bold">Sincronização Automática de Professor:</span>
-                    <p className="text-[11px] text-blue-700 mt-0.5">
+                    <span className="font-bold text-sm text-blue-900">Sincronização Automática de Professor:</span>
+                    <p className="text-xs text-blue-700 mt-1 leading-relaxed">
                       Ao salvar este usuário como Professor, ele será automaticamente vinculado como membro da equipe e estará disponível na seleção de professores do Cronograma e Turmas.
                     </p>
+                  </div>
+                </div>
+              )}
+
+              {/* Seção Clara: Acessos Exclusivos do Aluno */}
+              {editRole === 'aluno' && (
+                <div className="rounded-2xl border-2 border-emerald-200 bg-emerald-50/60 p-4 space-y-3">
+                  <div className="flex items-center gap-2">
+                    <div className="h-8 w-8 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center font-bold text-sm">
+                      🎓
+                    </div>
+                    <div>
+                      <h4 className="text-xs font-bold text-emerald-950 uppercase tracking-wide">
+                        Acessos Ativos no Portal do Aluno
+                      </h4>
+                      <p className="text-[11px] text-emerald-700">
+                        Os recursos abaixo estarão imediatamente disponíveis na barra lateral da conta do aluno:
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+                    <label className="flex items-center gap-2.5 p-2.5 rounded-xl bg-white border border-emerald-200 shadow-2xs cursor-pointer hover:bg-emerald-50/40 transition-colors">
+                      <input
+                        type="checkbox"
+                        checked={Boolean(editPerms.aulas?.view ?? editPerms.aulas?.view_own ?? true)}
+                        onChange={() => {
+                          setSelectedPreset('custom');
+                          setEditPerms((p) => ({
+                            ...p,
+                            aulas: { ...p.aulas, view: !(p.aulas?.view ?? true), view_own: !(p.aulas?.view_own ?? true) }
+                          }));
+                        }}
+                        className="rounded text-emerald-600 focus:ring-emerald-500 h-4 w-4"
+                      />
+                      <div>
+                        <span className="font-bold text-slate-800">🎵 Minhas Aulas & Turmas</span>
+                        <p className="text-[10px] text-slate-500">Acesso ao calendário das aulas e turmas matriculadas</p>
+                      </div>
+                    </label>
+
+                    <label className="flex items-center gap-2.5 p-2.5 rounded-xl bg-white border border-emerald-200 shadow-2xs cursor-pointer hover:bg-emerald-50/40 transition-colors">
+                      <input
+                        type="checkbox"
+                        checked={Boolean(editPerms.presenca?.checkin ?? true)}
+                        onChange={() => {
+                          setSelectedPreset('custom');
+                          setEditPerms((p) => ({
+                            ...p,
+                            presenca: { ...p.presenca, checkin: !(p.presenca?.checkin ?? true), view: !(p.presenca?.view ?? true) }
+                          }));
+                        }}
+                        className="rounded text-emerald-600 focus:ring-emerald-500 h-4 w-4"
+                      />
+                      <div>
+                        <span className="font-bold text-slate-800">📝 Marcar Presença (Check-in)</span>
+                        <p className="text-[10px] text-slate-500">Realizar check-in na aula e ver frequência</p>
+                      </div>
+                    </label>
+
+                    <label className="flex items-center gap-2.5 p-2.5 rounded-xl bg-white border border-emerald-200 shadow-2xs cursor-pointer hover:bg-emerald-50/40 transition-colors">
+                      <input
+                        type="checkbox"
+                        checked={Boolean(editPerms.nivelamento?.schedule ?? true)}
+                        onChange={() => {
+                          setSelectedPreset('custom');
+                          setEditPerms((p) => ({
+                            ...p,
+                            nivelamento: {
+                              ...p.nivelamento,
+                              schedule: !(p.nivelamento?.schedule ?? true),
+                              view_own: !(p.nivelamento?.view_own ?? true),
+                              view: !(p.nivelamento?.view ?? true)
+                            }
+                          }));
+                        }}
+                        className="rounded text-emerald-600 focus:ring-emerald-500 h-4 w-4"
+                      />
+                      <div>
+                        <span className="font-bold text-slate-800">🏅 Nivelamento Técnico</span>
+                        <p className="text-[10px] text-slate-500">Ver nível atual e agendar avaliação</p>
+                      </div>
+                    </label>
+
+                    <label className="flex items-center gap-2.5 p-2.5 rounded-xl bg-white border border-emerald-200 shadow-2xs cursor-pointer hover:bg-emerald-50/40 transition-colors">
+                      <input
+                        type="checkbox"
+                        checked={Boolean(editPerms.eventos?.view ?? true)}
+                        onChange={() => {
+                          setSelectedPreset('custom');
+                          setEditPerms((p) => ({
+                            ...p,
+                            eventos: { ...p.eventos, view: !(p.eventos?.view ?? true) }
+                          }));
+                        }}
+                        className="rounded text-emerald-600 focus:ring-emerald-500 h-4 w-4"
+                      />
+                      <div>
+                        <span className="font-bold text-slate-800">🎉 Eventos & Bailes</span>
+                        <p className="text-[10px] text-slate-500">Acesso aos eventos da escola e convites</p>
+                      </div>
+                    </label>
+
+                    <label className="flex items-center gap-2.5 p-2.5 rounded-xl bg-white border border-emerald-200 shadow-2xs cursor-pointer hover:bg-emerald-50/40 transition-colors sm:col-span-2">
+                      <input
+                        type="checkbox"
+                        checked={Boolean(editPerms.avisos?.view ?? true)}
+                        onChange={() => {
+                          setSelectedPreset('custom');
+                          setEditPerms((p) => ({
+                            ...p,
+                            avisos: { ...p.avisos, view: !(p.avisos?.view ?? true) }
+                          }));
+                        }}
+                        className="rounded text-emerald-600 focus:ring-emerald-500 h-4 w-4"
+                      />
+                      <div>
+                        <span className="font-bold text-slate-800">📢 Mural de Avisos</span>
+                        <p className="text-[10px] text-slate-500">Visualizar comunicados da direção e da coordenação</p>
+                      </div>
+                    </label>
                   </div>
                 </div>
               )}
