@@ -582,14 +582,42 @@ app.get('/api/aulas', async (req, res) => {
 
 app.post('/api/aulas', async (req, res) => {
   try {
-    const { nome, nivel, turno, dia_semana, horario_inicio, horario_fim, sala, equipe_id, capacidade_maxima } = req.body;
+    const { nome, nivel, turno, dia_semana, horario_inicio, horario_fim, sala, equipe_id, user_id, professor_nome, capacidade_maxima } = req.body;
     const id = `aul_${Date.now()}`;
     await turso.execute({
-      sql: `INSERT INTO aulas (id, nome, nivel, turno, dia_semana, horario_inicio, horario_fim, sala, equipe_id, capacidade_maxima)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      args: [id, nome, nivel, turno, dia_semana, horario_inicio, horario_fim, sala, equipe_id, capacidade_maxima || 24]
+      sql: `INSERT INTO aulas (id, nome, nivel, turno, dia_semana, horario_inicio, horario_fim, sala, equipe_id, user_id, professor_nome, capacidade_maxima)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      args: [id, nome, nivel, turno, dia_semana, horario_inicio, horario_fim, sala, equipe_id || null, user_id || null, professor_nome || null, capacidade_maxima || 24]
     });
-    res.status(201).json({ id, nome, nivel });
+    res.status(201).json({ id, nome, nivel, equipe_id, user_id, professor_nome });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.put('/api/aulas/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { nome, nivel, turno, dia_semana, horario_inicio, horario_fim, sala, equipe_id, user_id, professor_nome, capacidade_maxima } = req.body;
+    const updates = [];
+    const args = [];
+    if (nome !== undefined) { updates.push('nome = ?'); args.push(nome); }
+    if (nivel !== undefined) { updates.push('nivel = ?'); args.push(nivel); }
+    if (turno !== undefined) { updates.push('turno = ?'); args.push(turno); }
+    if (dia_semana !== undefined) { updates.push('dia_semana = ?'); args.push(dia_semana); }
+    if (horario_inicio !== undefined) { updates.push('horario_inicio = ?'); args.push(horario_inicio); }
+    if (horario_fim !== undefined) { updates.push('horario_fim = ?'); args.push(horario_fim); }
+    if (sala !== undefined) { updates.push('sala = ?'); args.push(sala); }
+    if (equipe_id !== undefined) { updates.push('equipe_id = ?'); args.push(equipe_id || null); }
+    if (user_id !== undefined) { updates.push('user_id = ?'); args.push(user_id || null); }
+    if (professor_nome !== undefined) { updates.push('professor_nome = ?'); args.push(professor_nome || null); }
+    if (capacidade_maxima !== undefined) { updates.push('capacidade_maxima = ?'); args.push(capacidade_maxima); }
+
+    if (updates.length > 0) {
+      args.push(id);
+      await turso.execute({ sql: `UPDATE aulas SET ${updates.join(', ')} WHERE id = ?`, args });
+    }
+    res.json({ success: true, id });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -606,7 +634,7 @@ app.get('/api/cronograma', async (req, res) => {
 
 app.put('/api/cronograma', async (req, res) => {
   try {
-    const { aula_id, data_aula, tema_aula, observacoes } = req.body;
+    const { aula_id, data_aula, tema_aula, observacoes, professor_id, professor_user_id, professor_nome } = req.body;
     const existing = await turso.execute({
       sql: 'SELECT * FROM cronogramas WHERE aula_id = ? AND data_aula = ?',
       args: [aula_id, data_aula]
@@ -614,18 +642,18 @@ app.put('/api/cronograma', async (req, res) => {
 
     if (existing.rows.length > 0) {
       await turso.execute({
-        sql: 'UPDATE cronogramas SET tema_aula = ?, observacoes = ? WHERE id = ?',
-        args: [tema_aula, observacoes || null, existing.rows[0].id]
+        sql: `UPDATE cronogramas SET tema_aula = ?, observacoes = ?, professor_id = COALESCE(?, professor_id), professor_user_id = COALESCE(?, professor_user_id), professor_nome = COALESCE(?, professor_nome) WHERE id = ?`,
+        args: [tema_aula, observacoes || null, professor_id || null, professor_user_id || null, professor_nome || null, existing.rows[0].id]
       });
-      return res.json({ ...existing.rows[0], tema_aula, observacoes });
+      return res.json({ ...existing.rows[0], tema_aula, observacoes, professor_id, professor_user_id, professor_nome });
     }
 
     const id = `crono_${Date.now()}`;
     await turso.execute({
-      sql: 'INSERT INTO cronogramas (id, aula_id, data_aula, tema_aula, observacoes) VALUES (?, ?, ?, ?, ?)',
-      args: [id, aula_id, data_aula, tema_aula, observacoes || null]
+      sql: 'INSERT INTO cronogramas (id, aula_id, data_aula, tema_aula, observacoes, professor_id, professor_user_id, professor_nome) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+      args: [id, aula_id, data_aula, tema_aula, observacoes || null, professor_id || null, professor_user_id || null, professor_nome || null]
     });
-    res.status(201).json({ id, aula_id, data_aula, tema_aula, observacoes });
+    res.status(201).json({ id, aula_id, data_aula, tema_aula, observacoes, professor_id, professor_user_id, professor_nome });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

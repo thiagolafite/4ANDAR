@@ -24,7 +24,8 @@ import {
   Grid,
   List,
   CheckCircle2,
-  AlertCircle
+  AlertCircle,
+  UserCheck
 } from 'lucide-react';
 import { NivelForro, Aula } from '../types';
 import {
@@ -39,6 +40,7 @@ export const CronogramaPage: React.FC = () => {
   const {
     currentUser,
     aulas,
+    minhasTurmas,
     cronogramas,
     equipe,
     professoresCadastrados,
@@ -78,6 +80,20 @@ export const CronogramaPage: React.FC = () => {
   const [selectedTurno, setSelectedTurno] = useState<string>('todos');
   const [searchQuery, setSearchQuery] = useState<string>('');
 
+  const [filterMinhasTurmas, setFilterMinhasTurmas] = useState(false);
+
+  // Helper para verificar se a turma pertence ao professor logado
+  const isProfessorDaTurma = (aula: Aula, user: typeof currentUser) => {
+    if (!user) return false;
+    if (aula.user_id && aula.user_id === user.id) return true;
+    if (aula.equipe_id && (aula.equipe_id === user.id || aula.equipe_id === user.equipe_id)) return true;
+    if (aula.professor_nome && user.nome && (
+      aula.professor_nome.toLowerCase().includes(user.nome.toLowerCase()) ||
+      user.nome.toLowerCase().includes(aula.professor_nome.toLowerCase())
+    )) return true;
+    return false;
+  };
+
   // Weekly view pagination state
   const [selectedWeekIndex, setSelectedWeekIndex] = useState<number>(0);
 
@@ -93,6 +109,8 @@ export const CronogramaPage: React.FC = () => {
 
   const [novoTema, setNovoTema] = useState('');
   const [novaObs, setNovaObs] = useState('');
+  const [selectedProfId, setSelectedProfId] = useState('');
+  const [associarTurmaInteira, setAssociarTurmaInteira] = useState(false);
 
   // Excel Import Modal state
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
@@ -107,6 +125,7 @@ export const CronogramaPage: React.FC = () => {
   const [newDateVal, setNewDateVal] = useState('');
   const [newDateTurmaId, setNewDateTurmaId] = useState('');
   const [newDateTema, setNewDateTema] = useState('');
+  const [newDateProfId, setNewDateProfId] = useState('');
 
   // 1. Organize Turmas for the columns (Priority to official Saturday classes in exact screenshot order)
   const sortedAulas = useMemo(() => {
@@ -122,6 +141,7 @@ export const CronogramaPage: React.FC = () => {
     ];
 
     const list = [...aulas].filter((aula) => {
+      if (filterMinhasTurmas && !isProfessorDaTurma(aula, currentUser)) return false;
       if (selectedNivel !== 'todos' && aula.nivel !== selectedNivel) return false;
       if (selectedTurno !== 'todos' && aula.turno !== selectedTurno) return false;
       return true;
@@ -135,7 +155,7 @@ export const CronogramaPage: React.FC = () => {
       if (idxB !== -1) return 1;
       return a.nome.localeCompare(b.nome);
     });
-  }, [aulas, selectedNivel, selectedTurno]);
+  }, [aulas, selectedNivel, selectedTurno, filterMinhasTurmas, currentUser]);
 
   // 2. Gather and sort all unique dates from cronogramas & official schedule
   const allUniqueDates = useMemo(() => {
@@ -273,6 +293,9 @@ export const CronogramaPage: React.FC = () => {
     const crono = cronogramas.find(
       (c) => c.aula_id === aulaId && c.data_aula === dataAula
     );
+    const turma = aulas.find((a) => a.id === aulaId);
+    const initialProfId = crono?.professor_id || crono?.professor_user_id || turma?.equipe_id || turma?.user_id || '';
+
     setEditingCell({
       aulaId,
       dataAula,
@@ -283,16 +306,43 @@ export const CronogramaPage: React.FC = () => {
     });
     setNovoTema(crono?.tema_aula || '');
     setNovaObs(crono?.observacoes || '');
+    setSelectedProfId(initialProfId);
+    setAssociarTurmaInteira(false);
   };
 
   // Save theme
   const handleSaveTema = () => {
     if (!editingCell) return;
+    const prof = professoresCadastrados.find(
+      (p) => p.id === selectedProfId || p.user_id === selectedProfId || p.equipe_id === selectedProfId
+    );
+
+    let finalObs = novaObs;
+    if (prof) {
+      if (!finalObs) {
+        finalObs = `Prof: ${prof.nome}`;
+      } else if (!finalObs.toLowerCase().includes(prof.nome.toLowerCase())) {
+        if (/prof:\s*[^,\n]+/i.test(finalObs)) {
+          finalObs = finalObs.replace(/prof:\s*[^,\n]+/i, `Prof: ${prof.nome}`);
+        } else {
+          finalObs = `${finalObs} (Prof: ${prof.nome})`;
+        }
+      }
+    }
+
     updateTemaCronograma(
       editingCell.aulaId,
       editingCell.dataAula,
       novoTema,
-      novaObs
+      finalObs,
+      prof
+        ? {
+            professor_id: prof.id,
+            professor_nome: prof.nome,
+            professor_user_id: prof.user_id,
+            associarTurma: associarTurmaInteira
+          }
+        : undefined
     );
     setEditingCell(null);
   };
@@ -367,11 +417,29 @@ export const CronogramaPage: React.FC = () => {
     e.preventDefault();
     if (!newDateVal || !newDateTurmaId || !newDateTema) return;
 
-    updateTemaCronograma(newDateTurmaId, newDateVal, newDateTema);
+    const prof = professoresCadastrados.find(
+      (p) => p.id === newDateProfId || p.user_id === newDateProfId || p.equipe_id === newDateProfId
+    );
+
+    updateTemaCronograma(
+      newDateTurmaId,
+      newDateVal,
+      newDateTema,
+      prof ? `Prof: ${prof.nome}` : '',
+      prof
+        ? {
+            professor_id: prof.id,
+            professor_nome: prof.nome,
+            professor_user_id: prof.user_id,
+            associarTurma: false
+          }
+        : undefined
+    );
     setIsAddDateModalOpen(false);
     setNewDateVal('');
     setNewDateTurmaId('');
     setNewDateTema('');
+    setNewDateProfId('');
   };
 
   const meses = [
@@ -622,6 +690,21 @@ export const CronogramaPage: React.FC = () => {
                 <option value="Noite">Noite</option>
               </select>
             </div>
+
+            {/* Filter Minhas Turmas */}
+            {isEquipe && (
+              <button
+                type="button"
+                onClick={() => setFilterMinhasTurmas(!filterMinhasTurmas)}
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
+                  filterMinhasTurmas
+                    ? 'bg-amber-500 text-white shadow-xs ring-2 ring-amber-300'
+                    : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                }`}
+              >
+                <span>⭐ Minhas Turmas ({minhasTurmas.length})</span>
+              </button>
+            )}
           </div>
 
           <div className="text-xs text-slate-500 font-medium">
@@ -655,20 +738,28 @@ export const CronogramaPage: React.FC = () => {
                     Data
                   </th>
 
-                  {/* Turma Columns: I2 Manhã, I1 Tarde, B1 Manhã, B2 Manhã, B2 Tarde, I1 Manhã, B1 Tarde... */}
+                  {/* Turma Columns */}
                   {sortedAulas.map((turma) => {
                     const prof =
-                      professoresCadastrados.find((p) => p.id === turma.equipe_id || p.equipe_id === turma.equipe_id || p.user_id === turma.equipe_id) ||
+                      professoresCadastrados.find((p) => p.id === turma.equipe_id || p.equipe_id === turma.equipe_id || p.user_id === turma.equipe_id || (turma.user_id && p.user_id === turma.user_id)) ||
                       equipe.find((e) => e.id === turma.equipe_id);
+                    const isMinhaTurma = isProfessorDaTurma(turma, currentUser);
 
                     return (
                       <th
                         key={turma.id}
-                        className="p-3 font-bold text-slate-800 text-xs min-w-[170px] border-r border-orange-100/80 last:border-r-0"
+                        className={`p-3 font-bold text-slate-800 text-xs min-w-[170px] border-r border-orange-100/80 last:border-r-0 ${
+                          isMinhaTurma ? 'bg-amber-100/70' : ''
+                        }`}
                       >
                         <div className="flex items-center justify-between gap-1 mb-1">
-                          <span className="font-extrabold text-slate-900 text-[13px]">
+                          <span className="font-extrabold text-slate-900 text-[13px] flex items-center gap-1">
                             {turma.nome}
+                            {isMinhaTurma && (
+                              <span className="text-[9px] font-black uppercase tracking-wider text-amber-900 bg-amber-200/90 px-1 rounded">
+                                Sua
+                              </span>
+                            )}
                           </span>
                           <span
                             className={`px-1.5 py-0.5 rounded text-[9px] font-black border ${getNivelBadgeColor(
@@ -680,7 +771,9 @@ export const CronogramaPage: React.FC = () => {
                         </div>
                         <div className="text-[10px] text-slate-500 font-normal flex items-center justify-between">
                           <span>{turma.turno}</span>
-                          <span>Prof. {prof?.nome.split(' ')[0] || '—'}</span>
+                          <span className="font-semibold text-slate-700 truncate max-w-[100px]" title={prof?.nome || turma.professor_nome}>
+                            Prof. {prof?.nome.split(' ')[0] || turma.professor_nome?.split(' ')[0] || '—'}
+                          </span>
                         </div>
                       </th>
                     );
@@ -739,14 +832,27 @@ export const CronogramaPage: React.FC = () => {
                             historicalScheduleRows2023.find((r) => r.data === isoDate);
 
                           const tema = crono?.tema_aula || fallbackSchedule?.temas?.[turma.nome];
-                          const professor = crono?.observacoes || (fallbackSchedule?.professores?.[turma.nome] ? `Prof: ${fallbackSchedule.professores[turma.nome]}` : '');
+                          const professor = crono?.professor_nome 
+                            ? `Prof: ${crono.professor_nome}`
+                            : crono?.observacoes 
+                            ? crono.observacoes 
+                            : (fallbackSchedule?.professores?.[turma.nome] ? `Prof: ${fallbackSchedule.professores[turma.nome]}` : (turma.professor_nome ? `Prof: ${turma.professor_nome}` : ''));
+
+                          const isMinhaTurma = isProfessorDaTurma(turma, currentUser);
+                          const isMinhaAula =
+                            isMinhaTurma ||
+                            (crono?.professor_user_id && crono.professor_user_id === currentUser.id) ||
+                            (crono?.professor_id && crono.professor_id === currentUser.id) ||
+                            (crono?.professor_nome && currentUser.nome && crono.professor_nome.toLowerCase().includes(currentUser.nome.toLowerCase()));
 
                           return (
                             <td
                               key={turma.id}
                               onClick={() => handleOpenEdit(turma.id, isoDate, turma.nome)}
                               className={`p-2.5 border-r border-slate-100 last:border-r-0 align-top transition-colors relative group ${
-                                isEquipe
+                                isMinhaAula
+                                  ? 'bg-amber-50/50 hover:bg-amber-100/70 border-b border-amber-200/50'
+                                  : isEquipe
                                   ? 'cursor-pointer hover:bg-orange-50/60'
                                   : ''
                               }`}
@@ -757,7 +863,14 @@ export const CronogramaPage: React.FC = () => {
                                   {professor && !tema?.includes('SEM AULA') && (
                                     <div className="text-[10.5px] font-semibold text-slate-500 flex items-center gap-1 mt-1">
                                       <User className="w-2.5 h-2.5 text-brand-600 shrink-0" />
-                                      <span>{professor}</span>
+                                      <span className={isMinhaAula ? 'font-bold text-amber-900' : ''}>{professor}</span>
+                                    </div>
+                                  )}
+                                  {isMinhaAula && (
+                                    <div className="mt-1">
+                                      <span className="inline-flex items-center gap-1 text-[9px] font-black uppercase tracking-wider text-amber-900 bg-amber-200/90 px-1.5 py-0.2 rounded">
+                                        ⭐ Sua Turma/Aula
+                                      </span>
                                     </div>
                                   )}
                                 </div>
@@ -1227,6 +1340,42 @@ export const CronogramaPage: React.FC = () => {
 
             {/* Form inputs */}
             <div className="space-y-3">
+              {/* Professor Selector */}
+              <div className="p-3 bg-orange-50/80 border border-orange-200 rounded-2xl space-y-2">
+                <label className="block text-xs font-bold text-slate-800 uppercase tracking-wider flex items-center justify-between">
+                  <span className="flex items-center gap-1.5 text-brand-900">
+                    <UserCheck className="h-4 w-4 text-brand-600" />
+                    Professor(a) Responsável
+                  </span>
+                  <span className="text-[10px] text-brand-600 font-semibold lowercase">
+                    vincula à conta do professor
+                  </span>
+                </label>
+
+                <select
+                  value={selectedProfId}
+                  onChange={(e) => setSelectedProfId(e.target.value)}
+                  className="w-full rounded-xl border border-orange-300 p-2.5 text-xs font-semibold text-slate-800 outline-none focus:border-brand-500 bg-white"
+                >
+                  <option value="">-- Selecionar Professor Cadastrado --</option>
+                  {professoresCadastrados.map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.nome} {p.email ? `(${p.email})` : ''} — {p.user_id ? 'Conta Vinculada' : 'Equipe'}
+                    </option>
+                  ))}
+                </select>
+
+                <label className="flex items-center gap-2 cursor-pointer text-xs font-semibold text-slate-700 pt-0.5">
+                  <input
+                    type="checkbox"
+                    checked={associarTurmaInteira}
+                    onChange={(e) => setAssociarTurmaInteira(e.target.checked)}
+                    className="rounded text-brand-600 focus:ring-brand-500 h-3.5 w-3.5"
+                  />
+                  <span>Definir também como professor oficial da Turma ({editingCell.turmaNome})</span>
+                </label>
+              </div>
+
               <div>
                 <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
                   Tema da Aula
@@ -1338,6 +1487,25 @@ export const CronogramaPage: React.FC = () => {
                   {aulas.map((a) => (
                     <option key={a.id} value={a.id}>
                       {a.nome} ({a.nivel} • {a.turno})
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1 flex items-center justify-between">
+                  <span>Professor(a) Responsável (Opcional)</span>
+                  <span className="text-[10px] text-brand-600 font-semibold lowercase">associa à conta</span>
+                </label>
+                <select
+                  value={newDateProfId}
+                  onChange={(e) => setNewDateProfId(e.target.value)}
+                  className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm focus:border-brand-500 outline-none bg-white"
+                >
+                  <option value="">-- Padrão da Turma --</option>
+                  {professoresCadastrados.map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.nome} {p.email ? `(${p.email})` : ''}
                     </option>
                   ))}
                 </select>

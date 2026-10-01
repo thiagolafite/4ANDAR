@@ -79,11 +79,18 @@ interface AppContextType {
 
   // Aulas & Cronograma
   aulas: Aula[];
+  minhasTurmas: Aula[];
   addAula: (aula: Omit<Aula, 'id'>) => void;
   updateAula: (id: string, updates: Partial<Aula>) => void;
   deleteAula: (id: string) => void;
   cronogramas: Cronograma[];
-  updateTemaCronograma: (aulaId: string, dataAula: string, tema: string, obs?: string) => void;
+  updateTemaCronograma: (
+    aulaId: string,
+    dataAula: string,
+    tema: string,
+    obs?: string,
+    professorData?: { professor_id?: string; professor_nome?: string; professor_user_id?: string; associarTurma?: boolean }
+  ) => void;
   deleteCronogramaCell: (aulaId: string, dataAula: string) => void;
   deleteCronogramaRow: (dataAula: string) => void;
   importCronogramaExcel: (parsed: ExcelParseResult) => Promise<number>;
@@ -657,9 +664,37 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   // Aulas & Cronograma
+  const minhasTurmas = useMemo<Aula[]>(() => {
+    if (!currentUser) return [];
+    return aulas.filter((aula) => {
+      if (aula.user_id && aula.user_id === currentUser.id) return true;
+      if (aula.equipe_id && (aula.equipe_id === currentUser.id || aula.equipe_id === currentUser.equipe_id)) return true;
+      if (aula.professor_nome && currentUser.nome && (
+        aula.professor_nome.toLowerCase().includes(currentUser.nome.toLowerCase()) ||
+        currentUser.nome.toLowerCase().includes(aula.professor_nome.toLowerCase())
+      )) return true;
+      const hasCronoAssigned = cronogramas.some((c) =>
+        c.aula_id === aula.id && (
+          (c.professor_user_id && c.professor_user_id === currentUser.id) ||
+          (c.professor_id && (c.professor_id === currentUser.id || c.professor_id === currentUser.equipe_id)) ||
+          (c.professor_nome && currentUser.nome && (
+            c.professor_nome.toLowerCase().includes(currentUser.nome.toLowerCase()) ||
+            currentUser.nome.toLowerCase().includes(c.professor_nome.toLowerCase())
+          ))
+        )
+      );
+      return hasCronoAssigned;
+    });
+  }, [aulas, cronogramas, currentUser]);
+
   const addAula = (aulaData: Omit<Aula, 'id'>) => {
     const nova: Aula = { ...aulaData, id: `aul_${Date.now()}` };
     setAulas((prev) => [...prev, nova]);
+    fetch(`${API_URL}/aulas`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(nova)
+    }).catch(() => {});
     showToast(`Turma ${nova.nome} criada!`);
   };
 
@@ -667,6 +702,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setAulas((prev) =>
       prev.map((aul) => (aul.id === id ? { ...aul, ...updates } : aul))
     );
+    fetch(`${API_URL}/aulas/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(updates)
+    }).catch(() => {});
     showToast('Turma atualizada com sucesso!');
   };
 
@@ -682,7 +722,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     aulaId: string,
     dataAula: string,
     tema: string,
-    obs?: string
+    obs?: string,
+    professorData?: { professor_id?: string; professor_nome?: string; professor_user_id?: string; associarTurma?: boolean }
   ) => {
     setCronogramas((prev) => {
       const existing = prev.find(
@@ -691,7 +732,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       if (existing) {
         return prev.map((c) =>
           c.id === existing.id
-            ? { ...c, tema_aula: tema, observacoes: obs ?? c.observacoes }
+            ? {
+                ...c,
+                tema_aula: tema,
+                observacoes: obs ?? c.observacoes,
+                professor_id: professorData?.professor_id ?? c.professor_id,
+                professor_nome: professorData?.professor_nome ?? c.professor_nome,
+                professor_user_id: professorData?.professor_user_id ?? c.professor_user_id
+              }
             : c
         );
       } else {
@@ -700,11 +748,23 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           aula_id: aulaId,
           data_aula: dataAula,
           tema_aula: tema,
-          observacoes: obs
+          observacoes: obs,
+          professor_id: professorData?.professor_id,
+          professor_nome: professorData?.professor_nome,
+          professor_user_id: professorData?.professor_user_id
         };
         return [...prev, novo];
       }
     });
+
+    // Se marcou para associar o professor à Turma inteira também:
+    if (professorData?.associarTurma && (professorData.professor_id || professorData.professor_nome || professorData.professor_user_id)) {
+      updateAula(aulaId, {
+        equipe_id: professorData.professor_id,
+        user_id: professorData.professor_user_id,
+        professor_nome: professorData.professor_nome
+      });
+    }
 
     // Salva no backend Turso
     fetch(`${API_URL}/cronograma`, {
@@ -714,11 +774,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         aula_id: aulaId,
         data_aula: dataAula,
         tema_aula: tema,
-        observacoes: obs
+        observacoes: obs,
+        professor_id: professorData?.professor_id,
+        professor_user_id: professorData?.professor_user_id,
+        professor_nome: professorData?.professor_nome
       })
     }).catch(() => {});
 
-    showToast('Tema da aula salvo no cronograma!');
+    showToast('Tema da aula e professor salvos no cronograma!');
   };
 
   const deleteCronogramaCell = (aulaId: string, dataAula: string) => {
@@ -1086,6 +1149,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         updateEquipe,
         deleteEquipe,
         aulas,
+        minhasTurmas,
         addAula,
         updateAula,
         deleteAula,

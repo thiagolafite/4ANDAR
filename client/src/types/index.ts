@@ -122,7 +122,9 @@ export interface Aula {
   horario_inicio: string;
   horario_fim: string;
   sala: string;
-  equipe_id: string; // Professor
+  equipe_id?: string; // Professor (equipe_id ou id de professor)
+  user_id?: string; // ID do usuário cadastrado no sistema
+  professor_nome?: string;
   capacidade_maxima: number;
 }
 
@@ -132,6 +134,9 @@ export interface Cronograma {
   data_aula: string; // YYYY-MM-DD
   tema_aula: string;
   observacoes?: string;
+  professor_id?: string;
+  professor_user_id?: string;
+  professor_nome?: string;
 }
 
 export interface Presenca {

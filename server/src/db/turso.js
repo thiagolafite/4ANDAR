@@ -218,6 +218,21 @@ export const initTursoDatabase = async () => {
     try {
       await turso.execute("ALTER TABLE avisos ADD COLUMN prioridade TEXT DEFAULT 'normal';");
     } catch {}
+    try {
+      await turso.execute('ALTER TABLE aulas ADD COLUMN user_id TEXT;');
+    } catch {}
+    try {
+      await turso.execute('ALTER TABLE aulas ADD COLUMN professor_nome TEXT;');
+    } catch {}
+    try {
+      await turso.execute('ALTER TABLE cronogramas ADD COLUMN professor_id TEXT;');
+    } catch {}
+    try {
+      await turso.execute('ALTER TABLE cronogramas ADD COLUMN professor_user_id TEXT;');
+    } catch {}
+    try {
+      await turso.execute('ALTER TABLE cronogramas ADD COLUMN professor_nome TEXT;');
+    } catch {}
 
     // Verifica se o Administrador Master existe
     const masterCheck = await turso.execute({

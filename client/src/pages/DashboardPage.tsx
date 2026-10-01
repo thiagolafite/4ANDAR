@@ -17,12 +17,14 @@ import {
   PartyPopper,
   Megaphone,
   UserCheck,
-  FileSpreadsheet
+  FileSpreadsheet,
+  BookOpen
 } from 'lucide-react';
 
 export const DashboardPage: React.FC = () => {
   const {
     currentUser,
+    minhasTurmas,
     alunos,
     alunosCadastrados,
     professoresCadastrados,
@@ -171,30 +173,58 @@ export const DashboardPage: React.FC = () => {
               </p>
             </div>
 
-            <div
-              onClick={() => navigate('/pagamentos')}
-              className="cursor-pointer rounded-2xl bg-white p-5 border border-slate-100 shadow-sm hover:shadow-md hover:border-emerald-300 transition-all group"
-            >
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-bold uppercase tracking-wider text-slate-400">
-                  Receita do Mês
-                </span>
-                <div className="rounded-xl bg-emerald-50 p-2.5 text-emerald-600 group-hover:bg-emerald-600 group-hover:text-white transition-colors">
-                  <DollarSign className="h-5 w-5" />
+            {/* Metric 3: Receita (para Master/Admin) ou Minhas Turmas (para Professor) */}
+            {isMaster || currentUser.role === 'admin' ? (
+              <div
+                onClick={() => navigate('/pagamentos')}
+                className="cursor-pointer rounded-2xl bg-white p-5 border border-slate-100 shadow-sm hover:shadow-md hover:border-emerald-300 transition-all group"
+              >
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold uppercase tracking-wider text-slate-400">
+                    Receita do Mês
+                  </span>
+                  <div className="rounded-xl bg-emerald-50 p-2.5 text-emerald-600 group-hover:bg-emerald-600 group-hover:text-white transition-colors">
+                    <DollarSign className="h-5 w-5" />
+                  </div>
                 </div>
+                <div className="mt-3 flex items-baseline gap-2">
+                  <span className="text-2xl font-black text-slate-900">
+                    R$ {totalRecebidoMes.toFixed(2)}
+                  </span>
+                  <span className="text-xs font-semibold text-emerald-600">
+                    {pagamentosPagos.length} baixas
+                  </span>
+                </div>
+                <p className="mt-1 text-xs text-slate-400">
+                  {pagamentosAtrasados.length} mensalidade(s) em atraso
+                </p>
               </div>
-              <div className="mt-3 flex items-baseline gap-2">
-                <span className="text-2xl font-black text-slate-900">
-                  R$ {totalRecebidoMes.toFixed(2)}
-                </span>
-                <span className="text-xs font-semibold text-emerald-600">
-                  {pagamentosPagos.length} baixas
-                </span>
+            ) : (
+              <div
+                onClick={() => navigate('/cronograma')}
+                className="cursor-pointer rounded-2xl bg-white p-5 border border-amber-200 bg-amber-50/20 shadow-sm hover:shadow-md hover:border-amber-400 transition-all group"
+              >
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold uppercase tracking-wider text-amber-700">
+                    Minhas Turmas
+                  </span>
+                  <div className="rounded-xl bg-amber-100 p-2.5 text-amber-700 group-hover:bg-amber-600 group-hover:text-white transition-colors">
+                    <BookOpen className="h-5 w-5" />
+                  </div>
+                </div>
+                <div className="mt-3 flex items-baseline gap-2">
+                  <span className="text-2xl font-black text-slate-900">
+                    {minhasTurmas.length}
+                  </span>
+                  <span className="text-xs font-semibold text-amber-700">
+                    turmas atribuídas
+                  </span>
+                </div>
+                <p className="mt-1 text-xs text-slate-500">
+                  Ver no planejamento semanal
+                </p>
               </div>
-              <p className="mt-1 text-xs text-slate-400">
-                {pagamentosAtrasados.length} mensalidade(s) em atraso
-              </p>
-            </div>
+            )}
 
             <div
               onClick={() => navigate('/nivelamento')}
@@ -221,6 +251,131 @@ export const DashboardPage: React.FC = () => {
               </p>
             </div>
           </div>
+
+          {/* Seção Exclusiva: Minhas Turmas & Aulas Atribuídas (para professores ou equipe) */}
+          {(currentUser.role === 'professor' || minhasTurmas.length > 0) && (
+            <div className="rounded-3xl bg-gradient-to-br from-amber-500/10 via-orange-500/5 to-white p-6 border-2 border-amber-300/80 shadow-sm space-y-4">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-amber-200/60 pb-3">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="p-1.5 rounded-lg bg-amber-500 text-white shadow-xs">
+                      <BookOpen className="h-4 w-4" />
+                    </span>
+                    <h3 className="text-lg font-black text-slate-900">
+                      ⭐ Minhas Turmas & Aulas Atribuídas
+                    </h3>
+                    <span className="rounded-full bg-amber-100 text-amber-800 border border-amber-300 px-2.5 py-0.5 text-xs font-black">
+                      {minhasTurmas.length} {minhasTurmas.length === 1 ? 'Turma' : 'Turmas'}
+                    </span>
+                  </div>
+                  <p className="text-xs text-slate-500 mt-1">
+                    Aulas associadas diretamente ao seu usuário. Você pode acompanhar os temas planejados e abrir a chamada.
+                  </p>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => navigate('/cronograma')}
+                    className="inline-flex items-center gap-1.5 text-xs font-bold text-amber-900 bg-amber-100 hover:bg-amber-200 px-3.5 py-2 rounded-xl transition-colors"
+                  >
+                    <Calendar className="h-3.5 w-3.5 text-amber-700" />
+                    Ver Meu Cronograma
+                  </button>
+                  <button
+                    onClick={() => navigate('/aulas')}
+                    className="inline-flex items-center gap-1.5 text-xs font-bold text-slate-700 bg-white border border-slate-200 hover:bg-slate-50 px-3.5 py-2 rounded-xl transition-colors"
+                  >
+                    Gerenciar Turmas
+                  </button>
+                </div>
+              </div>
+
+              {minhasTurmas.length === 0 ? (
+                <div className="rounded-2xl border border-dashed border-amber-300 bg-white/70 p-6 text-center">
+                  <BookOpen className="h-8 w-8 text-amber-400 mx-auto mb-2" />
+                  <p className="text-sm font-bold text-amber-900">
+                    Nenhuma turma vinculada ao seu usuário no momento.
+                  </p>
+                  <p className="text-xs text-slate-500 mt-1 max-w-md mx-auto">
+                    O administrador master pode associar seu usuário a turmas e aulas no Planejamento Semanal (Cronograma) ou no menu de Turmas.
+                  </p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {minhasTurmas.map((turma) => {
+                    const turmaCronos = cronogramas
+                      .filter((c) => c.aula_id === turma.id)
+                      .sort((a, b) => a.data_aula.localeCompare(b.data_aula));
+                    const proximoCrono = turmaCronos[0];
+                    const alunosNivel = alunos.filter(
+                      (a) => a.nivel_atual === turma.nivel && a.status === 'ativo'
+                    ).length;
+
+                    return (
+                      <div
+                        key={turma.id}
+                        className="rounded-2xl bg-white border border-amber-200 p-4 shadow-xs hover:shadow-md hover:border-amber-400 transition-all flex flex-col justify-between space-y-3"
+                      >
+                        <div>
+                          <div className="flex items-center justify-between">
+                            <span className="px-2 py-0.5 rounded text-[10px] font-black bg-amber-100 text-amber-900 border border-amber-300">
+                              Nível {turma.nivel} • {turma.turno}
+                            </span>
+                            <span className="text-[11px] font-bold text-slate-600 bg-slate-100 px-2 py-0.5 rounded">
+                              {turma.dia_semana}
+                            </span>
+                          </div>
+
+                          <h4 className="text-base font-bold text-slate-900 mt-2">
+                            {turma.nome}
+                          </h4>
+
+                          <div className="mt-2.5 rounded-xl bg-orange-50/70 p-3 border border-orange-100 text-xs">
+                            <span className="font-bold text-amber-900 block flex items-center gap-1.5">
+                              <Sparkles className="h-3.5 w-3.5 text-amber-600" />
+                              Próximo Tema ({proximoCrono?.data_aula || 'Em breve'}):
+                            </span>
+                            <span className="text-slate-700 font-medium block mt-1">
+                              {proximoCrono?.tema_aula || 'Tema a ser definido'}
+                            </span>
+                            {proximoCrono?.observacoes && (
+                              <span className="text-[11px] text-slate-500 block mt-1">
+                                💡 {proximoCrono.observacoes}
+                              </span>
+                            )}
+                          </div>
+
+                          <div className="mt-3 text-[11px] text-slate-500 space-y-1">
+                            <p className="flex items-center gap-1.5">
+                              <Clock className="h-3 w-3 text-slate-400" />
+                              <span>{turma.horario_inicio} às {turma.horario_fim}</span>
+                            </p>
+                            <p>📍 {turma.sala}</p>
+                            <p>👥 ~{alunosNivel} alunos ativos no nível</p>
+                          </div>
+                        </div>
+
+                        <div className="pt-2 border-t border-slate-100 flex items-center gap-2">
+                          <button
+                            onClick={() => navigate('/presenca')}
+                            className="flex-1 text-center py-2 px-3 rounded-xl bg-orange-600 hover:bg-orange-700 text-white text-xs font-bold transition-colors shadow-xs"
+                          >
+                            Fazer Chamada
+                          </button>
+                          <button
+                            onClick={() => navigate('/cronograma')}
+                            className="px-3 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold transition-colors"
+                          >
+                            Cronograma
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Quick Actions & Automation Bar */}
           <div className="rounded-2xl bg-white p-4 border border-slate-100 shadow-sm flex flex-wrap items-center justify-between gap-3">
