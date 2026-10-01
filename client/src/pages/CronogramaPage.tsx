@@ -33,7 +33,7 @@ import {
   exportCurrentScheduleToExcel,
   ExcelParseResult
 } from '../utils/excelImport';
-import { annualScheduleRows } from '../data/annualScheduleData';
+import { annualScheduleRows, historicalScheduleRows2023 } from '../data/annualScheduleData';
 
 export const CronogramaPage: React.FC = () => {
   const {
@@ -71,6 +71,7 @@ export const CronogramaPage: React.FC = () => {
   const [viewMode, setViewMode] = useState<'anual' | 'semanal'>('anual');
 
   // Filters
+  const [selectedAno, setSelectedAno] = useState<'2026' | '2023' | 'todos'>('2026');
   const [selectedMes, setSelectedMes] = useState<string>('todos');
   const [selectedNivel, setSelectedNivel] = useState<string>('todos');
   const [selectedTurno, setSelectedTurno] = useState<string>('todos');
@@ -109,13 +110,14 @@ export const CronogramaPage: React.FC = () => {
   // 1. Organize Turmas for the columns (Priority to official Saturday classes in exact screenshot order)
   const sortedAulas = useMemo(() => {
     const orderPreference = [
-      'I2 Manhã',
-      'I1 Tarde',
       'B1 Manhã',
+      'I2 Manhã',
       'B2 Manhã',
-      'B2 Tarde',
       'I1 Manhã',
-      'B1 Tarde'
+      'B1 Tarde',
+      'I1 Tarde',
+      'B2 Tarde',
+      'I2 Tarde'
     ];
 
     const list = [...aulas].filter((aula) => {
@@ -138,8 +140,11 @@ export const CronogramaPage: React.FC = () => {
   const allUniqueDates = useMemo(() => {
     const datesSet = new Set<string>();
 
-    // Include dates from annual schedule
+    // Include dates from annual schedule 2026
     annualScheduleRows.forEach((r) => datesSet.add(r.data));
+
+    // Include dates from historical schedule 2023
+    historicalScheduleRows2023.forEach((r) => datesSet.add(r.data));
 
     // Include dates from cronogramas state
     cronogramas.forEach((c) => {
@@ -149,9 +154,14 @@ export const CronogramaPage: React.FC = () => {
     return Array.from(datesSet).sort();
   }, [cronogramas]);
 
-  // Filter dates by month and search query
+  // Filter dates by year, month and search query
   const filteredDates = useMemo(() => {
     return allUniqueDates.filter((isoDate) => {
+      // Filter by selected Academic Year
+      if (selectedAno !== 'todos' && !isoDate.startsWith(selectedAno)) {
+        return false;
+      }
+
       const parts = isoDate.split('-');
       const month = parts[1]; // '01' .. '12'
 
@@ -163,7 +173,9 @@ export const CronogramaPage: React.FC = () => {
       if (searchQuery.trim()) {
         const q = searchQuery.toLowerCase();
         const hasMatchingTheme = cronogramas.some(
-          (c) => c.data_aula === isoDate && c.tema_aula.toLowerCase().includes(q)
+          (c) =>
+            c.data_aula === isoDate &&
+            (c.tema_aula.toLowerCase().includes(q) || (c.observacoes && c.observacoes.toLowerCase().includes(q)))
         );
         const dateMatches = isoDate.includes(q);
         if (!hasMatchingTheme && !dateMatches) return false;
@@ -171,18 +183,22 @@ export const CronogramaPage: React.FC = () => {
 
       return true;
     });
-  }, [allUniqueDates, selectedMes, searchQuery, cronogramas]);
+  }, [allUniqueDates, selectedAno, selectedMes, searchQuery, cronogramas]);
 
   // Format date helper: "2026-01-04" -> "sábado, 04/01"
   const formatDateLabel = (isoDate: string): string => {
-    const official = annualScheduleRows.find((r) => r.data === isoDate);
+    const official = annualScheduleRows.find((r) => r.data === isoDate) || historicalScheduleRows2023.find((r) => r.data === isoDate);
     if (official) return official.label;
 
-    const [y, m, d] = isoDate.split('-');
-    const dateObj = new Date(Number(y), Number(m) - 1, Number(d));
-    const dayNames = ['domingo', 'segunda', 'terça', 'quarta', 'quinta', 'sexta', 'sábado'];
-    const dayName = dayNames[dateObj.getDay()] || 'sábado';
-    return `${dayName}, ${d}/${m}`;
+    const parts = isoDate.split('-');
+    if (parts.length === 3) {
+      const [y, m, d] = parts;
+      const dateObj = new Date(Number(y), Number(m) - 1, Number(d));
+      const dayNames = ['domingo', 'segunda', 'terça', 'quarta', 'quinta', 'sexta', 'sábado'];
+      const dayName = dayNames[dateObj.getDay()] || 'sábado';
+      return `${dayName}, ${d}/${m}`;
+    }
+    return isoDate;
   };
 
   // Badge styler based on theme content
@@ -193,8 +209,18 @@ export const CronogramaPage: React.FC = () => {
 
     const upper = tema.toUpperCase();
 
+    // INÍCIO DE MÓDULO
+    if (upper.includes('INÍCIO') || upper.includes('INICIO') || upper.includes('MODULO') || upper.includes('MÓDULO')) {
+      return (
+        <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-emerald-50 text-emerald-800 border border-emerald-300 text-xs font-bold leading-snug">
+          <Sparkles className="w-3 h-3 text-emerald-600 shrink-0" />
+          <span>{tema}</span>
+        </div>
+      );
+    }
+
     // SEM AULA / FERIADOS
-    if (upper.includes('SEM AULA') || upper.includes('FERIADO') || upper.includes('RECESSO')) {
+    if (upper.includes('SEM AULA') || upper.includes('FERIADO') || upper.includes('RECESSO') || upper.includes('CARNAVAL') || upper.includes('SÃO JOÃO') || upper.includes('SAO JOAO')) {
       return (
         <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-rose-50 text-rose-700 border border-rose-200 text-xs font-bold leading-snug">
           <span className="w-1.5 h-1.5 rounded-full bg-rose-500 shrink-0" />
@@ -298,6 +324,19 @@ export const CronogramaPage: React.FC = () => {
     setIsParsingExcel(true);
     try {
       const result = await parseCronogramaExcel(file);
+      setParseResult(result);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setIsParsingExcel(false);
+    }
+  };
+
+  const handleSheetChange = async (sheetName: string) => {
+    if (!excelFile) return;
+    setIsParsingExcel(true);
+    try {
+      const result = await parseCronogramaExcel(excelFile, sheetName);
       setParseResult(result);
     } catch (err) {
       console.error(err);
@@ -459,6 +498,54 @@ export const CronogramaPage: React.FC = () => {
 
       {/* Filter and Month Navigation Bar */}
       <div className="rounded-2xl bg-white p-4 border border-slate-200 shadow-sm space-y-3">
+        {/* Academic Year Selector & Metrics Bar */}
+        <div className="flex flex-wrap items-center justify-between gap-3 pb-2 border-b border-slate-100">
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">
+              Ano Letivo:
+            </span>
+            <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-xl">
+              <button
+                type="button"
+                onClick={() => setSelectedAno('2026')}
+                className={`px-3 py-1 rounded-lg text-xs font-black transition-all ${
+                  selectedAno === '2026'
+                    ? 'bg-brand-600 text-white shadow-xs'
+                    : 'text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                2026 (Atual)
+              </button>
+              <button
+                type="button"
+                onClick={() => setSelectedAno('2023')}
+                className={`px-3 py-1 rounded-lg text-xs font-black transition-all ${
+                  selectedAno === '2023'
+                    ? 'bg-brand-600 text-white shadow-xs'
+                    : 'text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                2023 (Histórico)
+              </button>
+              <button
+                type="button"
+                onClick={() => setSelectedAno('todos')}
+                className={`px-3 py-1 rounded-lg text-xs font-bold transition-all ${
+                  selectedAno === 'todos'
+                    ? 'bg-slate-900 text-white shadow-xs'
+                    : 'text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                Todos os Anos
+              </button>
+            </div>
+          </div>
+
+          <div className="text-xs text-slate-500 font-medium">
+            Exibindo <strong>{filteredDates.length}</strong> datas • <strong>{sortedAulas.length}</strong> turmas
+          </div>
+        </div>
+
         {/* Months Bar */}
         <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-thin">
           <span className="text-xs font-bold text-slate-400 uppercase tracking-wider mr-1">
@@ -644,7 +731,12 @@ export const CronogramaPage: React.FC = () => {
                           const crono = cronogramas.find(
                             (c) => c.aula_id === turma.id && c.data_aula === isoDate
                           );
-                          const tema = crono?.tema_aula;
+                          const fallbackSchedule =
+                            annualScheduleRows.find((r) => r.data === isoDate) ||
+                            historicalScheduleRows2023.find((r) => r.data === isoDate);
+
+                          const tema = crono?.tema_aula || fallbackSchedule?.temas?.[turma.nome];
+                          const professor = crono?.observacoes || (fallbackSchedule?.professores?.[turma.nome] ? `Prof: ${fallbackSchedule.professores[turma.nome]}` : '');
 
                           return (
                             <td
@@ -656,8 +748,16 @@ export const CronogramaPage: React.FC = () => {
                                   : ''
                               }`}
                             >
-                              <div className="min-h-[44px] flex flex-col justify-between">
-                                <div>{renderThemeBadge(tema)}</div>
+                              <div className="min-h-[48px] flex flex-col justify-between">
+                                <div>
+                                  {renderThemeBadge(tema)}
+                                  {professor && !tema?.includes('SEM AULA') && (
+                                    <div className="text-[10.5px] font-semibold text-slate-500 flex items-center gap-1 mt-1">
+                                      <User className="w-2.5 h-2.5 text-brand-600 shrink-0" />
+                                      <span>{professor}</span>
+                                    </div>
+                                  )}
+                                </div>
 
                                 {/* Floating edit/delete actions on cell hover */}
                                 {isEquipe && (
@@ -881,17 +981,54 @@ export const CronogramaPage: React.FC = () => {
               {/* Parse Success Preview */}
               {parseResult && parseResult.success && (
                 <div className="space-y-3">
-                  <div className="p-3.5 rounded-xl bg-emerald-50 border border-emerald-200 text-xs text-emerald-900 flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" />
-                      <span>
-                        Planilha reconhecida com sucesso! <strong>{parseResult.datas.length} datas</strong> e{' '}
-                        <strong>{parseResult.turmas.length} turmas</strong> detectadas.
+                  {/* Sheet Selector (if multiple sheets exist in workbook) */}
+                  {parseResult.availableSheets.length > 1 && (
+                    <div className="flex flex-wrap items-center justify-between gap-2 p-3 rounded-xl bg-slate-50 border border-slate-200">
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-bold text-slate-700">Aba da Planilha:</span>
+                        <select
+                          value={parseResult.sheetName}
+                          onChange={(e) => handleSheetChange(e.target.value)}
+                          className="text-xs font-bold text-slate-800 bg-white border border-slate-300 rounded-lg px-2.5 py-1 outline-none focus:border-brand-500"
+                        >
+                          {parseResult.availableSheets.map((s) => (
+                            <option key={s} value={s}>
+                              {s}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-emerald-50 text-emerald-800 border border-emerald-200 text-xs font-bold">
+                        <Sparkles className="w-3 h-3 text-emerald-600" />
+                        {parseResult.formatDetected === 'matriz_f4a_horizontal'
+                          ? 'Matriz Pedagógica Oficial F4A (Horizontal)'
+                          : 'Tabela Vertical Padrão'}
                       </span>
                     </div>
-                    <span className="font-extrabold text-emerald-700">
-                      {parseResult.entries.length} aulas mapeadas
+                  )}
+
+                  {/* Metrics Badges */}
+                  <div className="flex flex-wrap gap-2 text-xs">
+                    <span className="px-2.5 py-1 rounded-lg bg-emerald-50 text-emerald-800 border border-emerald-200 font-bold flex items-center gap-1">
+                      <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                      {parseResult.stats.totalAulas} aulas mapeadas
                     </span>
+                    <span className="px-2.5 py-1 rounded-lg bg-blue-50 text-blue-800 border border-blue-200 font-bold">
+                      {parseResult.stats.totalDatas} sábados
+                    </span>
+                    <span className="px-2.5 py-1 rounded-lg bg-purple-50 text-purple-800 border border-purple-200 font-bold">
+                      {parseResult.stats.totalTurmas} turmas
+                    </span>
+                    {parseResult.stats.totalProfessores > 0 && (
+                      <span className="px-2.5 py-1 rounded-lg bg-amber-50 text-amber-800 border border-amber-200 font-bold">
+                        {parseResult.stats.totalProfessores} professores identificados
+                      </span>
+                    )}
+                    {parseResult.stats.modulosCount > 0 && (
+                      <span className="px-2.5 py-1 rounded-lg bg-teal-50 text-teal-800 border border-teal-200 font-bold">
+                        {parseResult.stats.modulosCount} inícios de módulo
+                      </span>
+                    )}
                   </div>
 
                   {/* Turmas Recognized Badges */}
@@ -918,7 +1055,7 @@ export const CronogramaPage: React.FC = () => {
                     </div>
                   </div>
 
-                  {/* Preview Table of First 4 Rows */}
+                  {/* Preview Table of First 5 Rows */}
                   <div>
                     <label className="block text-[11px] font-bold text-slate-600 uppercase tracking-wider mb-1.5">
                       Prévia dos Dados (Primeiras Linhas):
@@ -941,14 +1078,19 @@ export const CronogramaPage: React.FC = () => {
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-100">
-                          {parseResult.previewRows.slice(0, 4).map((row, idx) => (
+                          {parseResult.previewRows.slice(0, 5).map((row, idx) => (
                             <tr key={idx} className="hover:bg-slate-50">
                               <td className="p-2 font-semibold text-slate-800 whitespace-nowrap">
                                 {row.dataLabel}
                               </td>
                               {parseResult.turmas.slice(0, 4).map((t) => (
-                                <td key={t.nome} className="p-2 text-slate-600 truncate max-w-[140px]">
-                                  {row.temas[t.nome] || '—'}
+                                <td key={t.nome} className="p-2 text-slate-600 truncate max-w-[150px]">
+                                  <div className="truncate font-medium">{row.temas[t.nome] || '—'}</div>
+                                  {row.professores?.[t.nome] && (
+                                    <div className="text-[10px] text-brand-600 font-semibold truncate">
+                                      Prof: {row.professores[t.nome]}
+                                    </div>
+                                  )}
                                 </td>
                               ))}
                               {parseResult.turmas.length > 4 && (

@@ -1,29 +1,7 @@
 import { Aula, Cronograma, NivelForro } from '../types';
 
-// Turmas presentes na planilha oficial do 4ANDAR
+// Turmas presentes na planilha pedagógica oficial do 4ANDAR
 export const turmasOficiais: Array<Omit<Aula, 'id'>> = [
-  {
-    nome: 'I2 Manhã',
-    nivel: 'I2',
-    turno: 'Manhã',
-    dia_semana: 'Sábado',
-    horario_inicio: '10:00',
-    horario_fim: '11:30',
-    sala: 'Salão Principal (Gonzagão)',
-    equipe_id: 'eq_2',
-    capacidade_maxima: 20
-  },
-  {
-    nome: 'I1 Tarde',
-    nivel: 'I1',
-    turno: 'Tarde',
-    dia_semana: 'Sábado',
-    horario_inicio: '14:00',
-    horario_fim: '15:30',
-    sala: 'Salão 2 (Dominguinhos)',
-    equipe_id: 'eq_1',
-    capacidade_maxima: 22
-  },
   {
     nome: 'B1 Manhã',
     nivel: 'B1',
@@ -32,8 +10,19 @@ export const turmasOficiais: Array<Omit<Aula, 'id'>> = [
     horario_inicio: '10:00',
     horario_fim: '11:30',
     sala: 'Salão 2 (Dominguinhos)',
-    equipe_id: 'eq_2',
+    equipe_id: 'eq_bia',
     capacidade_maxima: 24
+  },
+  {
+    nome: 'I2 Manhã',
+    nivel: 'I2',
+    turno: 'Manhã',
+    dia_semana: 'Sábado',
+    horario_inicio: '10:00',
+    horario_fim: '11:30',
+    sala: 'Salão Principal (Gonzagão)',
+    equipe_id: 'eq_davidson',
+    capacidade_maxima: 20
   },
   {
     nome: 'B2 Manhã',
@@ -43,18 +32,7 @@ export const turmasOficiais: Array<Omit<Aula, 'id'>> = [
     horario_inicio: '11:30',
     horario_fim: '13:00',
     sala: 'Salão Principal (Gonzagão)',
-    equipe_id: 'eq_1',
-    capacidade_maxima: 22
-  },
-  {
-    nome: 'B2 Tarde',
-    nivel: 'B2',
-    turno: 'Tarde',
-    dia_semana: 'Sábado',
-    horario_inicio: '15:30',
-    horario_fim: '17:00',
-    sala: 'Salão Principal (Gonzagão)',
-    equipe_id: 'eq_1',
+    equipe_id: 'eq_tony',
     capacidade_maxima: 22
   },
   {
@@ -65,7 +43,7 @@ export const turmasOficiais: Array<Omit<Aula, 'id'>> = [
     horario_inicio: '11:30',
     horario_fim: '13:00',
     sala: 'Salão 2 (Dominguinhos)',
-    equipe_id: 'eq_2',
+    equipe_id: 'eq_gao',
     capacidade_maxima: 20
   },
   {
@@ -76,745 +54,2169 @@ export const turmasOficiais: Array<Omit<Aula, 'id'>> = [
     horario_inicio: '14:00',
     horario_fim: '15:30',
     sala: 'Salão Principal (Gonzagão)',
-    equipe_id: 'eq_2',
+    equipe_id: 'eq_messias',
     capacidade_maxima: 24
+  },
+  {
+    nome: 'I1 Tarde',
+    nivel: 'I1',
+    turno: 'Tarde',
+    dia_semana: 'Sábado',
+    horario_inicio: '14:00',
+    horario_fim: '15:30',
+    sala: 'Salão 2 (Dominguinhos)',
+    equipe_id: 'eq_gao',
+    capacidade_maxima: 22
+  },
+  {
+    nome: 'B2 Tarde',
+    nivel: 'B2',
+    turno: 'Tarde',
+    dia_semana: 'Sábado',
+    horario_inicio: '15:30',
+    horario_fim: '17:00',
+    sala: 'Salão Principal (Gonzagão)',
+    equipe_id: 'eq_taz',
+    capacidade_maxima: 22
+  },
+  {
+    nome: 'I2 Tarde',
+    nivel: 'I2',
+    turno: 'Tarde',
+    dia_semana: 'Sábado',
+    horario_inicio: '15:30',
+    horario_fim: '17:00',
+    sala: 'Salão 2 (Dominguinhos)',
+    equipe_id: 'eq_davidson',
+    capacidade_maxima: 20
   }
 ];
 
 export interface ScheduleRowData {
   data: string; // YYYY-MM-DD
   label: string; // sábado, 04/01
-  temas: {
-    'I2 Manhã': string;
-    'I1 Tarde': string;
-    'B1 Manhã': string;
-    'B2 Manhã': string;
-    'B2 Tarde': string;
-    'I1 Manhã': string;
-    'B1 Tarde': string;
-  };
+  temas: Record<string, string>;
+  professores?: Record<string, string>;
 }
 
-// Todas as 52 semanas/sábados de 2026 fiéis aos 4 anexos da planilha oficial
+
+// Todas as 52 semanas/sábados de 2026 fiéis à estrutura da planilha oficial da escola F4A
 export const annualScheduleRows: ScheduleRowData[] = [
-  // JANEIRO
   {
-    data: '2026-01-04',
-    label: 'sábado, 04/01',
-    temas: {
-      'I2 Manhã': 'Ano Novo - SEM AULA',
-      'I1 Tarde': 'Ano Novo - SEM AULA',
-      'B1 Manhã': 'Ano Novo - SEM AULA',
-      'B2 Manhã': 'Ano Novo - SEM AULA',
-      'B2 Tarde': 'Ano Novo - SEM AULA',
-      'I1 Manhã': 'Ano Novo - SEM AULA',
-      'B1 Tarde': 'Ano Novo - SEM AULA'
+    "data": "2026-01-03",
+    "label": "sábado, 03/01",
+    "temas": {
+      "B1 Manhã": "SEM AULA - RECESSO",
+      "B2 Manhã": "SEM AULA - RECESSO",
+      "I1 Manhã": "SEM AULA - RECESSO",
+      "I2 Manhã": "SEM AULA - RECESSO",
+      "B1 Tarde": "SEM AULA - RECESSO",
+      "B2 Tarde": "SEM AULA - RECESSO",
+      "I1 Tarde": "SEM AULA - RECESSO",
+      "I2 Tarde": "SEM AULA - RECESSO"
+    },
+    "professores": {}
+  },
+  {
+    "data": "2026-01-10",
+    "label": "sábado, 10/01",
+    "temas": {
+      "B1 Manhã": "SEM AULA - RECESSO",
+      "B2 Manhã": "SEM AULA - RECESSO",
+      "I1 Manhã": "SEM AULA - RECESSO",
+      "I2 Manhã": "SEM AULA - RECESSO",
+      "B1 Tarde": "SEM AULA - RECESSO",
+      "B2 Tarde": "SEM AULA - RECESSO",
+      "I1 Tarde": "SEM AULA - RECESSO",
+      "I2 Tarde": "SEM AULA - RECESSO"
+    },
+    "professores": {}
+  },
+  {
+    "data": "2026-01-17",
+    "label": "sábado, 17/01",
+    "temas": {
+      "B1 Manhã": "Passo Básico",
+      "B2 Manhã": "Início Módulo - Musicalidade",
+      "I1 Manhã": "Sacada/Meia-lua",
+      "I2 Manhã": "Turma junta",
+      "B1 Tarde": "Passo Básico",
+      "B2 Tarde": "Passo de Cintura (+Variações sem Contratempo)",
+      "I1 Tarde": "Avião (+Variações com Contratempo)",
+      "I2 Tarde": "Trocadilho"
+    },
+    "professores": {
+      "B1 Manhã": "BIA",
+      "B2 Manhã": "TONY",
+      "I1 Manhã": "DAVIDSON",
+      "I2 Manhã": "DAVIDSON",
+      "B1 Tarde": "MESSIAS",
+      "B2 Tarde": "TAZ",
+      "I1 Tarde": "GÃO",
+      "I2 Tarde": "DAVIDSON"
     }
   },
   {
-    data: '2026-01-11',
-    label: 'sábado, 11/01',
-    temas: {
-      'I2 Manhã': 'Esmeril Quebrado',
-      'I1 Tarde': 'Revisão de Contratempo',
-      'B1 Manhã': 'Passo Básico',
-      'B2 Manhã': 'Ritmo',
-      'B2 Tarde': 'Ritmo',
-      'I1 Manhã': 'Revisão de Contratempo',
-      'B1 Tarde': 'Passo Básico'
+    "data": "2026-01-24",
+    "label": "sábado, 24/01",
+    "temas": {
+      "B1 Manhã": "Soltinho",
+      "B2 Manhã": "Especial",
+      "I1 Manhã": "Sinistro",
+      "I2 Manhã": "Passo de perna",
+      "B1 Tarde": "Meio Giro Trás/Frente (Aulão/Junto)",
+      "B2 Tarde": "Passo de Cintura (+Variações sem Contratempo)",
+      "I1 Tarde": "Avião (+Variações com Contratempo)",
+      "I2 Tarde": "Trocadilho inverso"
+    },
+    "professores": {
+      "B1 Manhã": "BIA",
+      "B2 Manhã": "TONY E JULY",
+      "I1 Manhã": "GÃO",
+      "I2 Manhã": "DAVIDSON",
+      "B1 Tarde": "MESSIAS",
+      "B2 Tarde": "TAZ",
+      "I1 Tarde": "GÃO",
+      "I2 Tarde": "DAVIDSON"
     }
   },
   {
-    data: '2026-01-18',
-    label: 'sábado, 18/01',
-    temas: {
-      'I2 Manhã': 'Esmeril Invertido',
-      'I1 Tarde': 'Banana c contra',
-      'B1 Manhã': 'Xaxadinho',
-      'B2 Manhã': 'Musicalidade',
-      'B2 Tarde': 'Musicalidade',
-      'I1 Manhã': 'Banana c contra',
-      'B1 Tarde': 'Xaxadinho'
+    "data": "2026-01-31",
+    "label": "sábado, 31/01",
+    "temas": {
+      "B1 Manhã": "Giro Completo Trás/Frente (Aulão)",
+      "B2 Manhã": "Giro-Giro (+Variações sem Contratempo)",
+      "I1 Manhã": "Sequência de caracol com avião",
+      "I2 Manhã": "Sequência de passo de perna + paulista",
+      "B1 Tarde": "Revisão passo simples, soltinho e meio giro",
+      "B2 Tarde": "Revisão passo cintura e início esmeril",
+      "I1 Tarde": "Avião (+Variações com Contratempo)",
+      "I2 Tarde": "Passo de perna"
+    },
+    "professores": {
+      "B1 Manhã": "BIA",
+      "B2 Manhã": "TONY E JULY",
+      "I1 Manhã": "GÃO",
+      "I2 Manhã": "DAVIDSON",
+      "B1 Tarde": "MESSIAS",
+      "B2 Tarde": "TAZ",
+      "I1 Tarde": "GÃO",
+      "I2 Tarde": "DAVIDSON"
     }
   },
   {
-    data: '2026-01-25',
-    label: 'sábado, 25/01',
-    temas: {
-      'I2 Manhã': 'Miudinho',
-      'I1 Tarde': 'Chuveirinho c Contra',
-      'B1 Manhã': 'Deslocamento 1',
-      'B2 Manhã': 'Breques',
-      'B2 Tarde': 'Breques',
-      'I1 Manhã': 'Chuveirinho c Contra',
-      'B1 Tarde': 'Deslocamento 1'
-    }
-  },
-
-  // FEVEREIRO
-  {
-    data: '2026-02-01',
-    label: 'sábado, 01/02',
-    temas: {
-      'I2 Manhã': 'Sacada com Pescada',
-      'I1 Tarde': 'Sinistro',
-      'B1 Manhã': 'Deslocamento 2',
-      'B2 Manhã': 'Revisão Meio Giro',
-      'B2 Tarde': 'Revisão Meio Giro',
-      'I1 Manhã': 'Sinistro',
-      'B1 Tarde': 'Deslocamento 2'
+    "data": "2026-02-07",
+    "label": "sábado, 07/02",
+    "temas": {
+      "B1 Manhã": "Abertura soltinho e giro simples",
+      "B2 Manhã": "Giro-giro",
+      "I1 Manhã": "Avião com contratempos",
+      "I2 Manhã": "Avião invertido + contratempo",
+      "B1 Tarde": "Meio giro",
+      "B2 Tarde": "Esmeril junto",
+      "I1 Tarde": "Avião (+Variações com Contratempo)",
+      "I2 Tarde": "Condução do Paulista"
+    },
+    "professores": {
+      "B1 Manhã": "BIA",
+      "B2 Manhã": "GÃO",
+      "I1 Manhã": "GÃO",
+      "I2 Manhã": "DAVIDSON",
+      "B1 Tarde": "MESSIAS",
+      "B2 Tarde": "TAZ",
+      "I1 Tarde": "GÃO",
+      "I2 Tarde": "DAVIDSON"
     }
   },
   {
-    data: '2026-02-08',
-    label: 'sábado, 08/02',
-    temas: {
-      'I2 Manhã': 'Sacada com arrasto',
-      'I1 Tarde': 'Avião c contra',
-      'B1 Manhã': 'Ritmos',
-      'B2 Manhã': 'Pega-Pega',
-      'B2 Tarde': 'Pega-Pega',
-      'I1 Manhã': 'Avião c contra',
-      'B1 Tarde': 'Ritmos'
+    "data": "2026-02-14",
+    "label": "sábado, 14/02",
+    "temas": {
+      "B1 Manhã": "SEM AULA - CARNAVAL",
+      "B2 Manhã": "SEM AULA - CARNAVAL",
+      "I1 Manhã": "SEM AULA - CARNAVAL",
+      "I2 Manhã": "SEM AULA - CARNAVAL",
+      "B1 Tarde": "SEM AULA - CARNAVAL",
+      "B2 Tarde": "SEM AULA - CARNAVAL",
+      "I1 Tarde": "SEM AULA - CARNAVAL",
+      "I2 Tarde": "SEM AULA - CARNAVAL"
+    },
+    "professores": {}
+  },
+  {
+    "data": "2026-02-21",
+    "label": "sábado, 21/02",
+    "temas": {
+      "B1 Manhã": "Troca de peso e passo básico",
+      "B2 Manhã": "Banana banana",
+      "I1 Manhã": "Avião + contratempo",
+      "I2 Manhã": "Sequência das últimas aulas",
+      "B1 Tarde": "Passo básico e meio-giros",
+      "B2 Tarde": "Esmeril junto",
+      "I1 Tarde": "Giro-giro com contratempo",
+      "I2 Tarde": "Movimentações do paulista (saída do pião/meio giro trás e do meio invertido trás)"
+    },
+    "professores": {
+      "B1 Manhã": "BIA",
+      "B2 Manhã": "TONY",
+      "I1 Manhã": "TAZ E BIA",
+      "I2 Manhã": "DAVIDSON",
+      "B1 Tarde": "BIA",
+      "B2 Tarde": "TAZ E JULY",
+      "I1 Tarde": "TAZ E BIA",
+      "I2 Tarde": "DAVIDSON"
     }
   },
   {
-    data: '2026-02-15',
-    label: 'sábado, 15/02',
-    temas: {
-      'I2 Manhã': 'Leque',
-      'I1 Tarde': 'Contratempo DE 7 TEMPOS',
-      'B1 Manhã': 'Giro Completo',
-      'B2 Manhã': 'Giro Giro',
-      'B2 Tarde': 'Giro Giro',
-      'I1 Manhã': 'Contratempo DE 7 TEMPOS',
-      'B1 Tarde': 'Giro Completo'
+    "data": "2026-02-28",
+    "label": "sábado, 28/02",
+    "temas": {
+      "B1 Manhã": "Postura e Ritmo",
+      "B2 Manhã": "Giro-Giro (+Variações sem Contratempo)",
+      "I1 Manhã": "Giro completo trás/frente (junto)",
+      "I2 Manhã": "Pião invertido a partir do giro simples",
+      "B1 Tarde": "Postura e Ritmo",
+      "B2 Tarde": "Giro-Giro (+Variações sem Contratempo)",
+      "I1 Tarde": "Giro completo trás/frente (junto)",
+      "I2 Tarde": "Pião invertido a partir do giro simples"
+    },
+    "professores": {
+      "B1 Manhã": "BIA",
+      "B2 Manhã": "TONY E JULY",
+      "I1 Manhã": "GÃO",
+      "I2 Manhã": "DAVIDSON",
+      "B1 Tarde": "MESSIAS",
+      "B2 Tarde": "TAZ",
+      "I1 Tarde": "GÃO",
+      "I2 Tarde": "DAVIDSON"
     }
   },
   {
-    data: '2026-02-22',
-    label: 'sábado, 22/02',
-    temas: {
-      'I2 Manhã': 'Push and Pull',
-      'I1 Tarde': 'Basquete com Contra',
-      'B1 Manhã': 'Giro Simples',
-      'B2 Manhã': 'Caracol',
-      'B2 Tarde': 'Caracol',
-      'I1 Manhã': 'Basquete com Contra',
-      'B1 Tarde': 'Giro Simples'
-    }
-  },
-
-  // MARÇO
-  {
-    data: '2026-03-01',
-    label: 'sábado, 01/03',
-    temas: {
-      'I2 Manhã': 'Carnaval - SEM AULA',
-      'I1 Tarde': 'Carnaval - SEM AULA',
-      'B1 Manhã': 'Carnaval - SEM AULA',
-      'B2 Manhã': 'Carnaval - SEM AULA',
-      'B2 Tarde': 'Carnaval - SEM AULA',
-      'I1 Manhã': 'Carnaval - SEM AULA',
-      'B1 Tarde': 'Carnaval - SEM AULA'
+    "data": "2026-03-07",
+    "label": "sábado, 07/03",
+    "temas": {
+      "B1 Manhã": "Giro da dama e giro cavalheiro",
+      "B2 Manhã": "banana-banana",
+      "I1 Manhã": "turma junta",
+      "I2 Manhã": "Pião invertido a partir do passo de cintura com contratempo 2",
+      "B1 Tarde": "básico e meio-giro",
+      "B2 Tarde": "Início contratempo",
+      "I1 Tarde": "chuveirinho com contratempo + banana com contratempo",
+      "I2 Tarde": "Pião invertido a partir do passo de cintura com contratempo 2"
+    },
+    "professores": {
+      "B1 Manhã": "JULY",
+      "B2 Manhã": "DAVIDSON",
+      "I1 Manhã": "DAVIDSON",
+      "I2 Manhã": "DAVIDSON",
+      "B1 Tarde": "JULY",
+      "B2 Tarde": "TAZ",
+      "I1 Tarde": "TAZ",
+      "I2 Tarde": "DAVIDSON"
     }
   },
   {
-    data: '2026-03-08',
-    label: 'sábado, 08/03',
-    temas: {
-      'I2 Manhã': 'Paulista Titanic',
-      'I1 Tarde': 'Esmeril aberto',
-      'B1 Manhã': 'Giro do Condutor',
-      'B2 Manhã': 'Avião',
-      'B2 Tarde': 'Avião',
-      'I1 Manhã': 'Esmeril aberto',
-      'B1 Tarde': 'Giro do Condutor'
+    "data": "2026-03-14",
+    "label": "sábado, 14/03",
+    "temas": {
+      "B1 Manhã": "GIRO SIMPLES",
+      "B2 Manhã": "Avião",
+      "I1 Manhã": "giro-giro com contratempo",
+      "I2 Manhã": "Sequencia com contratempo de 7",
+      "B1 Tarde": "Postura + passos iniciais",
+      "B2 Tarde": "CONTRATEMPO condução",
+      "I1 Tarde": "contratempo de 5 tempos + 7 tempos",
+      "I2 Tarde": "Variação de Avião"
+    },
+    "professores": {
+      "B1 Manhã": "BIA",
+      "B2 Manhã": "TONY",
+      "I1 Manhã": "GÃO",
+      "I2 Manhã": "DAVIDSON",
+      "B1 Tarde": "MESSIAS",
+      "B2 Tarde": "TAZ E JULY",
+      "I1 Tarde": "GÃO",
+      "I2 Tarde": "DAVIDSON"
     }
   },
   {
-    data: '2026-03-15',
-    label: 'sábado, 15/03',
-    temas: {
-      'I2 Manhã': 'Contra 9 tempos',
-      'I1 Tarde': 'Esmeril unilateral',
-      'B1 Manhã': 'Variações Giro do Condutor',
-      'B2 Manhã': 'Assalto',
-      'B2 Tarde': 'Assalto',
-      'I1 Manhã': 'Esmeril unilateral',
-      'B1 Tarde': 'Variações Giro do Condutor'
+    "data": "2026-03-21",
+    "label": "sábado, 21/03",
+    "temas": {
+      "B1 Manhã": "xaxadinho; chuveirinho",
+      "B2 Manhã": "Revisão",
+      "I1 Manhã": "Passo de Cintura (+Variações com contratempo)",
+      "I2 Manhã": "Introdução cretinagem",
+      "B1 Tarde": "Giro simples",
+      "B2 Tarde": "contratempo",
+      "I1 Tarde": "sinistro com contratempo + banana invertida",
+      "I2 Tarde": "Contratempos duplos (sinistro e 1ª evolução do sinistro)"
+    },
+    "professores": {
+      "B1 Manhã": "GÃO",
+      "B2 Manhã": "TONY",
+      "I1 Manhã": "GÃO",
+      "I2 Manhã": "DAVIDSON",
+      "B1 Tarde": "JULY",
+      "B2 Tarde": "TONY",
+      "I1 Tarde": "GÃO",
+      "I2 Tarde": "DAVIDSON"
     }
   },
   {
-    data: '2026-03-22',
-    label: 'sábado, 22/03',
-    temas: {
-      'I2 Manhã': 'Banana 9 tempos',
-      'I1 Tarde': 'Firula',
-      'B1 Manhã': 'Chuveirinho',
-      'B2 Manhã': 'Banana Banana',
-      'B2 Tarde': 'Banana Banana',
-      'I1 Manhã': 'Firula',
-      'B1 Tarde': 'Chuveirinho'
+    "data": "2026-03-28",
+    "label": "sábado, 28/03",
+    "temas": {
+      "B1 Manhã": "Meios giros/Nivelamento",
+      "B2 Manhã": "Início de cintura",
+      "I1 Manhã": "Sacada/Meia-lua",
+      "I2 Manhã": "Giro completo invertido + pião invertido",
+      "B1 Tarde": "GIro simples",
+      "B2 Tarde": "Caracol com contratempo",
+      "I1 Tarde": "Sacada/Meia-lua",
+      "I2 Tarde": "Variação de Banana"
+    },
+    "professores": {
+      "B1 Manhã": "GÃO E BIA",
+      "B2 Manhã": "TONY",
+      "I1 Manhã": "GÃO E BIA",
+      "I2 Manhã": "DAVIDSON",
+      "B1 Tarde": "MESSIAS",
+      "B2 Tarde": "TAZ",
+      "I1 Tarde": "GÃO",
+      "I2 Tarde": "DAVIDSON"
     }
   },
   {
-    data: '2026-03-29',
-    label: 'sábado, 29/03',
-    temas: {
-      'I2 Manhã': 'Chuveirinho 9 tempos',
-      'I1 Tarde': 'Musicalidade',
-      'B1 Manhã': 'Manivela',
-      'B2 Manhã': 'Combinações de Passos',
-      'B2 Tarde': 'Combinações de Passos',
-      'I1 Manhã': 'Musicalidade',
-      'B1 Tarde': 'Manivela'
-    }
-  },
-
-  // ABRIL
-  {
-    data: '2026-04-05',
-    label: 'sábado, 05/04',
-    temas: {
-      'I2 Manhã': 'Sinistro 9 e 11',
-      'I1 Tarde': 'Sacada e Pendulo',
-      'B1 Manhã': 'Caracol',
-      'B2 Manhã': 'Cintura',
-      'B2 Tarde': 'Cintura',
-      'I1 Manhã': 'Sacada e Pendulo',
-      'B1 Tarde': 'Caracol'
+    "data": "2026-04-04",
+    "label": "sábado, 04/04",
+    "temas": {
+      "B1 Manhã": "Início Módulo",
+      "B2 Manhã": "passo de cintura",
+      "I1 Manhã": "Pêndulo/Ciscada",
+      "I2 Manhã": "Sacada com a perna esquerda",
+      "B1 Tarde": "Giro simples",
+      "B2 Tarde": "REVISÃO",
+      "I1 Tarde": "Introdução Paulista",
+      "I2 Tarde": "Variação de Passos de Cintura"
+    },
+    "professores": {
+      "B1 Manhã": "BIA",
+      "B2 Manhã": "TONY",
+      "I1 Manhã": "GÃO",
+      "I2 Manhã": "DAVIDSON",
+      "B1 Tarde": "JULY",
+      "B2 Tarde": "TAZ",
+      "I1 Tarde": "GÃO",
+      "I2 Tarde": "DAVIDSON"
     }
   },
   {
-    data: '2026-04-12',
-    label: 'sábado, 12/04',
-    temas: {
-      'I2 Manhã': 'Avião Invertido',
-      'I1 Tarde': 'Sacada Meia Lua',
-      'B1 Manhã': 'Revisão',
-      'B2 Manhã': 'Volta ao Mundo',
-      'B2 Tarde': 'Volta ao Mundo',
-      'I1 Manhã': 'Sacada Meia Lua',
-      'B1 Tarde': 'Revisão'
+    "data": "2026-04-11",
+    "label": "sábado, 11/04",
+    "temas": {
+      "B1 Manhã": "Início Módulo - Peso e contrapeso",
+      "B2 Manhã": "passo de cintura",
+      "I1 Manhã": "Introdução ao Paulista",
+      "I2 Manhã": "Sacada de letra",
+      "B1 Tarde": "Passo Básico",
+      "B2 Tarde": "Revisão Nivelamento",
+      "I1 Tarde": "Paulista com invertido atrás",
+      "I2 Tarde": "Combinação de Cintura com Peões"
+    },
+    "professores": {
+      "B1 Manhã": "GÃO E BIA",
+      "B2 Manhã": "TONY",
+      "I1 Manhã": "GÃO",
+      "I2 Manhã": "DAVIDSON",
+      "B1 Tarde": "MESSIAS",
+      "B2 Tarde": "TAZ",
+      "I1 Tarde": "GÃO",
+      "I2 Tarde": "DAVIDSON"
     }
   },
   {
-    data: '2026-04-19',
-    label: 'sábado, 19/04',
-    temas: {
-      'I2 Manhã': 'Beyblade 9',
-      'I1 Tarde': 'Caminhada e travada',
-      'B1 Manhã': 'Nivelamento',
-      'B2 Manhã': 'Combinação de Cintura',
-      'B2 Tarde': 'Combinação de Cintura',
-      'I1 Manhã': 'Caminhada e travada',
-      'B1 Tarde': 'Nivelamento'
+    "data": "2026-04-18",
+    "label": "sábado, 18/04",
+    "temas": {
+      "B1 Manhã": "Meio-giro dançando junto",
+      "B2 Manhã": "Passo de cintura saindo no invertido",
+      "I1 Manhã": "Paulista",
+      "I2 Manhã": "Sequencia de sacada de esquerda",
+      "B1 Tarde": "Giro do cavalheiro",
+      "B2 Tarde": "Revisão e Nivelamento",
+      "I1 Tarde": "Paulista",
+      "I2 Tarde": "Giros invertidos completos"
+    },
+    "professores": {
+      "B1 Manhã": "GÃO E BIA",
+      "B2 Manhã": "TONY E JULY",
+      "I1 Manhã": "GÃO E BIA",
+      "I2 Manhã": "DAVIDSON",
+      "B1 Tarde": "MESSIAS",
+      "B2 Tarde": "TAZ",
+      "I1 Tarde": "GÃO",
+      "I2 Tarde": "DAVIDSON"
     }
   },
   {
-    data: '2026-04-26',
-    label: 'sábado, 26/04',
-    temas: {
-      'I2 Manhã': 'Giro Simples 9 e 11',
-      'I1 Tarde': 'Paulista',
-      'B1 Manhã': 'Passo Básico',
-      'B2 Manhã': 'Esmeril Fechado',
-      'B2 Tarde': 'Esmeril Fechado',
-      'I1 Manhã': 'Paulista',
-      'B1 Tarde': 'Passo Básico'
-    }
-  },
-
-  // MAIO
-  {
-    data: '2026-05-03',
-    label: 'sábado, 03/05',
-    temas: {
-      'I2 Manhã': 'Basquete 11',
-      'I1 Tarde': 'Combinação de Paulista',
-      'B1 Manhã': 'Xaxadinho',
-      'B2 Manhã': 'Práticas dançantes',
-      'B2 Tarde': 'Práticas dançantes',
-      'I1 Manhã': 'Combinação de Paulista',
-      'B1 Tarde': 'Xaxadinho'
+    "data": "2026-04-25",
+    "label": "sábado, 25/04",
+    "temas": {
+      "B1 Manhã": "Troca de peso",
+      "B2 Manhã": "Ritmo",
+      "I1 Manhã": "Nivelamento + Paulista",
+      "I2 Manhã": "Aula livre",
+      "B1 Tarde": "Troca de peso",
+      "B2 Tarde": "Aula junto com o Básico 1",
+      "I1 Tarde": "Banana finalizando com paulista",
+      "I2 Tarde": "Esmeril unilateral"
+    },
+    "professores": {
+      "B1 Manhã": "BIA",
+      "B2 Manhã": "TONY",
+      "I1 Manhã": "GÃO",
+      "I2 Manhã": "DAVIDSON",
+      "B1 Tarde": "MESSIAS",
+      "B2 Tarde": "TAZ",
+      "I1 Tarde": "GÃO",
+      "I2 Tarde": "DAVIDSON"
     }
   },
   {
-    data: '2026-05-10',
-    label: 'sábado, 10/05',
-    temas: {
-      'I2 Manhã': 'Esmeril Quebrado',
-      'I1 Tarde': 'Pião',
-      'B1 Manhã': 'Deslocamento 1',
-      'B2 Manhã': 'Introdução Contratempo',
-      'B2 Tarde': 'Introdução Contratempo',
-      'I1 Manhã': 'Pião',
-      'B1 Tarde': 'Deslocamento 1'
+    "data": "2026-05-02",
+    "label": "sábado, 02/05",
+    "temas": {
+      "B1 Manhã": "Revisão",
+      "B2 Manhã": "ESMERIL JUNTO",
+      "I1 Manhã": "PAULISTA COM INVERTIDO TRÁS",
+      "I2 Manhã": "bêbado",
+      "B1 Tarde": "Variação do giro simples",
+      "B2 Tarde": "Revisão",
+      "I1 Tarde": "introdução ao esmeril",
+      "I2 Tarde": "Especial"
+    },
+    "professores": {
+      "B1 Manhã": "BIA",
+      "B2 Manhã": "TONY E JULY",
+      "I1 Manhã": "GÃO E BIA",
+      "I2 Manhã": "DAVIDSON",
+      "B1 Tarde": "JULY",
+      "B2 Tarde": "TAZ",
+      "I1 Tarde": "GÃO E JULY",
+      "I2 Tarde": "DAVIDSON"
     }
   },
   {
-    data: '2026-05-17',
-    label: 'sábado, 17/05',
-    temas: {
-      'I2 Manhã': 'Esmeril Invertido',
-      'I1 Tarde': 'Revisão',
-      'B1 Manhã': 'Deslocamento 2',
-      'B2 Manhã': 'Caracol c Contra',
-      'B2 Tarde': 'Caracol c Contra',
-      'I1 Manhã': 'Revisão',
-      'B1 Tarde': 'Deslocamento 2'
+    "data": "2026-05-09",
+    "label": "sábado, 09/05",
+    "temas": {
+      "B1 Manhã": "variações de giro simples",
+      "B2 Manhã": "esmeril junto",
+      "I1 Manhã": "Início Módulo - Paulista com invertido",
+      "I2 Manhã": "paulista",
+      "B1 Tarde": "Giro Completo Trás/Frente (Aulão)",
+      "B2 Tarde": "Musicalidade",
+      "I1 Tarde": "esmeril (variações)",
+      "I2 Tarde": "Turma junta"
+    },
+    "professores": {
+      "B1 Manhã": "BIA",
+      "B2 Manhã": "TONY",
+      "I1 Manhã": "GÃO E BIA",
+      "I2 Manhã": "DAVIDSON",
+      "B1 Tarde": "MESSIAS",
+      "B2 Tarde": "TAZ",
+      "I1 Tarde": "GÃO",
+      "I2 Tarde": "DAVIDSON"
     }
   },
   {
-    data: '2026-05-24',
-    label: 'sábado, 24/05',
-    temas: {
-      'I2 Manhã': 'Miudinho',
-      'I1 Tarde': 'Nivelamento',
-      'B1 Manhã': 'Ritmos',
-      'B2 Manhã': 'Conduções de Contra',
-      'B2 Tarde': 'Conduções de Contra',
-      'I1 Manhã': 'Nivelamento',
-      'B1 Tarde': 'Ritmos'
+    "data": "2026-05-16",
+    "label": "sábado, 16/05",
+    "temas": {
+      "B1 Manhã": "Postura e Ritmo",
+      "B2 Manhã": "esmeril",
+      "I1 Manhã": "Introdução esmeril aberto",
+      "I2 Manhã": "Trocadilho",
+      "B1 Tarde": "Postura e Ritmo",
+      "B2 Tarde": "NIVELAMENTO",
+      "I1 Tarde": "esmeril; introdução pião",
+      "I2 Tarde": "Trocadilho"
+    },
+    "professores": {
+      "B1 Manhã": "BIA",
+      "B2 Manhã": "DAVIDSON",
+      "I1 Manhã": "GÃO E BIA",
+      "I2 Manhã": "DAVIDSON",
+      "B1 Tarde": "MESSIAS",
+      "B2 Tarde": "TAZ",
+      "I1 Tarde": "GÃO",
+      "I2 Tarde": "DAVIDSON"
     }
   },
   {
-    data: '2026-05-31',
-    label: 'sábado, 31/05',
-    temas: {
-      'I2 Manhã': 'Sacada com Pescada',
-      'I1 Tarde': 'Revisão de Contratempo',
-      'B1 Manhã': 'Giro Completo',
-      'B2 Manhã': 'Contra do Passo Básico',
-      'B2 Tarde': 'Contra do Passo Básico',
-      'I1 Manhã': 'Revisão de Contratempo',
-      'B1 Tarde': 'Giro Completo'
-    }
-  },
-
-  // JUNHO
-  {
-    data: '2026-06-07',
-    label: 'sábado, 07/06',
-    temas: {
-      'I2 Manhã': 'Sacada com arrasto',
-      'I1 Tarde': 'Banana c contra',
-      'B1 Manhã': 'Giro Simples',
-      'B2 Manhã': 'Combinações de Contra',
-      'B2 Tarde': 'Combinações de Contra',
-      'I1 Manhã': 'Banana c contra',
-      'B1 Tarde': 'Giro Simples'
+    "data": "2026-05-23",
+    "label": "sábado, 23/05",
+    "temas": {
+      "B1 Manhã": "REVISÃO",
+      "B2 Manhã": "cobrinha",
+      "I1 Manhã": "esmeril abberto",
+      "I2 Manhã": "Trocadilho inverso",
+      "B1 Tarde": "manivela",
+      "B2 Tarde": "invertido",
+      "I1 Tarde": "pião",
+      "I2 Tarde": "Trocadilho inverso"
+    },
+    "professores": {
+      "B1 Manhã": "BIA",
+      "B2 Manhã": "TONY E JULY",
+      "I1 Manhã": "GÃO",
+      "I2 Manhã": "DAVIDSON",
+      "B1 Tarde": "MESSIAS",
+      "B2 Tarde": "TAZ",
+      "I1 Tarde": "GÃO",
+      "I2 Tarde": "DAVIDSON"
     }
   },
   {
-    data: '2026-06-14',
-    label: 'sábado, 14/06',
-    temas: {
-      'I2 Manhã': 'Leque',
-      'I1 Tarde': 'Chuveirinho c Contra',
-      'B1 Manhã': 'Giro do Condutor',
-      'B2 Manhã': 'Revisão',
-      'B2 Tarde': 'Revisão',
-      'I1 Manhã': 'Chuveirinho c Contra',
-      'B1 Tarde': 'Giro do Condutor'
+    "data": "2026-05-30",
+    "label": "sábado, 30/05",
+    "temas": {
+      "B1 Manhã": "Nivelamento",
+      "B2 Manhã": "Contratempo introdução",
+      "I1 Manhã": "esmeril variações",
+      "I2 Manhã": "Passo de perna",
+      "B1 Tarde": "nivelamento",
+      "B2 Tarde": "revisão",
+      "I1 Tarde": "pião",
+      "I2 Tarde": "Passo de perna"
+    },
+    "professores": {
+      "B1 Manhã": "BIA",
+      "B2 Manhã": "TONY E JULY",
+      "I1 Manhã": "GÃO",
+      "I2 Manhã": "DAVIDSON",
+      "B1 Tarde": "MESSIAS",
+      "B2 Tarde": "TAZ",
+      "I1 Tarde": "GÃO",
+      "I2 Tarde": "DAVIDSON"
     }
   },
   {
-    data: '2026-06-21',
-    label: 'sábado, 21/06',
-    temas: {
-      'I2 Manhã': 'São João - SEM AULA',
-      'I1 Tarde': 'São João - SEM AULA',
-      'B1 Manhã': 'São João - SEM AULA',
-      'B2 Manhã': 'São João - SEM AULA',
-      'B2 Tarde': 'São João - SEM AULA',
-      'I1 Manhã': 'São João - SEM AULA',
-      'B1 Tarde': 'São João - SEM AULA'
+    "data": "2026-06-06",
+    "label": "sábado, 06/06",
+    "temas": {
+      "B1 Manhã": "Chameguinho (Aulão)",
+      "B2 Manhã": "contratempo",
+      "I1 Manhã": "técnicas de esmeril",
+      "I2 Manhã": "Condução do Paulista",
+      "B1 Tarde": "Chameguinho (Aulão)",
+      "B2 Tarde": "Caminhada Esquerda/Direita",
+      "I1 Tarde": "técnicas de esmeril",
+      "I2 Tarde": "Condução do Paulista"
+    },
+    "professores": {
+      "B1 Manhã": "BIA",
+      "B2 Manhã": "TONY",
+      "I1 Manhã": "BIA",
+      "I2 Manhã": "DAVIDSON",
+      "B1 Tarde": "MESSIAS",
+      "B2 Tarde": "TAZ",
+      "I1 Tarde": "BIA",
+      "I2 Tarde": "DAVIDSON"
     }
   },
   {
-    data: '2026-06-28',
-    label: 'sábado, 28/06',
-    temas: {
-      'I2 Manhã': 'Push and Pull',
-      'I1 Tarde': 'Sinistro',
-      'B1 Manhã': 'Variações Giro do Condutor',
-      'B2 Manhã': 'Nivelamento',
-      'B2 Tarde': 'Nivelamento',
-      'I1 Manhã': 'Sinistro',
-      'B1 Tarde': 'Variações Giro do Condutor'
-    }
-  },
-
-  // JULHO
-  {
-    data: '2026-07-05',
-    label: 'sábado, 05/07',
-    temas: {
-      'I2 Manhã': 'Paulista Titanic',
-      'I1 Tarde': 'Avião c contra',
-      'B1 Manhã': 'Chuveirinho',
-      'B2 Manhã': 'Ritmo',
-      'B2 Tarde': 'Ritmo',
-      'I1 Manhã': 'Avião c contra',
-      'B1 Tarde': 'Chuveirinho'
+    "data": "2026-06-13",
+    "label": "sábado, 13/06",
+    "temas": {
+      "B1 Manhã": "Especial",
+      "B2 Manhã": "contratempo",
+      "I1 Manhã": "I1 e I2 Pião",
+      "I2 Manhã": "Movimentações do paulista (saída do pião/meio giro trás e do meio invertido trás)",
+      "B1 Tarde": "manivela, giro dama e cavalheiro, variações",
+      "B2 Tarde": "combo de giro",
+      "I1 Tarde": "pião invertido",
+      "I2 Tarde": "Movimentações do paulista (saída do pião/meio giro trás e do meio invertido trás)"
+    },
+    "professores": {
+      "B1 Manhã": "BIA",
+      "B2 Manhã": "TONY",
+      "I1 Manhã": "GÃO E BIA",
+      "I2 Manhã": "DAVIDSON",
+      "B1 Tarde": "MESSIAS",
+      "B2 Tarde": "TAZ",
+      "I1 Tarde": "GÃO",
+      "I2 Tarde": "DAVIDSON"
     }
   },
   {
-    data: '2026-07-12',
-    label: 'sábado, 12/07',
-    temas: {
-      'I2 Manhã': 'Contra 9 tempos',
-      'I1 Tarde': 'Contratempo DE 7 TEMPOS',
-      'B1 Manhã': 'Manivela',
-      'B2 Manhã': 'Musicalidade',
-      'B2 Tarde': 'Musicalidade',
-      'I1 Manhã': 'Contratempo DE 7 TEMPOS',
-      'B1 Tarde': 'Manivela'
+    "data": "2026-06-20",
+    "label": "sábado, 20/06",
+    "temas": {
+      "B1 Manhã": "SEM AULA - SÃO JOÃO",
+      "B2 Manhã": "SEM AULA - SÃO JOÃO",
+      "I1 Manhã": "SEM AULA - SÃO JOÃO",
+      "I2 Manhã": "SEM AULA - SÃO JOÃO",
+      "B1 Tarde": "SEM AULA - SÃO JOÃO",
+      "B2 Tarde": "SEM AULA - SÃO JOÃO",
+      "I1 Tarde": "SEM AULA - SÃO JOÃO",
+      "I2 Tarde": "SEM AULA - SÃO JOÃO"
+    },
+    "professores": {}
+  },
+  {
+    "data": "2026-06-27",
+    "label": "sábado, 27/06",
+    "temas": {
+      "B1 Manhã": "Turma Junta",
+      "B2 Manhã": "contratempo",
+      "I1 Manhã": "pião",
+      "I2 Manhã": "Pião invertido a partir do giro simples",
+      "B1 Tarde": "giro do cavalheiro",
+      "B2 Tarde": "banana-banana",
+      "I1 Tarde": "pião + contratempo",
+      "I2 Tarde": "Pião invertido a partir do giro simples"
+    },
+    "professores": {
+      "B1 Manhã": "BIA",
+      "B2 Manhã": "TONY E JULY",
+      "I1 Manhã": "GÃO",
+      "I2 Manhã": "DAVIDSON",
+      "B1 Tarde": "MESSIAS",
+      "B2 Tarde": "TAZ",
+      "I1 Tarde": "GÃO",
+      "I2 Tarde": "DAVIDSON"
     }
   },
   {
-    data: '2026-07-19',
-    label: 'sábado, 19/07',
-    temas: {
-      'I2 Manhã': 'Banana 9 tempos',
-      'I1 Tarde': 'Basquete com Contra',
-      'B1 Manhã': 'Caracol',
-      'B2 Manhã': 'Breques',
-      'B2 Tarde': 'Breques',
-      'I1 Manhã': 'Basquete com Contra',
-      'B1 Tarde': 'Caracol'
+    "data": "2026-07-04",
+    "label": "sábado, 04/07",
+    "temas": {
+      "B1 Manhã": "Passo Básico",
+      "B2 Manhã": "contratempo",
+      "I1 Manhã": "pião",
+      "I2 Manhã": "Pião invertido a partir do passo de cintura com contratempo 2",
+      "B1 Tarde": "Passo Básico",
+      "B2 Tarde": "avião",
+      "I1 Tarde": "pião com travada",
+      "I2 Tarde": "Pião invertido a partir do passo de cintura com contratempo 2"
+    },
+    "professores": {
+      "B1 Manhã": "BIA",
+      "B2 Manhã": "TONY E JULY",
+      "I1 Manhã": "GÃO",
+      "I2 Manhã": "DAVIDSON",
+      "B1 Tarde": "MESSIAS",
+      "B2 Tarde": "TAZ",
+      "I1 Tarde": "GÃO",
+      "I2 Tarde": "DAVIDSON"
     }
   },
   {
-    data: '2026-07-26',
-    label: 'sábado, 26/07',
-    temas: {
-      'I2 Manhã': 'Chuveirinho 9 tempos',
-      'I1 Tarde': 'Esmeril aberto',
-      'B1 Manhã': 'Revisão',
-      'B2 Manhã': 'Revisão Meio Giro',
-      'B2 Tarde': 'Revisão Meio Giro',
-      'I1 Manhã': 'Esmeril aberto',
-      'B1 Tarde': 'Revisão'
-    }
-  },
-
-  // AGOSTO
-  {
-    data: '2026-08-02',
-    label: 'sábado, 02/08',
-    temas: {
-      'I2 Manhã': 'Sinistro 9 e 11',
-      'I1 Tarde': 'Esmeril unilateral',
-      'B1 Manhã': 'Nivelamento',
-      'B2 Manhã': 'Pega-Pega',
-      'B2 Tarde': 'Pega-Pega',
-      'I1 Manhã': 'Esmeril unilateral',
-      'B1 Tarde': 'Nivelamento'
+    "data": "2026-07-11",
+    "label": "sábado, 11/07",
+    "temas": {
+      "B1 Manhã": "Início Módulo - Soltinho",
+      "B2 Manhã": "Esmeril junto",
+      "I1 Manhã": "Pêndulo/Ciscada",
+      "I2 Manhã": "Variação de Avião",
+      "B1 Tarde": "Soltinho",
+      "B2 Tarde": "Esmeril junto",
+      "I1 Tarde": "Pêndulo/Ciscada",
+      "I2 Tarde": "Variação de Avião"
+    },
+    "professores": {
+      "B1 Manhã": "BIA",
+      "B2 Manhã": "TONY E JULY",
+      "I1 Manhã": "GÃO",
+      "I2 Manhã": "DAVIDSON",
+      "B1 Tarde": "MESSIAS",
+      "B2 Tarde": "TAZ",
+      "I1 Tarde": "GÃO",
+      "I2 Tarde": "DAVIDSON"
     }
   },
   {
-    data: '2026-08-09',
-    label: 'sábado, 09/08',
-    temas: {
-      'I2 Manhã': 'Avião Invertido',
-      'I1 Tarde': 'Firula',
-      'B1 Manhã': 'Passo Básico',
-      'B2 Manhã': 'Giro Giro',
-      'B2 Tarde': 'Giro Giro',
-      'I1 Manhã': 'Firula',
-      'B1 Tarde': 'Passo Básico'
+    "data": "2026-07-18",
+    "label": "sábado, 18/07",
+    "temas": {
+      "B1 Manhã": "Troca de peso",
+      "B2 Manhã": "Especial",
+      "I1 Manhã": "pião",
+      "I2 Manhã": "Contratempos duplos (sinistro e 1ª evolução do sinistro)",
+      "B1 Tarde": "Início Módulo - Troca de peso",
+      "B2 Tarde": "Início Módulo - Especial",
+      "I1 Tarde": "sacada de perna",
+      "I2 Tarde": "Contratempos duplos (sinistro e 1ª evolução do sinistro)"
+    },
+    "professores": {
+      "B1 Manhã": "BIA",
+      "B2 Manhã": "TONY E JULY",
+      "I1 Manhã": "GÃO",
+      "I2 Manhã": "DAVIDSON",
+      "B1 Tarde": "MESSIAS",
+      "B2 Tarde": "TAZ",
+      "I1 Tarde": "GÃO",
+      "I2 Tarde": "DAVIDSON"
     }
   },
   {
-    data: '2026-08-16',
-    label: 'sábado, 16/08',
-    temas: {
-      'I2 Manhã': 'Beyblade 9',
-      'I1 Tarde': 'Musicalidade',
-      'B1 Manhã': 'Xaxadinho',
-      'B2 Manhã': 'Caracol',
-      'B2 Tarde': 'Caracol',
-      'I1 Manhã': 'Musicalidade',
-      'B1 Tarde': 'Xaxadinho'
+    "data": "2026-07-25",
+    "label": "sábado, 25/07",
+    "temas": {
+      "B1 Manhã": "peso e contrapeso",
+      "B2 Manhã": "contratempo",
+      "I1 Manhã": "Turma Junta",
+      "I2 Manhã": "Variação de Banana",
+      "B1 Tarde": "Meio Giro Trás/Frente (Aulão/Junto)",
+      "B2 Tarde": "Turma Junta",
+      "I1 Tarde": "Turma Junta",
+      "I2 Tarde": "Variação de Banana"
+    },
+    "professores": {
+      "B1 Manhã": "BIA",
+      "B2 Manhã": "TONY",
+      "I1 Manhã": "GÃO",
+      "I2 Manhã": "DAVIDSON",
+      "B1 Tarde": "MESSIAS",
+      "B2 Tarde": "TAZ",
+      "I1 Tarde": "GÃO",
+      "I2 Tarde": "DAVIDSON"
     }
   },
   {
-    data: '2026-08-23',
-    label: 'sábado, 23/08',
-    temas: {
-      'I2 Manhã': 'Giro Simples 9 e 11',
-      'I1 Tarde': 'Sacada e Pendulo',
-      'B1 Manhã': 'Deslocamento 1',
-      'B2 Manhã': 'Avião',
-      'B2 Tarde': 'Avião',
-      'I1 Manhã': 'Sacada e Pendulo',
-      'B1 Tarde': 'Deslocamento 1'
+    "data": "2026-08-01",
+    "label": "sábado, 01/08",
+    "temas": {
+      "B1 Manhã": "musicalidade",
+      "B2 Manhã": "contratempo",
+      "I1 Manhã": "pião com travada",
+      "I2 Manhã": "-",
+      "B1 Tarde": "Giro Completo Trás/Frente (Aulão)",
+      "B2 Tarde": "Meio Giro Invertido Trás/Frente (Aulão/Junto)",
+      "I1 Tarde": "caminhada e travada",
+      "I2 Tarde": "Variação de Passos de Cintura"
+    },
+    "professores": {
+      "B1 Manhã": "BIA",
+      "B2 Manhã": "TONY E JULY",
+      "I1 Manhã": "GÃO",
+      "I2 Manhã": "DAVIDSON",
+      "B1 Tarde": "MESSIAS",
+      "B2 Tarde": "TAZ",
+      "I1 Tarde": "GÃO",
+      "I2 Tarde": "DAVIDSON"
     }
   },
   {
-    data: '2026-08-30',
-    label: 'sábado, 30/08',
-    temas: {
-      'I2 Manhã': 'Basquete 11',
-      'I1 Tarde': 'Sacada Meia Lua',
-      'B1 Manhã': 'Deslocamento 2',
-      'B2 Manhã': 'Assalto',
-      'B2 Tarde': 'Assalto',
-      'I1 Manhã': 'Sacada Meia Lua',
-      'B1 Tarde': 'Deslocamento 2'
-    }
-  },
-
-  // SETEMBRO
-  {
-    data: '2026-09-06',
-    label: 'sábado, 06/09',
-    temas: {
-      'I2 Manhã': 'Esmeril Quebrado',
-      'I1 Tarde': 'Caminhada e travada',
-      'B1 Manhã': 'Ritmos',
-      'B2 Manhã': 'Banana Banana',
-      'B2 Tarde': 'Banana Banana',
-      'I1 Manhã': 'Caminhada e travada',
-      'B1 Tarde': 'Ritmos'
+    "data": "2026-08-08",
+    "label": "sábado, 08/08",
+    "temas": {
+      "B1 Manhã": "Postura e Ritmo",
+      "B2 Manhã": "Avião (+Variações sem Contratempo)",
+      "I1 Manhã": "Sinistro",
+      "I2 Manhã": "Combinação de Cintura com Peões",
+      "B1 Tarde": "Postura e Ritmo",
+      "B2 Tarde": "Avião (+Variações sem Contratempo)",
+      "I1 Tarde": "Sinistro",
+      "I2 Tarde": "Combinação de Cintura com Peões"
+    },
+    "professores": {
+      "B1 Manhã": "BIA",
+      "B2 Manhã": "TONY E JULY",
+      "I1 Manhã": "GÃO",
+      "I2 Manhã": "DAVIDSON",
+      "B1 Tarde": "MESSIAS",
+      "B2 Tarde": "TAZ",
+      "I1 Tarde": "GÃO",
+      "I2 Tarde": "DAVIDSON"
     }
   },
   {
-    data: '2026-09-13',
-    label: 'sábado, 13/09',
-    temas: {
-      'I2 Manhã': 'Esmeril Invertido',
-      'I1 Tarde': 'Paulista',
-      'B1 Manhã': 'Giro Completo',
-      'B2 Manhã': 'Combinações de Passos',
-      'B2 Tarde': 'Combinações de Passos',
-      'I1 Manhã': 'Paulista',
-      'B1 Tarde': 'Giro Completo'
+    "data": "2026-08-15",
+    "label": "sábado, 15/08",
+    "temas": {
+      "B1 Manhã": "Giro Simples Cavalheiro/Dama",
+      "B2 Manhã": "Musicalidade",
+      "I1 Manhã": "Contratempo",
+      "I2 Manhã": "Giros invertidos completos",
+      "B1 Tarde": "Giro Simples Cavalheiro/Dama",
+      "B2 Tarde": "Musicalidade",
+      "I1 Tarde": "Contratempo",
+      "I2 Tarde": "Giros invertidos completos"
+    },
+    "professores": {
+      "B1 Manhã": "BIA",
+      "B2 Manhã": "TONY E JULY",
+      "I1 Manhã": "GÃO",
+      "I2 Manhã": "DAVIDSON",
+      "B1 Tarde": "MESSIAS",
+      "B2 Tarde": "TAZ",
+      "I1 Tarde": "GÃO",
+      "I2 Tarde": "DAVIDSON"
     }
   },
   {
-    data: '2026-09-20',
-    label: 'sábado, 20/09',
-    temas: {
-      'I2 Manhã': 'Miudinho',
-      'I1 Tarde': 'Combinação de Paulista',
-      'B1 Manhã': 'Giro Simples',
-      'B2 Manhã': 'Cintura',
-      'B2 Tarde': 'Cintura',
-      'I1 Manhã': 'Combinação de Paulista',
-      'B1 Tarde': 'Giro Simples'
+    "data": "2026-08-22",
+    "label": "sábado, 22/08",
+    "temas": {
+      "B1 Manhã": "Peso e Contrapeso",
+      "B2 Manhã": "invertido",
+      "I1 Manhã": "caminhada + variações",
+      "I2 Manhã": "Esmeril unilateral",
+      "B1 Tarde": "-",
+      "B2 Tarde": "Banana (+Variações sem Contratempo)",
+      "I1 Tarde": "Avião (+Variações com Contratempo)",
+      "I2 Tarde": "Esmeril unilateral"
+    },
+    "professores": {
+      "B1 Manhã": "BIA",
+      "B2 Manhã": "TONY",
+      "I1 Manhã": "GÃO E BIA",
+      "I2 Manhã": "DAVIDSON",
+      "B1 Tarde": "MESSIAS",
+      "B2 Tarde": "TAZ",
+      "I1 Tarde": "GÃO",
+      "I2 Tarde": "DAVIDSON"
     }
   },
   {
-    data: '2026-09-27',
-    label: 'sábado, 27/09',
-    temas: {
-      'I2 Manhã': 'Sacada com Pescada',
-      'I1 Tarde': 'Pião',
-      'B1 Manhã': 'Giro do Condutor',
-      'B2 Manhã': 'Volta ao Mundo',
-      'B2 Tarde': 'Volta ao Mundo',
-      'I1 Manhã': 'Pião',
-      'B1 Tarde': 'Giro do Condutor'
-    }
-  },
-
-  // OUTUBRO
-  {
-    data: '2026-10-04',
-    label: 'sábado, 04/10',
-    temas: {
-      'I2 Manhã': 'Sacada com arrasto',
-      'I1 Tarde': 'Revisão',
-      'B1 Manhã': 'Variações Giro do Condutor',
-      'B2 Manhã': 'Combinação de Cintura',
-      'B2 Tarde': 'Combinação de Cintura',
-      'I1 Manhã': 'Revisão',
-      'B1 Tarde': 'Variações Giro do Condutor'
+    "data": "2026-08-29",
+    "label": "sábado, 29/08",
+    "temas": {
+      "B1 Manhã": "Chameguinho (Aulão)",
+      "B2 Manhã": "Chuveirinho (+Variações sem Contratempo",
+      "I1 Manhã": "Banana (+Variações com Contratempo)",
+      "I2 Manhã": "Especial",
+      "B1 Tarde": "Chameguinho (Aulão)",
+      "B2 Tarde": "início de contratempo",
+      "I1 Tarde": "Banana (+Variações com Contratempo)",
+      "I2 Tarde": "Especial"
+    },
+    "professores": {
+      "B1 Manhã": "BIA",
+      "B2 Manhã": "TONY E JULY",
+      "I1 Manhã": "GÃO",
+      "I2 Manhã": "DAVIDSON",
+      "B1 Tarde": "MESSIAS",
+      "B2 Tarde": "TAZ",
+      "I1 Tarde": "GÃO",
+      "I2 Tarde": "DAVIDSON"
     }
   },
   {
-    data: '2026-10-11',
-    label: 'sábado, 11/10',
-    temas: {
-      'I2 Manhã': 'Leque',
-      'I1 Tarde': 'Nivelamento',
-      'B1 Manhã': 'Chuveirinho',
-      'B2 Manhã': 'Esmeril Fechado',
-      'B2 Tarde': 'Esmeril Fechado',
-      'I1 Manhã': 'Nivelamento',
-      'B1 Tarde': 'Chuveirinho'
+    "data": "2026-09-05",
+    "label": "sábado, 05/09",
+    "temas": {
+      "B1 Manhã": "Especial",
+      "B2 Manhã": "invertido",
+      "I1 Manhã": "breck",
+      "I2 Manhã": "Turma junta",
+      "B1 Tarde": "Especial",
+      "B2 Tarde": "contratempo",
+      "I1 Tarde": "Giro completo trás/frente (junto)",
+      "I2 Tarde": "Turma junta"
+    },
+    "professores": {
+      "B1 Manhã": "BIA",
+      "B2 Manhã": "TONY E JULY",
+      "I1 Manhã": "GÃO",
+      "I2 Manhã": "DAVIDSON",
+      "B1 Tarde": "MESSIAS",
+      "B2 Tarde": "TAZ",
+      "I1 Tarde": "GÃO",
+      "I2 Tarde": "DAVIDSON"
     }
   },
   {
-    data: '2026-10-18',
-    label: 'sábado, 18/10',
-    temas: {
-      'I2 Manhã': 'Push and Pull',
-      'I1 Tarde': 'Revisão de Contratempo',
-      'B1 Manhã': 'Manivela',
-      'B2 Manhã': 'Práticas dançantes',
-      'B2 Tarde': 'Práticas dançantes',
-      'I1 Manhã': 'Revisão de Contratempo',
-      'B1 Tarde': 'Manivela'
+    "data": "2026-09-12",
+    "label": "sábado, 12/09",
+    "temas": {
+      "B1 Manhã": "Turma Junta",
+      "B2 Manhã": "Caminhada Esquerda/Direita",
+      "I1 Manhã": "Chuveirinho (+Variações com Contratempo)",
+      "I2 Manhã": "Trocadilho",
+      "B1 Tarde": "Turma Junta",
+      "B2 Tarde": "Caminhada Esquerda/Direita",
+      "I1 Tarde": "Chuveirinho (+Variações com Contratempo)",
+      "I2 Tarde": "Trocadilho"
+    },
+    "professores": {
+      "B1 Manhã": "BIA",
+      "B2 Manhã": "TONY E JULY",
+      "I1 Manhã": "GÃO",
+      "I2 Manhã": "DAVIDSON",
+      "B1 Tarde": "MESSIAS",
+      "B2 Tarde": "TAZ",
+      "I1 Tarde": "GÃO",
+      "I2 Tarde": "DAVIDSON"
     }
   },
   {
-    data: '2026-10-25',
-    label: 'sábado, 25/10',
-    temas: {
-      'I2 Manhã': 'Halloween - AULA ESPECIAL',
-      'I1 Tarde': 'Halloween - AULA ESPECIAL',
-      'B1 Manhã': 'Halloween - AULA ESPECIAL',
-      'B2 Manhã': 'Halloween - AULA ESPECIAL',
-      'B2 Tarde': 'Halloween - AULA ESPECIAL',
-      'I1 Manhã': 'Halloween - AULA ESPECIAL',
-      'B1 Tarde': 'Halloween - AULA ESPECIAL'
-    }
-  },
-
-  // NOVEMBRO
-  {
-    data: '2026-11-01',
-    label: 'sábado, 01/11',
-    temas: {
-      'I2 Manhã': 'Paulista Titanic',
-      'I1 Tarde': 'Banana c contra',
-      'B1 Manhã': 'Caracol',
-      'B2 Manhã': 'Introdução Contratempo',
-      'B2 Tarde': 'Introdução Contratempo',
-      'I1 Manhã': 'Banana c contra',
-      'B1 Tarde': 'Caracol'
+    "data": "2026-09-19",
+    "label": "sábado, 19/09",
+    "temas": {
+      "B1 Manhã": "Passo Básico",
+      "B2 Manhã": "Xaxadinho (Aulão)",
+      "I1 Manhã": "Giro Giro – Giro Gira (+Variações com Contratempo)",
+      "I2 Manhã": "Trocadilho inverso",
+      "B1 Tarde": "Passo Básico",
+      "B2 Tarde": "Xaxadinho (Aulão)",
+      "I1 Tarde": "Giro Giro – Giro Gira (+Variações com Contratempo)",
+      "I2 Tarde": "Trocadilho inverso"
+    },
+    "professores": {
+      "B1 Manhã": "BIA",
+      "B2 Manhã": "TONY E JULY",
+      "I1 Manhã": "GÃO",
+      "I2 Manhã": "DAVIDSON",
+      "B1 Tarde": "MESSIAS",
+      "B2 Tarde": "TAZ",
+      "I1 Tarde": "GÃO",
+      "I2 Tarde": "DAVIDSON"
     }
   },
   {
-    data: '2026-11-08',
-    label: 'sábado, 08/11',
-    temas: {
-      'I2 Manhã': 'Contra 9 tempos',
-      'I1 Tarde': 'Chuveirinho c Contra',
-      'B1 Manhã': 'Revisão',
-      'B2 Manhã': 'Caracol c Contra',
-      'B2 Tarde': 'Caracol c Contra',
-      'I1 Manhã': 'Chuveirinho c Contra',
-      'B1 Tarde': 'Revisão'
+    "data": "2026-09-26",
+    "label": "sábado, 26/09",
+    "temas": {
+      "B1 Manhã": "Soltinho",
+      "B2 Manhã": "Xaxadinho (junto)",
+      "I1 Manhã": "Passo de Cintura (+Variações com contratempo)",
+      "I2 Manhã": "Passo de perna",
+      "B1 Tarde": "Soltinho",
+      "B2 Tarde": "Xaxadinho (junto)",
+      "I1 Tarde": "Passo de Cintura (+Variações com contratempo)",
+      "I2 Tarde": "Passo de perna"
+    },
+    "professores": {
+      "B1 Manhã": "BIA",
+      "B2 Manhã": "TONY E JULY",
+      "I1 Manhã": "GÃO",
+      "I2 Manhã": "DAVIDSON",
+      "B1 Tarde": "MESSIAS",
+      "B2 Tarde": "TAZ",
+      "I1 Tarde": "GÃO",
+      "I2 Tarde": "DAVIDSON"
     }
   },
   {
-    data: '2026-11-15',
-    label: 'sábado, 15/11',
-    temas: {
-      'I2 Manhã': 'Banana 9 tempos',
-      'I1 Tarde': 'Sinistro',
-      'B1 Manhã': 'Nivelamento',
-      'B2 Manhã': 'Conduções de Contra',
-      'B2 Tarde': 'Conduções de Contra',
-      'I1 Manhã': 'Sinistro',
-      'B1 Tarde': 'Nivelamento'
+    "data": "2026-10-03",
+    "label": "sábado, 03/10",
+    "temas": {
+      "B1 Manhã": "Início Módulo - Troca de peso",
+      "B2 Manhã": "Passo de Cintura (+Variações sem Contratempo)",
+      "I1 Manhã": "Sacada/Meia-lua",
+      "I2 Manhã": "Condução do Paulista",
+      "B1 Tarde": "giro completo",
+      "B2 Tarde": "Revisão",
+      "I1 Tarde": "passo de perna",
+      "I2 Tarde": "Condução do Paulista"
+    },
+    "professores": {
+      "B1 Manhã": "BIA",
+      "B2 Manhã": "TONY E JULY",
+      "I1 Manhã": "GÃO",
+      "I2 Manhã": "DAVIDSON",
+      "B1 Tarde": "MESSIAS",
+      "B2 Tarde": "TAZ",
+      "I1 Tarde": "GÃO",
+      "I2 Tarde": "DAVIDSON"
     }
   },
   {
-    data: '2026-11-22',
-    label: 'sábado, 22/11',
-    temas: {
-      'I2 Manhã': 'Chuveirinho 9 tempos',
-      'I1 Tarde': 'Avião c contra',
-      'B1 Manhã': 'Passo Básico',
-      'B2 Manhã': 'Contra do Passo Básico',
-      'B2 Tarde': 'Contra do Passo Básico',
-      'I1 Manhã': 'Avião c contra',
-      'B1 Tarde': 'Passo Básico'
+    "data": "2026-10-10",
+    "label": "sábado, 10/10",
+    "temas": {
+      "B1 Manhã": "Meio Giro Trás/Frente (Aulão/Junto)",
+      "B2 Manhã": "Esmeril junto",
+      "I1 Manhã": "Pêndulo/Ciscada",
+      "I2 Manhã": "Movimentações do paulista (saída do pião/meio giro trás e do meio invertido trás)",
+      "B1 Tarde": "Meio Giro Trás/Frente (Aulão/Junto)",
+      "B2 Tarde": "Nivelamento",
+      "I1 Tarde": "Contratempo",
+      "I2 Tarde": "Movimentações do paulista (saída do pião/meio giro trás e do meio invertido trás)"
+    },
+    "professores": {
+      "B1 Manhã": "BIA",
+      "B2 Manhã": "TONY E JULY",
+      "I1 Manhã": "GÃO",
+      "I2 Manhã": "DAVIDSON",
+      "B1 Tarde": "MESSIAS",
+      "B2 Tarde": "TAZ",
+      "I1 Tarde": "GÃO",
+      "I2 Tarde": "DAVIDSON"
     }
   },
   {
-    data: '2026-11-29',
-    label: 'sábado, 29/11',
-    temas: {
-      'I2 Manhã': 'Sinistro 9 e 11',
-      'I1 Tarde': 'Contratempo DE 7 TEMPOS',
-      'B1 Manhã': 'Xaxadinho',
-      'B2 Manhã': 'Combinações de Contra',
-      'B2 Tarde': 'Combinações de Contra',
-      'I1 Manhã': 'Contratempo DE 7 TEMPOS',
-      'B1 Tarde': 'Xaxadinho'
-    }
-  },
-
-  // DEZEMBRO
-  {
-    data: '2026-12-06',
-    label: 'sábado, 06/12',
-    temas: {
-      'I2 Manhã': 'Avião Invertido',
-      'I1 Tarde': 'Basquete com Contra',
-      'B1 Manhã': 'Deslocamento 1',
-      'B2 Manhã': 'Revisão',
-      'B2 Tarde': 'Revisão',
-      'I1 Manhã': 'Basquete com Contra',
-      'B1 Tarde': 'Deslocamento 1'
+    "data": "2026-10-17",
+    "label": "sábado, 17/10",
+    "temas": {
+      "B1 Manhã": "Giro Completo Trás/Frente (Aulão)",
+      "B2 Manhã": "Especial",
+      "I1 Manhã": "Especial",
+      "I2 Manhã": "Pião invertido a partir do giro simples",
+      "B1 Tarde": "Giro Completo Trás/Frente (Aulão)",
+      "B2 Tarde": "invertido",
+      "I1 Tarde": "Especial",
+      "I2 Tarde": "Pião invertido a partir do giro simples"
+    },
+    "professores": {
+      "B1 Manhã": "BIA",
+      "B2 Manhã": "TONY E JULY",
+      "I1 Manhã": "GÃO",
+      "I2 Manhã": "DAVIDSON",
+      "B1 Tarde": "MESSIAS",
+      "B2 Tarde": "TAZ",
+      "I1 Tarde": "GÃO",
+      "I2 Tarde": "DAVIDSON"
     }
   },
   {
-    data: '2026-12-13',
-    label: 'sábado, 13/12',
-    temas: {
-      'I2 Manhã': 'Beyblade 9',
-      'I1 Tarde': 'Esmeril aberto',
-      'B1 Manhã': 'Deslocamento 2',
-      'B2 Manhã': 'Nivelamento',
-      'B2 Tarde': 'Nivelamento',
-      'I1 Manhã': 'Esmeril aberto',
-      'B1 Tarde': 'Deslocamento 2'
+    "data": "2026-10-24",
+    "label": "sábado, 24/10",
+    "temas": {
+      "B1 Manhã": "Postura e Ritmo",
+      "B2 Manhã": "Turma Junta",
+      "I1 Manhã": "Turma Junta",
+      "I2 Manhã": "Pião invertido a partir do passo de cintura com contratempo 2",
+      "B1 Tarde": "Postura e Ritmo",
+      "B2 Tarde": "invertido + giro gira",
+      "I1 Tarde": "Turma Junta",
+      "I2 Tarde": "Pião invertido a partir do passo de cintura com contratempo 2"
+    },
+    "professores": {
+      "B1 Manhã": "BIA",
+      "B2 Manhã": "TONY E JULY",
+      "I1 Manhã": "GÃO",
+      "I2 Manhã": "DAVIDSON",
+      "B1 Tarde": "MESSIAS",
+      "B2 Tarde": "TAZ",
+      "I1 Tarde": "GÃO",
+      "I2 Tarde": "DAVIDSON"
     }
   },
   {
-    data: '2026-12-20',
-    label: 'sábado, 20/12',
-    temas: {
-      'I2 Manhã': 'Giro Simples 9 e 11',
-      'I1 Tarde': 'Esmeril unilateral',
-      'B1 Manhã': 'Ritmos',
-      'B2 Manhã': 'Ritmo',
-      'B2 Tarde': 'Ritmo',
-      'I1 Manhã': 'Esmeril unilateral',
-      'B1 Tarde': 'Ritmos'
+    "data": "2026-10-31",
+    "label": "sábado, 31/10",
+    "temas": {
+      "B1 Manhã": "Giro Simples Cavalheiro/Dama",
+      "B2 Manhã": "Meio Giro Invertido Trás/Frente (Aulão/Junto)",
+      "I1 Manhã": "Pião",
+      "I2 Manhã": "Variação de Avião",
+      "B1 Tarde": "Giro Simples Cavalheiro/Dama",
+      "B2 Tarde": "Meio Giro Invertido Trás/Frente (Aulão/Junto)",
+      "I1 Tarde": "Pião",
+      "I2 Tarde": "Variação de Avião"
+    },
+    "professores": {
+      "B1 Manhã": "BIA",
+      "B2 Manhã": "TONY E JULY",
+      "I1 Manhã": "GÃO",
+      "I2 Manhã": "DAVIDSON",
+      "B1 Tarde": "MESSIAS",
+      "B2 Tarde": "TAZ",
+      "I1 Tarde": "GÃO",
+      "I2 Tarde": "DAVIDSON"
     }
   },
   {
-    data: '2026-12-27',
-    label: 'sábado, 27/12',
-    temas: {
-      'I2 Manhã': 'NATAL - Sem aula',
-      'I1 Tarde': 'NATAL - Sem aula',
-      'B1 Manhã': 'NATAL - Sem aula',
-      'B2 Manhã': 'NATAL - Sem aula',
-      'B2 Tarde': 'NATAL - Sem aula',
-      'I1 Manhã': 'NATAL - Sem aula',
-      'B1 Tarde': 'NATAL - Sem aula'
+    "data": "2026-11-07",
+    "label": "sábado, 07/11",
+    "temas": {
+      "B1 Manhã": "Peso e Contrapeso",
+      "B2 Manhã": "Avião (+Variações sem Contratempo)",
+      "I1 Manhã": "Sinistro",
+      "I2 Manhã": "Contratempos duplos (sinistro e 1ª evolução do sinistro)",
+      "B1 Tarde": "Peso e Contrapeso",
+      "B2 Tarde": "Avião (+Variações sem Contratempo)",
+      "I1 Tarde": "Sinistro",
+      "I2 Tarde": "Contratempos duplos (sinistro e 1ª evolução do sinistro)"
+    },
+    "professores": {
+      "B1 Manhã": "BIA",
+      "B2 Manhã": "TONY E JULY",
+      "I1 Manhã": "GÃO",
+      "I2 Manhã": "DAVIDSON",
+      "B1 Tarde": "MESSIAS",
+      "B2 Tarde": "TAZ",
+      "I1 Tarde": "GÃO",
+      "I2 Tarde": "DAVIDSON"
     }
+  },
+  {
+    "data": "2026-11-14",
+    "label": "sábado, 14/11",
+    "temas": {
+      "B1 Manhã": "Chameguinho (Aulão)",
+      "B2 Manhã": "Musicalidade",
+      "I1 Manhã": "Contratempo",
+      "I2 Manhã": "Variação de Banana",
+      "B1 Tarde": "Chameguinho (Aulão)",
+      "B2 Tarde": "Musicalidade",
+      "I1 Tarde": "Contratempo",
+      "I2 Tarde": "Variação de Banana"
+    },
+    "professores": {
+      "B1 Manhã": "BIA",
+      "B2 Manhã": "TONY E JULY",
+      "I1 Manhã": "GÃO",
+      "I2 Manhã": "DAVIDSON",
+      "B1 Tarde": "MESSIAS",
+      "B2 Tarde": "TAZ",
+      "I1 Tarde": "GÃO",
+      "I2 Tarde": "DAVIDSON"
+    }
+  },
+  {
+    "data": "2026-11-21",
+    "label": "sábado, 21/11",
+    "temas": {
+      "B1 Manhã": "Especial",
+      "B2 Manhã": "Banana (+Variações sem Contratempo)",
+      "I1 Manhã": "Avião (+Variações com Contratempo)",
+      "I2 Manhã": "Variação de Passos de Cintura",
+      "B1 Tarde": "Especial",
+      "B2 Tarde": "Banana (+Variações sem Contratempo)",
+      "I1 Tarde": "Avião (+Variações com Contratempo)",
+      "I2 Tarde": "Variação de Passos de Cintura"
+    },
+    "professores": {
+      "B1 Manhã": "BIA",
+      "B2 Manhã": "TONY E JULY",
+      "I1 Manhã": "GÃO",
+      "I2 Manhã": "DAVIDSON",
+      "B1 Tarde": "MESSIAS",
+      "B2 Tarde": "TAZ",
+      "I1 Tarde": "GÃO",
+      "I2 Tarde": "DAVIDSON"
+    }
+  },
+  {
+    "data": "2026-11-28",
+    "label": "sábado, 28/11",
+    "temas": {
+      "B1 Manhã": "Turma Junta",
+      "B2 Manhã": "Chuveirinho (+Variações sem Contratempo",
+      "I1 Manhã": "Banana (+Variações com Contratempo)",
+      "I2 Manhã": "Combinação de Cintura com Peões",
+      "B1 Tarde": "Turma Junta",
+      "B2 Tarde": "Chuveirinho (+Variações sem Contratempo",
+      "I1 Tarde": "Banana (+Variações com Contratempo)",
+      "I2 Tarde": "Combinação de Cintura com Peões"
+    },
+    "professores": {
+      "B1 Manhã": "BIA",
+      "B2 Manhã": "TONY E JULY",
+      "I1 Manhã": "GÃO",
+      "I2 Manhã": "DAVIDSON",
+      "B1 Tarde": "MESSIAS",
+      "B2 Tarde": "TAZ",
+      "I1 Tarde": "GÃO",
+      "I2 Tarde": "DAVIDSON"
+    }
+  },
+  {
+    "data": "2026-12-05",
+    "label": "sábado, 05/12",
+    "temas": {
+      "B1 Manhã": "Passo Básico",
+      "B2 Manhã": "Giro-Giro (+Variações sem Contratempo)",
+      "I1 Manhã": "Giro completo trás/frente (junto)",
+      "I2 Manhã": "Giros invertidos completos",
+      "B1 Tarde": "Passo Básico",
+      "B2 Tarde": "Giro-Giro (+Variações sem Contratempo)",
+      "I1 Tarde": "Giro completo trás/frente (junto)",
+      "I2 Tarde": "Giros invertidos completos"
+    },
+    "professores": {
+      "B1 Manhã": "BIA",
+      "B2 Manhã": "TONY E JULY",
+      "I1 Manhã": "GÃO",
+      "I2 Manhã": "DAVIDSON",
+      "B1 Tarde": "MESSIAS",
+      "B2 Tarde": "TAZ",
+      "I1 Tarde": "GÃO",
+      "I2 Tarde": "DAVIDSON"
+    }
+  },
+  {
+    "data": "2026-12-12",
+    "label": "sábado, 12/12",
+    "temas": {
+      "B1 Manhã": "Soltinho",
+      "B2 Manhã": "Caminhada Esquerda/Direita",
+      "I1 Manhã": "Chuveirinho (+Variações com Contratempo)",
+      "I2 Manhã": "Esmeril unilateral",
+      "B1 Tarde": "Soltinho",
+      "B2 Tarde": "Caminhada Esquerda/Direita",
+      "I1 Tarde": "Chuveirinho (+Variações com Contratempo)",
+      "I2 Tarde": "Esmeril unilateral"
+    },
+    "professores": {
+      "B1 Manhã": "BIA",
+      "B2 Manhã": "TONY E JULY",
+      "I1 Manhã": "GÃO",
+      "I2 Manhã": "DAVIDSON",
+      "B1 Tarde": "MESSIAS",
+      "B2 Tarde": "TAZ",
+      "I1 Tarde": "GÃO",
+      "I2 Tarde": "DAVIDSON"
+    }
+  },
+  {
+    "data": "2026-12-19",
+    "label": "sábado, 19/12",
+    "temas": {
+      "B1 Manhã": "SEM AULA - RECESSO",
+      "B2 Manhã": "SEM AULA - RECESSO",
+      "I1 Manhã": "SEM AULA - RECESSO",
+      "I2 Manhã": "SEM AULA - RECESSO",
+      "B1 Tarde": "SEM AULA - RECESSO",
+      "B2 Tarde": "SEM AULA - RECESSO",
+      "I1 Tarde": "SEM AULA - RECESSO",
+      "I2 Tarde": "SEM AULA - RECESSO"
+    },
+    "professores": {}
+  },
+  {
+    "data": "2026-12-26",
+    "label": "sábado, 26/12",
+    "temas": {
+      "B1 Manhã": "SEM AULA - RECESSO",
+      "B2 Manhã": "SEM AULA - RECESSO",
+      "I1 Manhã": "SEM AULA - RECESSO",
+      "I2 Manhã": "SEM AULA - RECESSO",
+      "B1 Tarde": "SEM AULA - RECESSO",
+      "B2 Tarde": "SEM AULA - RECESSO",
+      "I1 Tarde": "SEM AULA - RECESSO",
+      "I2 Tarde": "SEM AULA - RECESSO"
+    },
+    "professores": {}
   }
 ];
 
-// Gera os registros de Cronograma vinculando com as aulas do sistema
-export const buildInitialCronogramas = (aulasList: Aula[]): Cronograma[] => {
-  const cronos: Cronograma[] = [];
+// Histórico de 51 semanas/sábados de 2023 da planilha pedagógica F4A
+export const historicalScheduleRows2023: ScheduleRowData[] = [
+  {
+    "data": "2023-01-07",
+    "label": "sábado, 07/01",
+    "temas": {
+      "B1 Manhã": "Aula com BIA",
+      "B2 Manhã": "Musicalidade",
+      "I1 Manhã": "Sacada/Meia-lua",
+      "I2 Manhã": "Turma junta",
+      "B1 Tarde": "Aula com MESSIAS",
+      "B2 Tarde": "Passo de Cintura (+Variações sem Contratempo)",
+      "I1 Tarde": "Avião (+Variações com Contratempo)",
+      "I2 Tarde": "—"
+    },
+    "professores": {
+      "B1 Manhã": "BIA",
+      "B2 Manhã": "TONY",
+      "I1 Manhã": "DAVIDSON",
+      "I2 Manhã": "DAVIDSON",
+      "B1 Tarde": "MESSIAS",
+      "B2 Tarde": "TAZ",
+      "I1 Tarde": "GÃO"
+    }
+  },
+  {
+    "data": "2023-01-14",
+    "label": "sábado, 14/01",
+    "temas": {
+      "B1 Manhã": "Aula com BIA",
+      "B2 Manhã": "Especial",
+      "I1 Manhã": "Aula com GÃO",
+      "I2 Manhã": "Passo de perna",
+      "B1 Tarde": "Meio Giro Trás/Frente (Aulão/Junto)",
+      "B2 Tarde": "Passo de Cintura (+Variações sem Contratempo)",
+      "I1 Tarde": "Avião (+Variações com Contratempo)",
+      "I2 Tarde": "—"
+    },
+    "professores": {
+      "B1 Manhã": "BIA",
+      "B2 Manhã": "TONY E JULY",
+      "I1 Manhã": "GÃO",
+      "I2 Manhã": "DAVIDSON",
+      "B1 Tarde": "MESSIAS",
+      "B2 Tarde": "TAZ",
+      "I1 Tarde": "GÃO"
+    }
+  },
+  {
+    "data": "2023-01-21",
+    "label": "sábado, 21/01",
+    "temas": {
+      "B1 Manhã": "Giro Completo Trás/Frente (Aulão)",
+      "B2 Manhã": "Giro-Giro (+Variações sem Contratempo)",
+      "I1 Manhã": "Sequência de caracol com avião",
+      "I2 Manhã": "Sequência de passo de perna + paulista",
+      "B1 Tarde": "Revisão passo simples, soltinho e meio giro",
+      "B2 Tarde": "Revisão passo cintura e início esmeril",
+      "I1 Tarde": "Avião (+Variações com Contratempo)",
+      "I2 Tarde": "—"
+    },
+    "professores": {
+      "B1 Manhã": "BIA",
+      "B2 Manhã": "TONY E JULY",
+      "I1 Manhã": "GÃO",
+      "I2 Manhã": "DAVIDSON",
+      "B1 Tarde": "MESSIAS",
+      "B2 Tarde": "TAZ",
+      "I1 Tarde": "GÃO"
+    }
+  },
+  {
+    "data": "2023-01-28",
+    "label": "sábado, 28/01",
+    "temas": {
+      "B1 Manhã": "Abertura soltinho e giro simples",
+      "B2 Manhã": "Giro-giro",
+      "I1 Manhã": "Avião com contratempos",
+      "I2 Manhã": "Avião invertido + contratempo",
+      "B1 Tarde": "Meio giro",
+      "B2 Tarde": "Esmeril junto",
+      "I1 Tarde": "—",
+      "I2 Tarde": "—"
+    },
+    "professores": {
+      "B1 Manhã": "BIA",
+      "B2 Manhã": "GÃO",
+      "I1 Manhã": "GÃO",
+      "I2 Manhã": "DAVIDSON",
+      "B1 Tarde": "MESSIAS",
+      "B2 Tarde": "TAZ"
+    }
+  },
+  {
+    "data": "2023-02-04",
+    "label": "sábado, 04/02",
+    "temas": {
+      "B1 Manhã": "Troca de peso e passo básico",
+      "B2 Manhã": "Banana banana",
+      "I1 Manhã": "Avião + contratempo",
+      "I2 Manhã": "Sequência das últimas aulas",
+      "B1 Tarde": "Passo básico e meio-giros",
+      "B2 Tarde": "Esmeril junto",
+      "I1 Tarde": "Giro-giro com contratempo",
+      "I2 Tarde": "—"
+    },
+    "professores": {
+      "B1 Manhã": "BIA",
+      "B2 Manhã": "TONY",
+      "I1 Manhã": "TAZ E BIA",
+      "I2 Manhã": "DAVIDSON",
+      "B1 Tarde": "BIA",
+      "B2 Tarde": "TAZ E JULY",
+      "I1 Tarde": "TAZ E BIA"
+    }
+  },
+  {
+    "data": "2023-02-11",
+    "label": "sábado, 11/02",
+    "temas": {
+      "B1 Manhã": "—",
+      "B2 Manhã": "—",
+      "I1 Manhã": "—",
+      "I2 Manhã": "—",
+      "B1 Tarde": "—",
+      "B2 Tarde": "—",
+      "I1 Tarde": "—",
+      "I2 Tarde": "—"
+    },
+    "professores": {}
+  },
+  {
+    "data": "2023-02-25",
+    "label": "sábado, 25/02",
+    "temas": {
+      "B1 Manhã": "Giro da dama e giro cavalheiro",
+      "B2 Manhã": "banana-banana",
+      "I1 Manhã": "turma junta",
+      "I2 Manhã": "—",
+      "B1 Tarde": "básico e meio-giro",
+      "B2 Tarde": "Início contratempo",
+      "I1 Tarde": "chuveirinho com contratempo + banana com contratempo",
+      "I2 Tarde": "—"
+    },
+    "professores": {
+      "B1 Manhã": "JULY",
+      "B2 Manhã": "DAVIDSON",
+      "I1 Manhã": "DAVIDSON",
+      "B1 Tarde": "JULY",
+      "B2 Tarde": "TAZ",
+      "I1 Tarde": "TAZ"
+    }
+  },
+  {
+    "data": "2023-03-04",
+    "label": "sábado, 04/03",
+    "temas": {
+      "B1 Manhã": "GIRO SIMPLES",
+      "B2 Manhã": "Avião",
+      "I1 Manhã": "giro-giro com contratempo",
+      "I2 Manhã": "Sequencia com contratempo de 7",
+      "B1 Tarde": "Postura + passos iniciais",
+      "B2 Tarde": "CONTRATEMPO condução",
+      "I1 Tarde": "contratempo de 5 tempos + 7 tempos",
+      "I2 Tarde": "—"
+    },
+    "professores": {
+      "B1 Manhã": "BIA",
+      "B2 Manhã": "TONY",
+      "I1 Manhã": "GÃO",
+      "I2 Manhã": "DAVIDSON",
+      "B1 Tarde": "MESSIAS",
+      "B2 Tarde": "TAZ E JULY",
+      "I1 Tarde": "GÃO"
+    }
+  },
+  {
+    "data": "2023-03-11",
+    "label": "sábado, 11/03",
+    "temas": {
+      "B1 Manhã": "xaxadinho; chuveirinho",
+      "B2 Manhã": "Revisão",
+      "I1 Manhã": "Aula com GÃO",
+      "I2 Manhã": "Introdução cretinagem",
+      "B1 Tarde": "Giro simples",
+      "B2 Tarde": "contratempo",
+      "I1 Tarde": "sinistro com contratempo + banana invertida",
+      "I2 Tarde": "—"
+    },
+    "professores": {
+      "B1 Manhã": "GÃO",
+      "B2 Manhã": "TONY",
+      "I1 Manhã": "GÃO",
+      "I2 Manhã": "DAVIDSON",
+      "B1 Tarde": "JULY",
+      "B2 Tarde": "TONY",
+      "I1 Tarde": "GÃO"
+    }
+  },
+  {
+    "data": "2023-03-18",
+    "label": "sábado, 18/03",
+    "temas": {
+      "B1 Manhã": "Meios giros/Nivelamento",
+      "B2 Manhã": "Início de cintura",
+      "I1 Manhã": "Aula com GÃO E BIA",
+      "I2 Manhã": "Giro completo invertido + pião invertido",
+      "B1 Tarde": "GIro simples",
+      "B2 Tarde": "Caracol com contratempo",
+      "I1 Tarde": "—",
+      "I2 Tarde": "—"
+    },
+    "professores": {
+      "B1 Manhã": "GÃO E BIA",
+      "B2 Manhã": "TONY",
+      "I1 Manhã": "GÃO E BIA",
+      "I2 Manhã": "DAVIDSON",
+      "B2 Tarde": "TAZ"
+    }
+  },
+  {
+    "data": "2023-03-25",
+    "label": "sábado, 25/03",
+    "temas": {
+      "B1 Manhã": "Início Módulo",
+      "B2 Manhã": "passo de cintura",
+      "I1 Manhã": "—",
+      "I2 Manhã": "Sacada com a perna esquerda",
+      "B1 Tarde": "Giro simples",
+      "B2 Tarde": "REVISÃO",
+      "I1 Tarde": "Introdução Paulista",
+      "I2 Tarde": "—"
+    },
+    "professores": {
+      "B2 Manhã": "TONY",
+      "I2 Manhã": "DAVIDSON",
+      "B1 Tarde": "JULY",
+      "B2 Tarde": "TAZ",
+      "I1 Tarde": "GÃO"
+    }
+  },
+  {
+    "data": "2023-04-01",
+    "label": "sábado, 01/04",
+    "temas": {
+      "B1 Manhã": "Peso e contrapeso",
+      "B2 Manhã": "passo de cintura",
+      "I1 Manhã": "Introdução ao Paulista",
+      "I2 Manhã": "Sacada de letra",
+      "B1 Tarde": "—",
+      "B2 Tarde": "Revisão Nivelamento",
+      "I1 Tarde": "Paulista com invertido atrás",
+      "I2 Tarde": "—"
+    },
+    "professores": {
+      "B1 Manhã": "GÃO E BIA",
+      "B2 Manhã": "TONY",
+      "I1 Manhã": "GÃO",
+      "I2 Manhã": "DAVIDSON",
+      "B2 Tarde": "TAZ",
+      "I1 Tarde": "GÃO"
+    }
+  },
+  {
+    "data": "2023-04-08",
+    "label": "sábado, 08/04",
+    "temas": {
+      "B1 Manhã": "Meio-giro dançando junto",
+      "B2 Manhã": "Passo de cintura saindo no invertido",
+      "I1 Manhã": "Paulista",
+      "I2 Manhã": "Sequencia de sacada de esquerda",
+      "B1 Tarde": "Giro do cavalheiro",
+      "B2 Tarde": "Revisão e Nivelamento",
+      "I1 Tarde": "Paulista",
+      "I2 Tarde": "—"
+    },
+    "professores": {
+      "B1 Manhã": "GÃO E BIA",
+      "B2 Manhã": "TONY E JULY",
+      "I1 Manhã": "GÃO E BIA",
+      "I2 Manhã": "DAVIDSON",
+      "B1 Tarde": "MESSIAS",
+      "B2 Tarde": "TAZ",
+      "I1 Tarde": "GÃO"
+    }
+  },
+  {
+    "data": "2023-04-15",
+    "label": "sábado, 15/04",
+    "temas": {
+      "B1 Manhã": "—",
+      "B2 Manhã": "Ritmo",
+      "I1 Manhã": "Nivelamento + Paulista",
+      "I2 Manhã": "Aula livre",
+      "B1 Tarde": "—",
+      "B2 Tarde": "Aula junto com o Básico 1",
+      "I1 Tarde": "Banana finalizando com paulista",
+      "I2 Tarde": "—"
+    },
+    "professores": {
+      "B2 Manhã": "TONY",
+      "I1 Manhã": "GÃO",
+      "I2 Manhã": "DAVIDSON",
+      "I1 Tarde": "GÃO"
+    }
+  },
+  {
+    "data": "2023-04-22",
+    "label": "sábado, 22/04",
+    "temas": {
+      "B1 Manhã": "Revisão",
+      "B2 Manhã": "ESMERIL JUNTO",
+      "I1 Manhã": "PAULISTA COM INVERTIDO TRÁS",
+      "I2 Manhã": "bêbado",
+      "B1 Tarde": "Variação do giro simples",
+      "B2 Tarde": "Revisão",
+      "I1 Tarde": "introdução ao esmeril",
+      "I2 Tarde": "—"
+    },
+    "professores": {
+      "B1 Manhã": "BIA",
+      "I1 Manhã": "GÃO E BIA",
+      "I2 Manhã": "DAVIDSON",
+      "B1 Tarde": "JULY",
+      "B2 Tarde": "TAZ",
+      "I1 Tarde": "GÃO E JULY"
+    }
+  },
+  {
+    "data": "2023-04-29",
+    "label": "sábado, 29/04",
+    "temas": {
+      "B1 Manhã": "variações de giro simples",
+      "B2 Manhã": "esmeril junto",
+      "I1 Manhã": "Paulista com invertido",
+      "I2 Manhã": "paulista",
+      "B1 Tarde": "—",
+      "B2 Tarde": "—",
+      "I1 Tarde": "esmeril (variações)",
+      "I2 Tarde": "—"
+    },
+    "professores": {
+      "B1 Manhã": "BIA",
+      "B2 Manhã": "TONY",
+      "I1 Manhã": "GÃO E BIA",
+      "I2 Manhã": "DAVIDSON",
+      "I1 Tarde": "GÃO"
+    }
+  },
+  {
+    "data": "2023-05-06",
+    "label": "sábado, 06/05",
+    "temas": {
+      "B1 Manhã": "—",
+      "B2 Manhã": "esmeril",
+      "I1 Manhã": "Introdução esmeril aberto",
+      "I2 Manhã": "Aula com DAVIDSON",
+      "B1 Tarde": "—",
+      "B2 Tarde": "NIVELAMENTO",
+      "I1 Tarde": "esmeril; introdução pião",
+      "I2 Tarde": "—"
+    },
+    "professores": {
+      "B2 Manhã": "DAVIDSON",
+      "I1 Manhã": "GÃO E BIA",
+      "I2 Manhã": "DAVIDSON",
+      "I1 Tarde": "GÃO"
+    }
+  },
+  {
+    "data": "2023-05-13",
+    "label": "sábado, 13/05",
+    "temas": {
+      "B1 Manhã": "REVISÃO",
+      "B2 Manhã": "cobrinha",
+      "I1 Manhã": "esmeril abberto",
+      "I2 Manhã": "—",
+      "B1 Tarde": "manivela",
+      "B2 Tarde": "invertido",
+      "I1 Tarde": "pião",
+      "I2 Tarde": "—"
+    },
+    "professores": {}
+  },
+  {
+    "data": "2023-05-20",
+    "label": "sábado, 20/05",
+    "temas": {
+      "B1 Manhã": "Nivelamento",
+      "B2 Manhã": "Contratempo introdução",
+      "I1 Manhã": "esmeril variações",
+      "I2 Manhã": "—",
+      "B1 Tarde": "nivelamento",
+      "B2 Tarde": "revisão",
+      "I1 Tarde": "pião",
+      "I2 Tarde": "—"
+    },
+    "professores": {}
+  },
+  {
+    "data": "2023-05-27",
+    "label": "sábado, 27/05",
+    "temas": {
+      "B1 Manhã": "—",
+      "B2 Manhã": "contratempo",
+      "I1 Manhã": "técnicas de esmeril",
+      "I2 Manhã": "—",
+      "B1 Tarde": "—",
+      "B2 Tarde": "—",
+      "I1 Tarde": "técnicas de esmeril",
+      "I2 Tarde": "—"
+    },
+    "professores": {
+      "B2 Manhã": "TONY",
+      "I1 Manhã": "BIA",
+      "I1 Tarde": "BIA"
+    }
+  },
+  {
+    "data": "2023-06-03",
+    "label": "sábado, 03/06",
+    "temas": {
+      "B1 Manhã": "Aula com BIA",
+      "B2 Manhã": "contratempo",
+      "I1 Manhã": "I1 e I2 Pião",
+      "I2 Manhã": "—",
+      "B1 Tarde": "manivela, giro dama e cavalheiro, variações",
+      "B2 Tarde": "combo de giro",
+      "I1 Tarde": "pião invertido",
+      "I2 Tarde": "—"
+    },
+    "professores": {
+      "B1 Manhã": "BIA",
+      "B2 Manhã": "TONY",
+      "I1 Manhã": "GÃO E BIA",
+      "B1 Tarde": "MESSIAS",
+      "B2 Tarde": "TAZ"
+    }
+  },
+  {
+    "data": "2023-06-10",
+    "label": "sábado, 10/06",
+    "temas": {
+      "B1 Manhã": "—",
+      "B2 Manhã": "contratempo",
+      "I1 Manhã": "pião",
+      "I2 Manhã": "—",
+      "B1 Tarde": "giro do cavalheiro",
+      "B2 Tarde": "banana-banana",
+      "I1 Tarde": "pião + contratempo",
+      "I2 Tarde": "—"
+    },
+    "professores": {}
+  },
+  {
+    "data": "2023-06-17",
+    "label": "sábado, 17/06",
+    "temas": {
+      "B1 Manhã": "—",
+      "B2 Manhã": "contratempo",
+      "I1 Manhã": "pião",
+      "I2 Manhã": "—",
+      "B1 Tarde": "—",
+      "B2 Tarde": "avião",
+      "I1 Tarde": "pião com travada",
+      "I2 Tarde": "—"
+    },
+    "professores": {}
+  },
+  {
+    "data": "2023-06-24",
+    "label": "sábado, 24/06",
+    "temas": {
+      "B1 Manhã": "—",
+      "B2 Manhã": "—",
+      "I1 Manhã": "—",
+      "I2 Manhã": "—",
+      "B1 Tarde": "—",
+      "B2 Tarde": "—",
+      "I1 Tarde": "—",
+      "I2 Tarde": "—"
+    },
+    "professores": {}
+  },
+  {
+    "data": "2023-07-01",
+    "label": "sábado, 01/07",
+    "temas": {
+      "B1 Manhã": "—",
+      "B2 Manhã": "—",
+      "I1 Manhã": "pião",
+      "I2 Manhã": "—",
+      "B1 Tarde": "—",
+      "B2 Tarde": "—",
+      "I1 Tarde": "sacada de perna",
+      "I2 Tarde": "—"
+    },
+    "professores": {}
+  },
+  {
+    "data": "2023-07-08",
+    "label": "sábado, 08/07",
+    "temas": {
+      "B1 Manhã": "peso e contrapeso",
+      "B2 Manhã": "contratempo",
+      "I1 Manhã": "—",
+      "I2 Manhã": "—",
+      "B1 Tarde": "—",
+      "B2 Tarde": "—",
+      "I1 Tarde": "—",
+      "I2 Tarde": "—"
+    },
+    "professores": {
+      "B1 Manhã": "BIA",
+      "B2 Manhã": "TONY"
+    }
+  },
+  {
+    "data": "2023-07-15",
+    "label": "sábado, 15/07",
+    "temas": {
+      "B1 Manhã": "musicalidade",
+      "B2 Manhã": "contratempo",
+      "I1 Manhã": "pião com travada",
+      "I2 Manhã": "-",
+      "B1 Tarde": "—",
+      "B2 Tarde": "—",
+      "I1 Tarde": "caminhada e travada",
+      "I2 Tarde": "—"
+    },
+    "professores": {}
+  },
+  {
+    "data": "2023-07-22",
+    "label": "sábado, 22/07",
+    "temas": {
+      "B1 Manhã": "—",
+      "B2 Manhã": "—",
+      "I1 Manhã": "—",
+      "I2 Manhã": "—",
+      "B1 Tarde": "—",
+      "B2 Tarde": "—",
+      "I1 Tarde": "—",
+      "I2 Tarde": "—"
+    },
+    "professores": {}
+  },
+  {
+    "data": "2023-07-29",
+    "label": "sábado, 29/07",
+    "temas": {
+      "B1 Manhã": "—",
+      "B2 Manhã": "—",
+      "I1 Manhã": "—",
+      "I2 Manhã": "—",
+      "B1 Tarde": "—",
+      "B2 Tarde": "—",
+      "I1 Tarde": "—",
+      "I2 Tarde": "—"
+    },
+    "professores": {}
+  },
+  {
+    "data": "2023-08-05",
+    "label": "sábado, 05/08",
+    "temas": {
+      "B1 Manhã": "—",
+      "B2 Manhã": "invertido",
+      "I1 Manhã": "caminhada + variações",
+      "I2 Manhã": "—",
+      "B1 Tarde": "-",
+      "B2 Tarde": "Aula com TAZ",
+      "I1 Tarde": "—",
+      "I2 Tarde": "—"
+    },
+    "professores": {
+      "B2 Manhã": "TONY",
+      "I1 Manhã": "GÃO E BIA",
+      "B2 Tarde": "TAZ"
+    }
+  },
+  {
+    "data": "2023-08-12",
+    "label": "sábado, 12/08",
+    "temas": {
+      "B1 Manhã": "—",
+      "B2 Manhã": "—",
+      "I1 Manhã": "—",
+      "I2 Manhã": "—",
+      "B1 Tarde": "—",
+      "B2 Tarde": "início de contratempo",
+      "I1 Tarde": "Aula com GÃO",
+      "I2 Tarde": "—"
+    },
+    "professores": {
+      "B2 Tarde": "TAZ",
+      "I1 Tarde": "GÃO"
+    }
+  },
+  {
+    "data": "2023-08-19",
+    "label": "sábado, 19/08",
+    "temas": {
+      "B1 Manhã": "—",
+      "B2 Manhã": "invertido",
+      "I1 Manhã": "breck",
+      "I2 Manhã": "—",
+      "B1 Tarde": "—",
+      "B2 Tarde": "contratempo",
+      "I1 Tarde": "—",
+      "I2 Tarde": "—"
+    },
+    "professores": {}
+  },
+  {
+    "data": "2023-08-26",
+    "label": "sábado, 26/08",
+    "temas": {
+      "B1 Manhã": "—",
+      "B2 Manhã": "—",
+      "I1 Manhã": "—",
+      "I2 Manhã": "—",
+      "B1 Tarde": "—",
+      "B2 Tarde": "—",
+      "I1 Tarde": "—",
+      "I2 Tarde": "—"
+    },
+    "professores": {}
+  },
+  {
+    "data": "2023-09-02",
+    "label": "sábado, 02/09",
+    "temas": {
+      "B1 Manhã": "—",
+      "B2 Manhã": "—",
+      "I1 Manhã": "—",
+      "I2 Manhã": "—",
+      "B1 Tarde": "—",
+      "B2 Tarde": "—",
+      "I1 Tarde": "—",
+      "I2 Tarde": "—"
+    },
+    "professores": {}
+  },
+  {
+    "data": "2023-09-09",
+    "label": "sábado, 09/09",
+    "temas": {
+      "B1 Manhã": "—",
+      "B2 Manhã": "—",
+      "I1 Manhã": "—",
+      "I2 Manhã": "—",
+      "B1 Tarde": "—",
+      "B2 Tarde": "—",
+      "I1 Tarde": "—",
+      "I2 Tarde": "—"
+    },
+    "professores": {}
+  },
+  {
+    "data": "2023-09-16",
+    "label": "sábado, 16/09",
+    "temas": {
+      "B1 Manhã": "—",
+      "B2 Manhã": "—",
+      "I1 Manhã": "—",
+      "I2 Manhã": "—",
+      "B1 Tarde": "giro completo",
+      "B2 Tarde": "Revisão",
+      "I1 Tarde": "passo de perna",
+      "I2 Tarde": "—"
+    },
+    "professores": {}
+  },
+  {
+    "data": "2023-09-23",
+    "label": "sábado, 23/09",
+    "temas": {
+      "B1 Manhã": "—",
+      "B2 Manhã": "—",
+      "I1 Manhã": "—",
+      "I2 Manhã": "—",
+      "B1 Tarde": "—",
+      "B2 Tarde": "Nivelamento",
+      "I1 Tarde": "Contratempo",
+      "I2 Tarde": "—"
+    },
+    "professores": {}
+  },
+  {
+    "data": "2023-09-30",
+    "label": "sábado, 30/09",
+    "temas": {
+      "B1 Manhã": "—",
+      "B2 Manhã": "—",
+      "I1 Manhã": "—",
+      "I2 Manhã": "—",
+      "B1 Tarde": "—",
+      "B2 Tarde": "invertido",
+      "I1 Tarde": "—",
+      "I2 Tarde": "—"
+    },
+    "professores": {}
+  },
+  {
+    "data": "2023-10-07",
+    "label": "sábado, 07/10",
+    "temas": {
+      "B1 Manhã": "—",
+      "B2 Manhã": "—",
+      "I1 Manhã": "—",
+      "I2 Manhã": "—",
+      "B1 Tarde": "—",
+      "B2 Tarde": "invertido + giro gira",
+      "I1 Tarde": "—",
+      "I2 Tarde": "—"
+    },
+    "professores": {}
+  },
+  {
+    "data": "2023-10-14",
+    "label": "sábado, 14/10",
+    "temas": {
+      "B1 Manhã": "—",
+      "B2 Manhã": "—",
+      "I1 Manhã": "—",
+      "I2 Manhã": "—",
+      "B1 Tarde": "—",
+      "B2 Tarde": "—",
+      "I1 Tarde": "—",
+      "I2 Tarde": "—"
+    },
+    "professores": {}
+  },
+  {
+    "data": "2023-10-21",
+    "label": "sábado, 21/10",
+    "temas": {
+      "B1 Manhã": "—",
+      "B2 Manhã": "—",
+      "I1 Manhã": "—",
+      "I2 Manhã": "—",
+      "B1 Tarde": "—",
+      "B2 Tarde": "—",
+      "I1 Tarde": "—",
+      "I2 Tarde": "—"
+    },
+    "professores": {}
+  },
+  {
+    "data": "2023-10-28",
+    "label": "sábado, 28/10",
+    "temas": {
+      "B1 Manhã": "—",
+      "B2 Manhã": "—",
+      "I1 Manhã": "—",
+      "I2 Manhã": "—",
+      "B1 Tarde": "—",
+      "B2 Tarde": "—",
+      "I1 Tarde": "—",
+      "I2 Tarde": "—"
+    },
+    "professores": {}
+  },
+  {
+    "data": "2023-11-04",
+    "label": "sábado, 04/11",
+    "temas": {
+      "B1 Manhã": "—",
+      "B2 Manhã": "—",
+      "I1 Manhã": "—",
+      "I2 Manhã": "—",
+      "B1 Tarde": "—",
+      "B2 Tarde": "—",
+      "I1 Tarde": "—",
+      "I2 Tarde": "—"
+    },
+    "professores": {}
+  },
+  {
+    "data": "2023-11-11",
+    "label": "sábado, 11/11",
+    "temas": {
+      "B1 Manhã": "—",
+      "B2 Manhã": "—",
+      "I1 Manhã": "—",
+      "I2 Manhã": "—",
+      "B1 Tarde": "—",
+      "B2 Tarde": "—",
+      "I1 Tarde": "—",
+      "I2 Tarde": "—"
+    },
+    "professores": {}
+  },
+  {
+    "data": "2023-11-18",
+    "label": "sábado, 18/11",
+    "temas": {
+      "B1 Manhã": "—",
+      "B2 Manhã": "—",
+      "I1 Manhã": "—",
+      "I2 Manhã": "—",
+      "B1 Tarde": "—",
+      "B2 Tarde": "—",
+      "I1 Tarde": "—",
+      "I2 Tarde": "—"
+    },
+    "professores": {}
+  },
+  {
+    "data": "2023-11-25",
+    "label": "sábado, 25/11",
+    "temas": {
+      "B1 Manhã": "—",
+      "B2 Manhã": "—",
+      "I1 Manhã": "—",
+      "I2 Manhã": "—",
+      "B1 Tarde": "—",
+      "B2 Tarde": "—",
+      "I1 Tarde": "—",
+      "I2 Tarde": "—"
+    },
+    "professores": {}
+  },
+  {
+    "data": "2023-12-02",
+    "label": "sábado, 02/12",
+    "temas": {
+      "B1 Manhã": "—",
+      "B2 Manhã": "—",
+      "I1 Manhã": "—",
+      "I2 Manhã": "—",
+      "B1 Tarde": "—",
+      "B2 Tarde": "—",
+      "I1 Tarde": "—",
+      "I2 Tarde": "—"
+    },
+    "professores": {}
+  },
+  {
+    "data": "2023-12-09",
+    "label": "sábado, 09/12",
+    "temas": {
+      "B1 Manhã": "—",
+      "B2 Manhã": "—",
+      "I1 Manhã": "—",
+      "I2 Manhã": "—",
+      "B1 Tarde": "—",
+      "B2 Tarde": "—",
+      "I1 Tarde": "—",
+      "I2 Tarde": "—"
+    },
+    "professores": {}
+  },
+  {
+    "data": "2023-12-16",
+    "label": "sábado, 16/12",
+    "temas": {
+      "B1 Manhã": "—",
+      "B2 Manhã": "—",
+      "I1 Manhã": "—",
+      "I2 Manhã": "—",
+      "B1 Tarde": "—",
+      "B2 Tarde": "—",
+      "I1 Tarde": "—",
+      "I2 Tarde": "—"
+    },
+    "professores": {}
+  },
+  {
+    "data": "2023-12-23",
+    "label": "sábado, 23/12",
+    "temas": {
+      "B1 Manhã": "—",
+      "B2 Manhã": "—",
+      "I1 Manhã": "—",
+      "I2 Manhã": "—",
+      "B1 Tarde": "—",
+      "B2 Tarde": "—",
+      "I1 Tarde": "—",
+      "I2 Tarde": "—"
+    },
+    "professores": {}
+  },
+  {
+    "data": "2023-12-30",
+    "label": "sábado, 30/12",
+    "temas": {
+      "B1 Manhã": "—",
+      "B2 Manhã": "—",
+      "I1 Manhã": "—",
+      "I2 Manhã": "—",
+      "B1 Tarde": "—",
+      "B2 Tarde": "—",
+      "I1 Tarde": "—",
+      "I2 Tarde": "—"
+    },
+    "professores": {}
+  }
+];
 
-  annualScheduleRows.forEach((row, rowIndex) => {
+export function buildInitialCronogramas(aulasList: Aula[]): Cronograma[] {
+  const result: Cronograma[] = [];
+  annualScheduleRows.forEach((row) => {
     Object.entries(row.temas).forEach(([turmaNome, tema]) => {
-      const foundAula = aulasList.find((a) => a.nome === turmaNome);
-      if (foundAula) {
-        cronos.push({
-          id: `crono_init_${rowIndex}_${foundAula.id}`,
-          aula_id: foundAula.id,
+      const target = aulasList.find(
+        (a) => a.nome.trim().toLowerCase() === turmaNome.trim().toLowerCase()
+      );
+      if (target) {
+        const prof = row.professores?.[turmaNome];
+        result.push({
+          id: `crono_${row.data}_${target.id}`,
+          aula_id: target.id,
           data_aula: row.data,
-          tema_aula: tema
+          tema_aula: tema,
+          observacoes: prof ? `Prof: ${prof}` : undefined
         });
       }
     });
   });
-
-  return cronos;
-};
+  return result;
+}
