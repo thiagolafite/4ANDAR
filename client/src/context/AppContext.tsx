@@ -75,6 +75,7 @@ interface AppContextType {
   equipe: Equipe[];
   addEquipe: (membro: Omit<Equipe, 'id'>) => void;
   updateEquipe: (id: string, updates: Partial<Equipe>) => void;
+  deleteEquipe: (id: string) => void;
 
   // Aulas & Cronograma
   aulas: Aula[];
@@ -227,21 +228,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   // Purge cache antigo uma vez para iniciar do zero
   useEffect(() => {
-    const isCleaned = localStorage.getItem('4andar_clean_v2');
+    const isCleaned = localStorage.getItem('4andar_clean_v3');
     if (!isCleaned) {
-      ['alunos', 'equipe', 'aulas', 'cronogramas', 'presencas', 'pagamentos', 'nivelamentoSessoes', 'eventos', 'avisos'].forEach((k) => {
-        localStorage.removeItem(`4andar_${k}`);
-      });
-      localStorage.setItem('4andar_clean_v2', 'true');
-      setAlunos([]);
+      localStorage.removeItem('4andar_equipe');
+      localStorage.setItem('4andar_clean_v3', 'true');
       setEquipe([]);
-      setAulas([]);
-      setCronogramas([]);
-      setPresencas([]);
-      setPagamentos([]);
-      setNivelamentoSessoes([]);
-      setEventos([]);
-      setAvisos([]);
     }
   }, []);
 
@@ -655,6 +646,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       body: JSON.stringify(updates)
     }).catch(() => {});
     showToast('Cadastro de equipe atualizado!');
+  };
+
+  const deleteEquipe = (id: string) => {
+    setEquipe((prev) => prev.filter((eq) => eq.id !== id));
+    fetch(`${API_URL}/equipe/${id}`, {
+      method: 'DELETE'
+    }).catch(() => {});
+    showToast('Membro da equipe removido com sucesso.', 'info');
   };
 
   // Aulas & Cronograma
@@ -1085,6 +1084,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         equipe,
         addEquipe,
         updateEquipe,
+        deleteEquipe,
         aulas,
         addAula,
         updateAula,

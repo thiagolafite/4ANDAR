@@ -9,12 +9,13 @@ import {
   Plus,
   X,
   Sparkles,
-  BookOpen
+  BookOpen,
+  Trash2
 } from 'lucide-react';
 import { Equipe } from '../types';
 
 export const EquipePage: React.FC = () => {
-  const { equipe, aulas, addEquipe, usuariosList } = useApp();
+  const { equipe, aulas, addEquipe, deleteEquipe, usuariosList } = useApp();
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedUserId, setSelectedUserId] = useState<string>('');
@@ -107,37 +108,67 @@ export const EquipePage: React.FC = () => {
 
       {/* Grid of Team Members */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {equipe.map((membro) => {
-          const turmasDoProfessor = aulas.filter((a) => a.equipe_id === membro.id);
-
-          return (
-            <div
-              key={membro.id}
-              className="rounded-3xl bg-white border border-slate-200 p-6 shadow-sm hover:border-brand-400 hover:shadow-md transition-all flex flex-col justify-between"
+        {equipe.length === 0 ? (
+          <div className="col-span-full bg-white rounded-3xl p-12 text-center border border-slate-200 shadow-xs">
+            <UserCheck className="h-12 w-12 text-slate-300 mx-auto mb-3" />
+            <h3 className="text-lg font-bold text-slate-800">Nenhum professor cadastrado</h3>
+            <p className="text-xs text-slate-500 mt-1 max-w-md mx-auto">
+              Você pode cadastrar novos professores vinculando diretamente os usuários do sistema ou preenchendo os dados.
+            </p>
+            <button
+              onClick={() => setIsModalOpen(true)}
+              className="mt-4 inline-flex items-center gap-2 rounded-xl bg-brand-600 hover:bg-brand-700 text-white font-bold px-4 py-2.5 text-xs shadow-md shadow-brand-500/20 transition-all cursor-pointer"
             >
-              <div>
-                <div className="flex items-center gap-4">
-                  <img
-                    src={membro.foto_url}
-                    alt={membro.nome}
-                    className="h-16 w-16 rounded-full object-cover ring-4 ring-orange-100"
-                  />
-                  <div>
-                    <h3 className="font-bold text-lg text-slate-900 leading-tight">
-                      {membro.nome}
-                    </h3>
-                    <div className="flex flex-wrap items-center gap-1.5 mt-1">
-                      <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-orange-100 text-brand-800">
-                        {membro.papel_equipe}
-                      </span>
-                      {Boolean(membro.user_id || usuariosList.some((u) => u.email.toLowerCase() === membro.email.toLowerCase())) && (
-                        <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800">
-                          Conta Vinculada
-                        </span>
-                      )}
+              <Plus className="h-4 w-4" />
+              <span>Cadastrar Professor / Membro</span>
+            </button>
+          </div>
+        ) : (
+          equipe.map((membro) => {
+            const turmasDoProfessor = aulas.filter((a) => a.equipe_id === membro.id);
+
+            return (
+              <div
+                key={membro.id}
+                className="rounded-3xl bg-white border border-slate-200 p-6 shadow-sm hover:border-brand-400 hover:shadow-md transition-all flex flex-col justify-between"
+              >
+                <div>
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex items-center gap-4">
+                      <img
+                        src={membro.foto_url}
+                        alt={membro.nome}
+                        className="h-16 w-16 rounded-full object-cover ring-4 ring-orange-100"
+                      />
+                      <div>
+                        <h3 className="font-bold text-lg text-slate-900 leading-tight">
+                          {membro.nome}
+                        </h3>
+                        <div className="flex flex-wrap items-center gap-1.5 mt-1">
+                          <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-orange-100 text-brand-800">
+                            {membro.papel_equipe}
+                          </span>
+                          {Boolean(membro.user_id || usuariosList.some((u) => u.email.toLowerCase() === membro.email.toLowerCase())) && (
+                            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800">
+                              Conta Vinculada
+                            </span>
+                          )}
+                        </div>
+                      </div>
                     </div>
+
+                    <button
+                      onClick={() => {
+                        if (window.confirm(`Deseja remover "${membro.nome}" da equipe?`)) {
+                          deleteEquipe(membro.id);
+                        }
+                      }}
+                      className="text-slate-300 hover:text-rose-600 p-2 rounded-xl hover:bg-rose-50 transition-colors cursor-pointer"
+                      title="Remover da equipe"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </button>
                   </div>
-                </div>
 
                 <div className="mt-4 space-y-1.5 text-xs text-slate-600 pt-3 border-t border-slate-100">
                   <p className="flex items-center gap-2">
@@ -177,7 +208,7 @@ export const EquipePage: React.FC = () => {
               </div>
             </div>
           );
-        })}
+        }))}
       </div>
 
       {/* Modal Novo Membro */}

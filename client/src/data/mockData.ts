@@ -28,44 +28,8 @@ export const mockUsers: User[] = [
   }
 ];
 
-export const mockEquipe: Equipe[] = [
-  {
-    id: 'eq_1',
-    user_id: 'usr_admin',
-    nome: 'Mariana Sol',
-    email: 'mariana.sol@4andar.com.br',
-    telefone: '(11) 98765-4321',
-    papel_equipe: 'Professor',
-    especialidades: ['Forró Universitário', 'Conexão & Abraço', 'Nivelamento'],
-    google_calendar_conectado: true,
-    ativo: true,
-    foto_url: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80'
-  },
-  {
-    id: 'eq_2',
-    user_id: 'usr_prof_2',
-    nome: 'Mestre Gonzaga Silva',
-    email: 'gonzaga.silva@4andar.com.br',
-    telefone: '(11) 97654-3210',
-    papel_equipe: 'Professor',
-    especialidades: ['Pé de Serra', 'Baião & Arrasta-pé', 'Ritmo e Raiz'],
-    google_calendar_conectado: true,
-    ativo: true,
-    foto_url: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150&auto=format&fit=crop&q=80'
-  },
-  {
-    id: 'eq_3',
-    user_id: 'usr_prof_3',
-    nome: 'Tiago Baião',
-    email: 'tiago.baiao@4andar.com.br',
-    telefone: '(11) 96543-2109',
-    papel_equipe: 'Instrutor',
-    especialidades: ['Forró Estilo Roots', 'Giro & Sacadas', 'Musicalidade'],
-    google_calendar_conectado: false,
-    ativo: true,
-    foto_url: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&auto=format&fit=crop&q=80'
-  }
-];
+export const mockEquipe: Equipe[] = [];
+
 
 export const mockAlunos: Aluno[] = [
   {
