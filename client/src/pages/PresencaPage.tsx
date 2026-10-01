@@ -20,6 +20,7 @@ export const PresencaPage: React.FC = () => {
   const {
     currentUser,
     alunos,
+    alunosCadastrados,
     aulas,
     presencas,
     confirmarPresenca,
@@ -45,12 +46,16 @@ export const PresencaPage: React.FC = () => {
 
   // Count condutores and conduzidos among confirmados
   const condutoresConfirmados = confirmados.filter((p) => {
-    const a = alunos.find((al) => al.id === p.aluno_id);
+    const a =
+      alunosCadastrados.find((al) => al.id === p.aluno_id || al.aluno_id === p.aluno_id || al.user_id === p.aluno_id) ||
+      alunos.find((al) => al.id === p.aluno_id);
     return a?.papel === 'Condutor' || a?.papel === 'Ambos';
   }).length;
 
   const conduzidosConfirmados = confirmados.filter((p) => {
-    const a = alunos.find((al) => al.id === p.aluno_id);
+    const a =
+      alunosCadastrados.find((al) => al.id === p.aluno_id || al.aluno_id === p.aluno_id || al.user_id === p.aluno_id) ||
+      alunos.find((al) => al.id === p.aluno_id);
     return a?.papel === 'Conduzido' || a?.papel === 'Ambos';
   }).length;
 
@@ -63,7 +68,9 @@ export const PresencaPage: React.FC = () => {
 
     const headers = ['Nome', 'Telefone', 'Email', 'Nivel', 'Papel', 'Status', 'Data_Aula', 'Confirmado_Por'];
     const rows = confirmados.map((p) => {
-      const a = alunos.find((al) => al.id === p.aluno_id);
+      const a =
+        alunosCadastrados.find((al) => al.id === p.aluno_id || al.aluno_id === p.aluno_id || al.user_id === p.aluno_id) ||
+        alunos.find((al) => al.id === p.aluno_id);
       return [
         `"${a?.nome || 'N/A'}"`,
         `"${a?.telefone || 'N/A'}"`,
@@ -161,8 +168,8 @@ export const PresencaPage: React.FC = () => {
               onChange={(e) => setAlunoManualId(e.target.value)}
               className="flex-1 rounded-xl border border-slate-300 p-2.5 text-sm font-medium text-slate-800 outline-none focus:border-brand-500 bg-white"
             >
-              <option value="">Selecione o aluno...</option>
-              {alunos.map((a) => (
+              <option value="">Selecione o aluno cadastrado...</option>
+              {alunosCadastrados.map((a) => (
                 <option key={a.id} value={a.id}>
                   {a.nome} (Nível {a.nivel_atual} - {a.papel})
                 </option>
@@ -270,7 +277,9 @@ export const PresencaPage: React.FC = () => {
                 </tr>
               ) : (
                 filteredPresencas.map((pres) => {
-                  const aluno = alunos.find((a) => a.id === pres.aluno_id);
+                  const aluno =
+                    alunosCadastrados.find((a) => a.id === pres.aluno_id || a.aluno_id === pres.aluno_id || a.user_id === pres.aluno_id) ||
+                    alunos.find((a) => a.id === pres.aluno_id);
                   if (!aluno) return null;
 
                   return (

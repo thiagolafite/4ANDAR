@@ -88,6 +88,31 @@ export interface Equipe {
   foto_url?: string;
 }
 
+export interface ProfessorOption {
+  id: string;
+  nome: string;
+  email: string;
+  telefone?: string;
+  papel: string;
+  foto_url?: string;
+  user_id?: string;
+  equipe_id?: string;
+}
+
+export interface AlunoOption {
+  id: string;
+  aluno_id?: string;
+  user_id?: string;
+  nome: string;
+  email: string;
+  telefone: string;
+  nivel_atual: NivelForro;
+  papel: PapelDanca;
+  foto_url?: string;
+  mensalidade_valor?: number;
+  dia_vencimento?: number;
+}
+
 export interface Aula {
   id: string;
   nome: string;

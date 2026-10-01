@@ -15,7 +15,7 @@ import {
 import { Aula, NivelForro } from '../types';
 
 export const AulasPage: React.FC = () => {
-  const { aulas, equipe, alunos, addAula, updateAula, deleteAula } = useApp();
+  const { aulas, equipe, alunos, professoresCadastrados, addAula, updateAula, deleteAula } = useApp();
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingAula, setEditingAula] = useState<Aula | null>(null);
@@ -28,7 +28,7 @@ export const AulasPage: React.FC = () => {
     horario_inicio: '19:30',
     horario_fim: '20:45',
     sala: 'Salão Principal (Gonzagão)',
-    equipe_id: equipe[0]?.id || '',
+    equipe_id: professoresCadastrados[0]?.id || equipe[0]?.id || '',
     capacidade_maxima: 24
   });
 
@@ -42,7 +42,7 @@ export const AulasPage: React.FC = () => {
       horario_inicio: '19:30',
       horario_fim: '20:45',
       sala: 'Salão Principal (Gonzagão)',
-      equipe_id: equipe[0]?.id || '',
+      equipe_id: professoresCadastrados[0]?.id || equipe[0]?.id || '',
       capacidade_maxima: 24
     });
     setIsModalOpen(true);
@@ -112,7 +112,9 @@ export const AulasPage: React.FC = () => {
       {/* Grid of Classes */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
         {aulas.map((aula) => {
-          const professor = equipe.find((e) => e.id === aula.equipe_id);
+          const professor =
+            professoresCadastrados.find((p) => p.id === aula.equipe_id || p.equipe_id === aula.equipe_id || p.user_id === aula.equipe_id) ||
+            equipe.find((e) => e.id === aula.equipe_id);
           const alunosMatriculadosNivel = alunos.filter(
             (a) => a.nivel_atual === aula.nivel && a.status === 'ativo'
           ).length;
@@ -288,9 +290,10 @@ export const AulasPage: React.FC = () => {
                     }
                     className="w-full rounded-xl border border-slate-300 p-2 text-sm bg-white outline-none focus:border-brand-500"
                   >
-                    {equipe.map((eq) => (
-                      <option key={eq.id} value={eq.id}>
-                        {eq.nome} ({eq.papel_equipe})
+                    <option value="">Selecione um professor...</option>
+                    {professoresCadastrados.map((prof) => (
+                      <option key={prof.id} value={prof.id}>
+                        {prof.nome} ({prof.papel})
                       </option>
                     ))}
                   </select>

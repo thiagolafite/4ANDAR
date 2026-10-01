@@ -11,11 +11,12 @@ import {
 } from 'lucide-react';
 
 export const FrequenciaPage: React.FC = () => {
-  const { currentUser, alunos, aulas, presencas } = useApp();
-  const isEquipe = currentUser.tipo_usuario === 'Equipe';
+  const { currentUser, alunos, alunosCadastrados, aulas, presencas } = useApp();
+  const isEquipe = currentUser.tipo_usuario === 'Equipe' || currentUser.tipo_usuario === 'AdminMaster';
 
   const alunoLogado = !isEquipe
-    ? alunos.find((a) => a.id === currentUser.aluno_id || a.email === currentUser.email) || alunos[0]
+    ? alunosCadastrados.find((a) => a.id === currentUser.aluno_id || a.email === currentUser.email || a.user_id === currentUser.id) ||
+      alunos.find((a) => a.id === currentUser.aluno_id || a.email === currentUser.email) || alunos[0]
     : null;
 
   // Student specific stats
@@ -89,7 +90,9 @@ export const FrequenciaPage: React.FC = () => {
 
         <div className="divide-y divide-slate-100">
           {(isEquipe ? presencas : presencasDoAluno).map((pres) => {
-            const aluno = alunos.find((a) => a.id === pres.aluno_id);
+            const aluno =
+              alunosCadastrados.find((a) => a.id === pres.aluno_id || a.aluno_id === pres.aluno_id || a.user_id === pres.aluno_id) ||
+              alunos.find((a) => a.id === pres.aluno_id);
             const aula = aulas.find((a) => a.id === pres.aula_id);
 
             return (

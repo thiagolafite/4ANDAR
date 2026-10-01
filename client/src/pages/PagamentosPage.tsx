@@ -20,6 +20,7 @@ export const PagamentosPage: React.FC = () => {
   const {
     pagamentos,
     alunos,
+    alunosCadastrados,
     registrarPagamento,
     addPagamento,
     dispararLembretesMensalidade,
@@ -33,7 +34,7 @@ export const PagamentosPage: React.FC = () => {
 
   // New charge state
   const [novaCobranca, setNovaCobranca] = useState<Omit<Pagamento, 'id'>>({
-    aluno_id: alunos[0]?.id || '',
+    aluno_id: alunosCadastrados[0]?.id || alunos[0]?.id || '',
     valor: 190.0,
     data_pagamento: null,
     data_vencimento: '2026-10-05',
@@ -47,7 +48,9 @@ export const PagamentosPage: React.FC = () => {
     if (filterStatus !== 'todos' && pag.status !== filterStatus) return false;
     if (!searchTerm.trim()) return true;
 
-    const aluno = alunos.find((a) => a.id === pag.aluno_id);
+    const aluno =
+      alunosCadastrados.find((a) => a.id === pag.aluno_id || a.aluno_id === pag.aluno_id || a.user_id === pag.aluno_id) ||
+      alunos.find((a) => a.id === pag.aluno_id);
     const q = searchTerm.toLowerCase();
     return (
       aluno?.nome.toLowerCase().includes(q) ||
@@ -217,7 +220,9 @@ export const PagamentosPage: React.FC = () => {
                 </tr>
               ) : (
                 filteredPagamentos.map((pag) => {
-                  const aluno = alunos.find((a) => a.id === pag.aluno_id);
+                  const aluno =
+                    alunosCadastrados.find((a) => a.id === pag.aluno_id || a.aluno_id === pag.aluno_id || a.user_id === pag.aluno_id) ||
+                    alunos.find((a) => a.id === pag.aluno_id);
 
                   return (
                     <tr key={pag.id} className="hover:bg-slate-50/50 transition-colors">
@@ -349,7 +354,7 @@ export const PagamentosPage: React.FC = () => {
                 <select
                   value={novaCobranca.aluno_id}
                   onChange={(e) => {
-                    const sel = alunos.find((a) => a.id === e.target.value);
+                    const sel = alunosCadastrados.find((a) => a.id === e.target.value || a.aluno_id === e.target.value || a.user_id === e.target.value);
                     setNovaCobranca({
                       ...novaCobranca,
                       aluno_id: e.target.value,
@@ -358,9 +363,10 @@ export const PagamentosPage: React.FC = () => {
                   }}
                   className="w-full rounded-xl border border-slate-300 p-2 text-sm bg-white outline-none focus:border-brand-500"
                 >
-                  {alunos.map((a) => (
+                  <option value="">Selecione um aluno cadastrado...</option>
+                  {alunosCadastrados.map((a) => (
                     <option key={a.id} value={a.id}>
-                      {a.nome} (Nível {a.nivel_atual})
+                      {a.nome} (Nível {a.nivel_atual}) — {a.email}
                     </option>
                   ))}
                 </select>

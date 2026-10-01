@@ -17,12 +17,13 @@ import {
 import { Aluno, NivelForro, PapelDanca } from '../types';
 
 export const AlunosPage: React.FC = () => {
-  const { alunos, addAluno, setSelectedAlunoModal } = useApp();
+  const { alunos, addAluno, setSelectedAlunoModal, usuariosList } = useApp();
 
   const [searchTerm, setSearchTerm] = useState('');
   const [filterNivel, setFilterNivel] = useState<string>('todos');
   const [filterPapel, setFilterPapel] = useState<string>('todos');
   const [isNewModalOpen, setIsNewModalOpen] = useState(false);
+  const [selectedUserId, setSelectedUserId] = useState<string>('');
 
   // New Student Form State
   const [newStudent, setNewStudent] = useState<Omit<Aluno, 'id'>>({
@@ -38,6 +39,28 @@ export const AlunosPage: React.FC = () => {
     status: 'ativo',
     observacoes: ''
   });
+
+  const candidatosAluno = usuariosList.filter(
+    (u) =>
+      u.role === 'aluno' ||
+      u.tipo_usuario === 'Aluno' ||
+      (u.cargo_pretendido && /alun/i.test(u.cargo_pretendido)) ||
+      (!u.is_master && u.role !== 'master' && u.role !== 'admin' && u.role !== 'professor')
+  );
+
+  const handleSelectUser = (userId: string) => {
+    setSelectedUserId(userId);
+    const u = usuariosList.find((usr) => usr.id === userId);
+    if (u) {
+      setNewStudent({
+        ...newStudent,
+        user_id: u.id,
+        nome: u.nome,
+        email: u.email,
+        telefone: u.telefone || newStudent.telefone
+      });
+    }
+  };
 
   const filteredAlunos = alunos.filter((aluno) => {
     if (filterNivel !== 'todos' && aluno.nivel_atual !== filterNivel) return false;
@@ -56,6 +79,7 @@ export const AlunosPage: React.FC = () => {
     e.preventDefault();
     addAluno(newStudent);
     setIsNewModalOpen(false);
+    setSelectedUserId('');
     setNewStudent({
       nome: '',
       telefone: '',
@@ -218,9 +242,14 @@ export const AlunosPage: React.FC = () => {
                       <h4 className="font-bold text-sm text-slate-900 group-hover:text-brand-600 transition-colors">
                         {aluno.nome}
                       </h4>
-                      <p className="text-xs text-slate-400 mt-0.5">
-                        {aluno.papel}
-                      </p>
+                      <div className="flex items-center gap-1.5 mt-0.5">
+                        <span className="text-xs text-slate-400">{aluno.papel}</span>
+                        {Boolean(aluno.user_id || usuariosList.some((u) => u.email.toLowerCase() === aluno.email.toLowerCase())) && (
+                          <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-emerald-100 text-emerald-800">
+                            Conta Vinculada
+                          </span>
+                        )}
+                      </div>
                     </div>
                   </div>
 
@@ -287,6 +316,26 @@ export const AlunosPage: React.FC = () => {
             </div>
 
             <form onSubmit={handleCreateSubmit} className="space-y-4">
+              {/* Seleção de Usuário Cadastrado */}
+              <div className="p-3 bg-amber-50/80 border border-amber-200 rounded-xl space-y-1.5">
+                <label className="block text-xs font-bold text-amber-900 uppercase tracking-wider flex items-center justify-between">
+                  <span>Vincular a Usuário já Cadastrado (Aluno)</span>
+                  <span className="text-[10px] font-semibold text-amber-600">Preenchimento automático</span>
+                </label>
+                <select
+                  value={selectedUserId}
+                  onChange={(e) => handleSelectUser(e.target.value)}
+                  className="w-full rounded-lg border border-amber-300 bg-white p-2 text-xs font-medium text-slate-800 outline-none focus:border-brand-500"
+                >
+                  <option value="">-- Selecionar usuário cadastrado (ou preencher manual abaixo) --</option>
+                  {candidatosAluno.map((u) => (
+                    <option key={u.id} value={u.id}>
+                      {u.nome} ({u.email}) — Papel: {u.cargo_pretendido || u.role} [{u.status}]
+                    </option>
+                  ))}
+                </select>
+              </div>
+
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">

@@ -198,7 +198,7 @@ app.post('/api/auth/register', async (req, res) => {
 app.get('/api/auth/me', authenticateToken, async (req, res) => {
   try {
     const result = await turso.execute({
-      sql: 'SELECT id, nome, email, telefone, cargo_pretendido, role, status, is_master, permissoes, avatar_url, data_cadastro, data_aprovacao, ultimo_acesso FROM usuarios WHERE id = ?',
+      sql: 'SELECT id, nome, email, telefone, cargo_pretendido, role, status, is_master, permissoes, avatar_url, data_cadastro, data_aprovacao, ultimo_acesso, aluno_id, equipe_id FROM usuarios WHERE id = ?',
       args: [req.user.userId]
     });
 
@@ -231,7 +231,7 @@ app.get('/api/auth/me', authenticateToken, async (req, res) => {
 app.get('/api/usuarios', async (req, res) => {
   try {
     const { status, role } = req.query;
-    let sql = 'SELECT id, nome, email, telefone, cargo_pretendido, role, status, is_master, permissoes, motivo_recusa, aprovado_por, data_cadastro, data_aprovacao, ultimo_acesso, avatar_url FROM usuarios WHERE 1=1';
+    let sql = 'SELECT id, nome, email, telefone, cargo_pretendido, role, status, is_master, permissoes, motivo_recusa, aprovado_por, data_cadastro, data_aprovacao, ultimo_acesso, avatar_url, aluno_id, equipe_id FROM usuarios WHERE 1=1';
     const args = [];
 
     if (status) {
@@ -358,6 +358,16 @@ app.put('/api/usuarios/:id/permissoes', async (req, res) => {
       args.push(cargo_pretendido);
     }
 
+    if (req.body.aluno_id) {
+      updates.push('aluno_id = ?');
+      args.push(req.body.aluno_id);
+    }
+
+    if (req.body.equipe_id) {
+      updates.push('equipe_id = ?');
+      args.push(req.body.equipe_id);
+    }
+
     args.push(id);
     await turso.execute({
       sql: `UPDATE usuarios SET ${updates.join(', ')} WHERE id = ?`,
@@ -427,7 +437,7 @@ app.get('/api/alunos', async (req, res) => {
 app.post('/api/alunos', async (req, res) => {
   try {
     const {
-      nome, telefone, email, nivel_atual, papel,
+      user_id, nome, telefone, email, nivel_atual, papel,
       mensalidade_valor, dia_vencimento, data_matricula,
       data_inicio_nivel, status, foto_url, observacoes
     } = req.body;
@@ -435,10 +445,10 @@ app.post('/api/alunos', async (req, res) => {
     const id = `al_${Date.now()}`;
 
     await turso.execute({
-      sql: `INSERT INTO alunos (id, nome, telefone, email, nivel_atual, papel, mensalidade_valor, dia_vencimento, data_matricula, data_inicio_nivel, status, foto_url, observacoes)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      sql: `INSERT INTO alunos (id, user_id, nome, telefone, email, nivel_atual, papel, mensalidade_valor, dia_vencimento, data_matricula, data_inicio_nivel, status, foto_url, observacoes)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       args: [
-        id, nome, telefone, email, nivel_atual || 'B1', papel || 'Condutor',
+        id, user_id || null, nome, telefone, email, nivel_atual || 'B1', papel || 'Condutor',
         mensalidade_valor || 190.0, dia_vencimento || 5,
         data_matricula || new Date().toISOString().substring(0, 10),
         data_inicio_nivel || new Date().toISOString().substring(0, 10),
@@ -511,14 +521,48 @@ app.get('/api/equipe', async (req, res) => {
 
 app.post('/api/equipe', async (req, res) => {
   try {
-    const { nome, email, telefone, papel_equipe, especialidades, foto_url } = req.body;
+    const { user_id, nome, email, telefone, papel_equipe, especialidades, foto_url } = req.body;
     const id = `eq_${Date.now()}`;
     await turso.execute({
-      sql: `INSERT INTO equipe (id, nome, email, telefone, papel_equipe, especialidades, foto_url)
-            VALUES (?, ?, ?, ?, ?, ?, ?)`,
-      args: [id, nome, email, telefone || null, papel_equipe || 'Professor', JSON.stringify(especialidades || []), foto_url || null]
+      sql: `INSERT INTO equipe (id, user_id, nome, email, telefone, papel_equipe, especialidades, foto_url)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+      args: [id, user_id || null, nome, email, telefone || null, papel_equipe || 'Professor', JSON.stringify(especialidades || []), foto_url || null]
     });
-    res.status(201).json({ id, nome, email, papel_equipe });
+    res.status(201).json({ id, user_id: user_id || null, nome, email, papel_equipe });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.put('/api/equipe/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { nome, email, telefone, papel_equipe, especialidades, foto_url, user_id, ativo } = req.body;
+    const updates = [];
+    const args = [];
+    if (nome !== undefined) { updates.push('nome = ?'); args.push(nome); }
+    if (email !== undefined) { updates.push('email = ?'); args.push(email); }
+    if (telefone !== undefined) { updates.push('telefone = ?'); args.push(telefone); }
+    if (papel_equipe !== undefined) { updates.push('papel_equipe = ?'); args.push(papel_equipe); }
+    if (especialidades !== undefined) { updates.push('especialidades = ?'); args.push(JSON.stringify(especialidades)); }
+    if (foto_url !== undefined) { updates.push('foto_url = ?'); args.push(foto_url); }
+    if (user_id !== undefined) { updates.push('user_id = ?'); args.push(user_id); }
+    if (ativo !== undefined) { updates.push('ativo = ?'); args.push(ativo ? 1 : 0); }
+    if (updates.length > 0) {
+      args.push(id);
+      await turso.execute({ sql: `UPDATE equipe SET ${updates.join(', ')} WHERE id = ?`, args });
+    }
+    res.json({ success: true, id });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.delete('/api/equipe/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    await turso.execute({ sql: 'DELETE FROM equipe WHERE id = ?', args: [id] });
+    res.json({ success: true, message: 'Membro removido da equipe' });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

@@ -14,10 +14,11 @@ import {
 } from 'lucide-react';
 
 export const MeusNivelamentosPage: React.FC = () => {
-  const { currentUser, alunos, nivelamentoSessoes } = useApp();
+  const { currentUser, alunos, alunosCadastrados, nivelamentoSessoes } = useApp();
   const navigate = useNavigate();
 
-  const alunoLogado: Aluno =
+  const alunoLogado: any =
+    alunosCadastrados.find((a) => a.id === currentUser.aluno_id || a.email === currentUser.email || a.user_id === currentUser.id) ||
     alunos.find((a) => a.id === currentUser.aluno_id || a.email === currentUser.email) ||
     alunos[0] || {
       id: currentUser.aluno_id || currentUser.id || 'aluno_temp',
@@ -36,7 +37,7 @@ export const MeusNivelamentosPage: React.FC = () => {
     };
 
   const minhasSessoes = nivelamentoSessoes.filter(
-    (s) => s.aluno_id === alunoLogado.id
+    (s) => s.aluno_id === alunoLogado.id || s.aluno_id === currentUser.aluno_id || s.aluno_id === currentUser.id
   );
 
   return (

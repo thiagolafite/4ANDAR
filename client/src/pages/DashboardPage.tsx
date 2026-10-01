@@ -24,6 +24,8 @@ export const DashboardPage: React.FC = () => {
   const {
     currentUser,
     alunos,
+    alunosCadastrados,
+    professoresCadastrados,
     aulas,
     cronogramas,
     presencas,
@@ -44,8 +46,10 @@ export const DashboardPage: React.FC = () => {
   const isEquipe = !isAluno;
 
   // Safe alunoLogado fallback when database is empty
-  const alunoLogado = isAluno
-    ? alunos.find((a) => a.id === currentUser.aluno_id || a.email === currentUser.email) || alunos[0] || {
+  const alunoLogado: any = isAluno
+    ? alunosCadastrados.find((a) => a.id === currentUser.aluno_id || a.email === currentUser.email || a.user_id === currentUser.id) ||
+      alunos.find((a) => a.id === currentUser.aluno_id || a.email === currentUser.email) ||
+      alunos[0] || {
         id: currentUser.aluno_id || currentUser.id || 'aluno_temp',
         nome: currentUser.nome || 'Aluno',
         email: currentUser.email || '',
@@ -349,7 +353,9 @@ export const DashboardPage: React.FC = () => {
                 ) : (
                   <div className="space-y-2.5">
                     {presencasPendentes.slice(0, 4).map((pres) => {
-                      const aluno = alunos.find((a) => a.id === pres.aluno_id);
+                      const aluno =
+                        alunosCadastrados.find((a) => a.id === pres.aluno_id || a.aluno_id === pres.aluno_id || a.user_id === pres.aluno_id) ||
+                        alunos.find((a) => a.id === pres.aluno_id);
                       const aula = aulas.find((a) => a.id === pres.aula_id);
                       return (
                         <div
@@ -444,7 +450,11 @@ export const DashboardPage: React.FC = () => {
                   <p className="text-xs text-slate-500 flex items-center gap-3">
                     <span>📍 Local: {proximaAulaAluno.sala || 'Salão Principal'}</span>
                     <span>•</span>
-                    <span>Prof.: Mariana Sol / Mestre Gonzaga</span>
+                    <span>
+                      Prof.: {
+                        professoresCadastrados.find((p) => p.id === proximaAulaAluno.equipe_id || p.equipe_id === proximaAulaAluno.equipe_id || p.user_id === proximaAulaAluno.equipe_id)?.nome || 'A definir'
+                      }
+                    </span>
                   </p>
                 </div>
 

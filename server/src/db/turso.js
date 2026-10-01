@@ -193,6 +193,20 @@ export const initTursoDatabase = async () => {
       );
     `);
 
+    // Migrações graduais seguras
+    try {
+      await turso.execute('ALTER TABLE usuarios ADD COLUMN aluno_id TEXT;');
+    } catch {}
+    try {
+      await turso.execute('ALTER TABLE usuarios ADD COLUMN equipe_id TEXT;');
+    } catch {}
+    try {
+      await turso.execute('ALTER TABLE alunos ADD COLUMN user_id TEXT;');
+    } catch {}
+    try {
+      await turso.execute('ALTER TABLE equipe ADD COLUMN user_id TEXT;');
+    } catch {}
+
     // Verifica se o Administrador Master existe
     const masterCheck = await turso.execute({
       sql: 'SELECT id FROM usuarios WHERE is_master = 1 OR email = ?',

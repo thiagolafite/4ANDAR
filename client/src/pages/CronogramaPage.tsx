@@ -41,6 +41,7 @@ export const CronogramaPage: React.FC = () => {
     aulas,
     cronogramas,
     equipe,
+    professoresCadastrados,
     updateTemaCronograma,
     deleteCronogramaCell,
     deleteCronogramaRow,
@@ -656,7 +657,9 @@ export const CronogramaPage: React.FC = () => {
 
                   {/* Turma Columns: I2 Manhã, I1 Tarde, B1 Manhã, B2 Manhã, B2 Tarde, I1 Manhã, B1 Tarde... */}
                   {sortedAulas.map((turma) => {
-                    const prof = equipe.find((e) => e.id === turma.equipe_id);
+                    const prof =
+                      professoresCadastrados.find((p) => p.id === turma.equipe_id || p.equipe_id === turma.equipe_id || p.user_id === turma.equipe_id) ||
+                      equipe.find((e) => e.id === turma.equipe_id);
 
                     return (
                       <th
@@ -840,7 +843,9 @@ export const CronogramaPage: React.FC = () => {
                 const crono = cronogramas.find(
                   (c) => c.aula_id === turma.id && c.data_aula === currentDate
                 );
-                const prof = equipe.find((e) => e.id === turma.equipe_id);
+                const prof =
+                  professoresCadastrados.find((p) => p.id === turma.equipe_id || p.equipe_id === turma.equipe_id || p.user_id === turma.equipe_id) ||
+                  equipe.find((e) => e.id === turma.equipe_id);
 
                 return (
                   <div

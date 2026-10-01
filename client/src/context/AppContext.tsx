@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useMemo } from 'react';
 import {
   Aluno,
   Equipe,
@@ -12,7 +12,9 @@ import {
   Aviso,
   User,
   NivelForro,
-  PapelDanca
+  PapelDanca,
+  ProfessorOption,
+  AlunoOption
 } from '../types';
 import {
   mockUsers,
@@ -56,6 +58,10 @@ interface AppContextType {
   updateUserStatus: (id: string, status: string, options?: { role?: string; permissoes?: any; motivo_recusa?: string }) => Promise<boolean>;
   updateUserPermissions: (id: string, permissoes: any, role?: string, cargo_pretendido?: string) => Promise<boolean>;
   deleteUser: (id: string) => Promise<boolean>;
+
+  // Alunos & Professores Unificados (Usuários Cadastrados)
+  professoresCadastrados: ProfessorOption[];
+  alunosCadastrados: AlunoOption[];
 
   // Alunos
   alunos: Aluno[];
@@ -304,6 +310,121 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     fetchUsuarios();
   }, []);
 
+  // ----------------------------------------------------
+  // Professores e Alunos Unificados (com Usuários Cadastrados)
+  // ----------------------------------------------------
+  const professoresCadastrados = useMemo<ProfessorOption[]>(() => {
+    const map = new Map<string, ProfessorOption>();
+
+    // 1. Membros cadastrados na equipe
+    equipe.forEach((eq) => {
+      const matchingUser = usuariosList.find(
+        (u) => (eq.user_id && u.id === eq.user_id) || (eq.email && u.email.toLowerCase() === eq.email.toLowerCase())
+      );
+      const key = eq.user_id || matchingUser?.id || eq.id;
+      map.set(key, {
+        id: eq.id,
+        nome: eq.nome,
+        email: eq.email,
+        telefone: eq.telefone,
+        papel: eq.papel_equipe || 'Professor',
+        foto_url: eq.foto_url || matchingUser?.avatar_url,
+        user_id: matchingUser?.id || eq.user_id,
+        equipe_id: eq.id
+      });
+    });
+
+    // 2. Usuários cadastrados no sistema como Professor, Admin ou Master
+    usuariosList.forEach((u) => {
+      const isProfOrAdmin =
+        u.is_master ||
+        u.role === 'master' ||
+        u.role === 'admin' ||
+        u.role === 'professor' ||
+        u.tipo_usuario === 'AdminMaster' ||
+        u.tipo_usuario === 'Equipe' ||
+        (u.cargo_pretendido && /prof|instrutor|coord|admin/i.test(u.cargo_pretendido));
+
+      if (isProfOrAdmin && u.status !== 'rejeitado' && u.status !== 'bloqueado') {
+        const existing = map.get(u.id) || Array.from(map.values()).find((p) => p.email && p.email.toLowerCase() === u.email.toLowerCase());
+        if (existing) {
+          if (!existing.user_id) existing.user_id = u.id;
+          if (!existing.foto_url) existing.foto_url = u.avatar_url;
+        } else {
+          map.set(u.id, {
+            id: u.equipe_id || u.id,
+            nome: u.nome,
+            email: u.email,
+            telefone: u.telefone,
+            papel: u.is_master || u.role === 'master' ? 'Master' : (u.cargo_pretendido || 'Professor'),
+            foto_url: u.avatar_url,
+            user_id: u.id,
+            equipe_id: u.equipe_id
+          });
+        }
+      }
+    });
+
+    return Array.from(map.values()).sort((a, b) => a.nome.localeCompare(b.nome));
+  }, [equipe, usuariosList]);
+
+  const alunosCadastrados = useMemo<AlunoOption[]>(() => {
+    const map = new Map<string, AlunoOption>();
+
+    // 1. Alunos matriculados
+    alunos.forEach((al) => {
+      const matchingUser = usuariosList.find(
+        (u) => (al.user_id && u.id === al.user_id) || (al.email && u.email.toLowerCase() === al.email.toLowerCase())
+      );
+      const key = al.user_id || matchingUser?.id || al.id;
+      map.set(key, {
+        id: al.id,
+        aluno_id: al.id,
+        user_id: matchingUser?.id || al.user_id,
+        nome: al.nome,
+        email: al.email,
+        telefone: al.telefone,
+        nivel_atual: al.nivel_atual,
+        papel: al.papel,
+        foto_url: al.foto_url || matchingUser?.avatar_url,
+        mensalidade_valor: al.mensalidade_valor,
+        dia_vencimento: al.dia_vencimento
+      });
+    });
+
+    // 2. Usuários cadastrados como Aluno
+    usuariosList.forEach((u) => {
+      const isAluno =
+        u.role === 'aluno' ||
+        u.tipo_usuario === 'Aluno' ||
+        (u.cargo_pretendido && /alun/i.test(u.cargo_pretendido));
+
+      if (isAluno && u.status !== 'rejeitado' && u.status !== 'bloqueado') {
+        const existing = map.get(u.id) || Array.from(map.values()).find((a) => a.email && a.email.toLowerCase() === u.email.toLowerCase());
+        if (existing) {
+          if (!existing.user_id) existing.user_id = u.id;
+          if (!existing.foto_url) existing.foto_url = u.avatar_url;
+        } else {
+          map.set(u.id, {
+            id: u.aluno_id || u.id,
+            aluno_id: u.aluno_id,
+            user_id: u.id,
+            nome: u.nome,
+            email: u.email,
+            telefone: u.telefone || '',
+            nivel_atual: 'B1',
+            papel: 'Ambos',
+            foto_url: u.avatar_url,
+            mensalidade_valor: 190.0,
+            dia_vencimento: 5
+          });
+        }
+      }
+    });
+
+    return Array.from(map.values()).sort((a, b) => a.nome.localeCompare(b.nome));
+  }, [alunos, usuariosList]);
+
   const login = async (loginId: string, senha: string) => {
     try {
       const res = await fetch(`${API_URL}/auth/login`, {
@@ -461,6 +582,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       body: JSON.stringify(newAluno)
     }).catch(() => {});
 
+    // Se vinculado a um usuário do sistema, atualiza no backend o aluno_id
+    if (newAluno.user_id) {
+      fetch(`${API_URL}/usuarios/${newAluno.user_id}/permissoes`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ aluno_id: newAluno.id })
+      }).then(() => fetchUsuarios()).catch(() => {});
+    }
+
     showToast(`Aluno(a) ${newAluno.nome} cadastrado(a) com sucesso!`);
     return newAluno;
   };
@@ -495,6 +625,23 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const addEquipe = (membro: Omit<Equipe, 'id'>) => {
     const novo: Equipe = { ...membro, id: `eq_${Date.now()}` };
     setEquipe((prev) => [...prev, novo]);
+
+    // Grava no Turso em segundo plano
+    fetch(`${API_URL}/equipe`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(novo)
+    }).catch(() => {});
+
+    // Se vinculado a um usuário do sistema, atualiza no backend o equipe_id
+    if (novo.user_id) {
+      fetch(`${API_URL}/usuarios/${novo.user_id}/permissoes`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ equipe_id: novo.id })
+      }).then(() => fetchUsuarios()).catch(() => {});
+    }
+
     showToast(`Membro da equipe ${novo.nome} adicionado!`);
   };
 
@@ -502,6 +649,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setEquipe((prev) =>
       prev.map((eq) => (eq.id === id ? { ...eq, ...updates } : eq))
     );
+    fetch(`${API_URL}/equipe/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(updates)
+    }).catch(() => {});
     showToast('Cadastro de equipe atualizado!');
   };
 
@@ -910,6 +1062,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         updateUserStatus,
         updateUserPermissions,
         deleteUser,
+        professoresCadastrados,
+        alunosCadastrados,
         alunos,
         addAluno,
         updateAluno,

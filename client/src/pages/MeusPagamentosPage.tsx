@@ -12,13 +12,14 @@ import {
 } from 'lucide-react';
 
 export const MeusPagamentosPage: React.FC = () => {
-  const { currentUser, alunos, pagamentos, registrarPagamento, showToast } = useApp();
+  const { currentUser, alunos, alunosCadastrados, pagamentos, registrarPagamento, showToast } = useApp();
 
-  const alunoLogado =
+  const alunoLogado: any =
+    alunosCadastrados.find((a) => a.id === currentUser.aluno_id || a.email === currentUser.email || a.user_id === currentUser.id) ||
     alunos.find((a) => a.id === currentUser.aluno_id || a.email === currentUser.email) ||
-    alunos[0];
+    alunos[0] || { id: currentUser.aluno_id || currentUser.id || 'aluno_temp', nome: currentUser.nome };
 
-  const alunoPagamentos = pagamentos.filter((p) => p.aluno_id === alunoLogado.id);
+  const alunoPagamentos = pagamentos.filter((p) => p.aluno_id === alunoLogado.id || p.aluno_id === currentUser.aluno_id || p.aluno_id === currentUser.id);
   const pagamentoAberto = alunoPagamentos.find((p) => p.status !== 'Pago');
 
   const [copiado, setCopiado] = useState(false);

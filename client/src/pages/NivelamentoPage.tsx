@@ -21,6 +21,7 @@ export const NivelamentoPage: React.FC = () => {
     nivelamentoSessoes,
     criteriosNivelamento,
     alunos,
+    alunosCadastrados,
     avaliarNivelamento
   } = useApp();
 
@@ -117,7 +118,9 @@ export const NivelamentoPage: React.FC = () => {
             </div>
           ) : (
             agendados.map((sessao) => {
-              const aluno = alunos.find((a) => a.id === sessao.aluno_id);
+              const aluno =
+                alunosCadastrados.find((a) => a.id === sessao.aluno_id || a.aluno_id === sessao.aluno_id || a.user_id === sessao.aluno_id) ||
+                alunos.find((a) => a.id === sessao.aluno_id);
 
               return (
                 <div
@@ -195,7 +198,9 @@ export const NivelamentoPage: React.FC = () => {
             </div>
           ) : (
             concluidos.map((sessao) => {
-              const aluno = alunos.find((a) => a.id === sessao.aluno_id);
+              const aluno =
+                alunosCadastrados.find((a) => a.id === sessao.aluno_id || a.aluno_id === sessao.aluno_id || a.user_id === sessao.aluno_id) ||
+                alunos.find((a) => a.id === sessao.aluno_id);
 
               return (
                 <div
@@ -263,7 +268,8 @@ export const NivelamentoPage: React.FC = () => {
                 <p className="text-xs text-slate-500">
                   Aluno:{' '}
                   <strong>
-                    {alunos.find((a) => a.id === selectedSessao.aluno_id)?.nome}
+                    {alunosCadastrados.find((a) => a.id === selectedSessao.aluno_id || a.aluno_id === selectedSessao.aluno_id || a.user_id === selectedSessao.aluno_id)?.nome ||
+                     alunos.find((a) => a.id === selectedSessao.aluno_id)?.nome}
                   </strong>{' '}
                   (Nível atual: {selectedSessao.nivel_atual})
                 </p>

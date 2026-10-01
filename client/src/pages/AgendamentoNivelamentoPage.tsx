@@ -13,12 +13,29 @@ import {
 import { NivelForro, PapelDanca, Aluno } from '../types';
 
 export const AgendamentoNivelamentoPage: React.FC = () => {
-  const { currentUser, alunos, agendarNivelamento, showToast } = useApp();
+  const { currentUser, alunos, alunosCadastrados, agendarNivelamento, showToast } = useApp();
   const navigate = useNavigate();
 
-  const alunoLogado: Aluno =
-    alunos.find((a) => a.id === currentUser.aluno_id || a.email === currentUser.email) ||
-    alunos[0] || {
+  const isEquipeOrMaster = Boolean(
+    currentUser.is_master ||
+    currentUser.role === 'master' ||
+    currentUser.role === 'admin' ||
+    currentUser.role === 'professor' ||
+    currentUser.tipo_usuario === 'AdminMaster' ||
+    currentUser.tipo_usuario === 'Equipe'
+  );
+
+  const [selectedAlunoId, setSelectedAlunoId] = useState<string>(() => {
+    const defaultStudent =
+      alunosCadastrados.find((a) => a.id === currentUser.aluno_id || a.email === currentUser.email) ||
+      alunosCadastrados[0] ||
+      alunos[0];
+    return defaultStudent?.id || '';
+  });
+
+  const targetAluno: any =
+    alunosCadastrados.find((a) => a.id === selectedAlunoId || a.aluno_id === selectedAlunoId || a.user_id === selectedAlunoId) ||
+    alunos.find((a) => a.id === selectedAlunoId || a.id === currentUser.aluno_id || a.email === currentUser.email) || {
       id: currentUser.aluno_id || currentUser.id || 'aluno_temp',
       nome: currentUser.nome || 'Aluno',
       email: currentUser.email || '',
@@ -43,9 +60,9 @@ export const AgendamentoNivelamentoPage: React.FC = () => {
   };
 
   const [nivelAlvo, setNivelAlvo] = useState<NivelForro>(
-    proximoNivelMap[alunoLogado.nivel_atual]
+    proximoNivelMap[targetAluno.nivel_atual as NivelForro] || 'B2'
   );
-  const [papel, setPapel] = useState<PapelDanca>(alunoLogado.papel);
+  const [papel, setPapel] = useState<PapelDanca>(targetAluno.papel || 'Condutor');
   const [dataAgendada, setDataAgendada] = useState<string>('2026-10-10 14:00');
 
   const datasDisponiveis = [
@@ -56,7 +73,7 @@ export const AgendamentoNivelamentoPage: React.FC = () => {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    agendarNivelamento(alunoLogado.id, nivelAlvo, papel, dataAgendada);
+    agendarNivelamento(targetAluno.id || targetAluno.aluno_id, nivelAlvo, papel, dataAgendada);
     navigate('/meus-nivelamentos');
   };
 
@@ -91,20 +108,47 @@ export const AgendamentoNivelamentoPage: React.FC = () => {
         onSubmit={handleSubmit}
         className="rounded-3xl bg-white border border-slate-200 shadow-md p-6 md:p-8 space-y-6"
       >
+        {isEquipeOrMaster && (
+          <div className="p-4 bg-orange-50/70 border border-orange-200 rounded-2xl space-y-1.5">
+            <label className="block text-xs font-bold uppercase tracking-wider text-brand-900 flex items-center justify-between">
+              <span>Selecionar Aluno Cadastrado</span>
+              <span className="text-[10px] text-brand-600 font-semibold">Agendamento Administrativo</span>
+            </label>
+            <select
+              value={selectedAlunoId}
+              onChange={(e) => {
+                setSelectedAlunoId(e.target.value);
+                const a = alunosCadastrados.find((al) => al.id === e.target.value || al.aluno_id === e.target.value);
+                if (a) {
+                  setPapel(a.papel || 'Condutor');
+                  setNivelAlvo(proximoNivelMap[a.nivel_atual as NivelForro] || 'B2');
+                }
+              }}
+              className="w-full rounded-xl border border-orange-300 bg-white p-2.5 text-sm font-semibold text-slate-800 outline-none focus:border-brand-500"
+            >
+              {alunosCadastrados.map((a) => (
+                <option key={a.id} value={a.id}>
+                  {a.nome} ({a.email}) — Nível Atual: {a.nivel_atual} [{a.papel}]
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
+
         <div className="flex items-center gap-4 pb-6 border-b border-slate-100">
           <img
             src={
-              alunoLogado.foto_url ||
+              targetAluno.foto_url ||
               'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=120'
             }
-            alt={alunoLogado.nome}
+            alt={targetAluno.nome}
             className="h-14 w-14 rounded-full object-cover ring-4 ring-orange-100"
           />
           <div>
-            <h3 className="font-bold text-lg text-slate-900">{alunoLogado.nome}</h3>
+            <h3 className="font-bold text-lg text-slate-900">{targetAluno.nome}</h3>
             <p className="text-xs text-slate-500">
-              Nível atual: <strong>{alunoLogado.nivel_atual}</strong> (iniciado em{' '}
-              {alunoLogado.data_inicio_nivel})
+              Nível atual: <strong>{targetAluno.nivel_atual}</strong> (iniciado em{' '}
+              {targetAluno.data_inicio_nivel})
             </p>
           </div>
         </div>

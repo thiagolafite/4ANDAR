@@ -9,6 +9,7 @@ export const GlobalSearchModal: React.FC = () => {
     searchModalOpen,
     setSearchModalOpen,
     alunos,
+    alunosCadastrados,
     setSelectedAlunoModal
   } = useApp();
 
@@ -46,18 +47,19 @@ export const GlobalSearchModal: React.FC = () => {
 
   if (!searchModalOpen || isAluno) return null;
 
-  const filteredAlunos = alunos.filter((aluno) => {
+  const listToSearch = alunosCadastrados && alunosCadastrados.length > 0 ? alunosCadastrados : alunos;
+  const filteredAlunos = listToSearch.filter((aluno) => {
     const q = query.toLowerCase().trim();
     if (!q) return true;
     return (
       aluno.nome.toLowerCase().includes(q) ||
-      aluno.telefone.replace(/\D/g, '').includes(q.replace(/\D/g, '')) ||
-      aluno.email.toLowerCase().includes(q) ||
-      aluno.nivel_atual.toLowerCase().includes(q)
+      (aluno.telefone && aluno.telefone.replace(/\D/g, '').includes(q.replace(/\D/g, ''))) ||
+      (aluno.email && aluno.email.toLowerCase().includes(q)) ||
+      (aluno.nivel_atual && aluno.nivel_atual.toLowerCase().includes(q))
     );
   });
 
-  const handleSelectStudent = (aluno: Aluno) => {
+  const handleSelectStudent = (aluno: any) => {
     setSelectedAlunoModal(aluno);
     setSearchModalOpen(false);
   };

@@ -15,14 +15,17 @@ export const ProximaAulaPage: React.FC = () => {
   const {
     currentUser,
     alunos,
+    alunosCadastrados,
     aulas,
     cronogramas,
     presencas,
     equipe,
+    professoresCadastrados,
     solicitarPresenca
   } = useApp();
 
-  const alunoLogado: Aluno =
+  const alunoLogado: any =
+    alunosCadastrados.find((a) => a.id === currentUser.aluno_id || a.email === currentUser.email || a.user_id === currentUser.id) ||
     alunos.find((a) => a.id === currentUser.aluno_id || a.email === currentUser.email) ||
     alunos[0] || {
       id: currentUser.aluno_id || currentUser.id || 'aluno_temp',
@@ -94,7 +97,9 @@ export const ProximaAulaPage: React.FC = () => {
           </div>
         ) : (
           turmasNivel.map((turma) => {
-            const professor = equipe.find((e) => e.id === turma.equipe_id);
+            const professor =
+              professoresCadastrados.find((p) => p.id === turma.equipe_id || p.equipe_id === turma.equipe_id || p.user_id === turma.equipe_id) ||
+              equipe.find((e) => e.id === turma.equipe_id);
             // Find upcoming scheduled cronograma for this class
             const crono = cronogramas.find((c) => c.aula_id === turma.id);
             const dataAula = crono?.data_aula || '2026-09-29';

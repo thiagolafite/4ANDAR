@@ -14,9 +14,10 @@ import {
 import { Equipe } from '../types';
 
 export const EquipePage: React.FC = () => {
-  const { equipe, aulas, addEquipe } = useApp();
+  const { equipe, aulas, addEquipe, usuariosList } = useApp();
 
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [selectedUserId, setSelectedUserId] = useState<string>('');
   const [novoMembro, setNovoMembro] = useState<Omit<Equipe, 'id'>>({
     nome: '',
     email: '',
@@ -30,6 +31,33 @@ export const EquipePage: React.FC = () => {
 
   const [especialidadesInput, setEspecialidadesInput] = useState('Pé de Serra, Xote, Conexão');
 
+  const candidatosEquipe = usuariosList.filter(
+    (u) =>
+      u.is_master ||
+      u.role === 'master' ||
+      u.role === 'admin' ||
+      u.role === 'professor' ||
+      u.tipo_usuario === 'Equipe' ||
+      u.tipo_usuario === 'AdminMaster' ||
+      (u.cargo_pretendido && /prof|instrutor|coord|admin/i.test(u.cargo_pretendido))
+  );
+
+  const handleSelectUser = (userId: string) => {
+    setSelectedUserId(userId);
+    const u = usuariosList.find((usr) => usr.id === userId);
+    if (u) {
+      setNovoMembro({
+        ...novoMembro,
+        user_id: u.id,
+        nome: u.nome,
+        email: u.email,
+        telefone: u.telefone || novoMembro.telefone,
+        foto_url: u.avatar_url || novoMembro.foto_url,
+        papel_equipe: u.role === 'admin' ? 'Admin' : 'Professor'
+      });
+    }
+  };
+
   const handleCreate = (e: React.FormEvent) => {
     e.preventDefault();
     const espList = especialidadesInput
@@ -42,6 +70,17 @@ export const EquipePage: React.FC = () => {
       especialidades: espList
     });
     setIsModalOpen(false);
+    setSelectedUserId('');
+    setNovoMembro({
+      nome: '',
+      email: '',
+      telefone: '',
+      papel_equipe: 'Professor',
+      especialidades: ['Forró Tradicional'],
+      google_calendar_conectado: false,
+      ativo: true,
+      foto_url: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150'
+    });
   };
 
   return (
@@ -87,9 +126,16 @@ export const EquipePage: React.FC = () => {
                     <h3 className="font-bold text-lg text-slate-900 leading-tight">
                       {membro.nome}
                     </h3>
-                    <span className="inline-block mt-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-orange-100 text-brand-800">
-                      {membro.papel_equipe}
-                    </span>
+                    <div className="flex flex-wrap items-center gap-1.5 mt-1">
+                      <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-orange-100 text-brand-800">
+                        {membro.papel_equipe}
+                      </span>
+                      {Boolean(membro.user_id || usuariosList.some((u) => u.email.toLowerCase() === membro.email.toLowerCase())) && (
+                        <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800">
+                          Conta Vinculada
+                        </span>
+                      )}
+                    </div>
                   </div>
                 </div>
 
@@ -160,6 +206,25 @@ export const EquipePage: React.FC = () => {
             </div>
 
             <form onSubmit={handleCreate} className="space-y-3">
+              <div className="p-3 bg-orange-50/80 border border-orange-200 rounded-xl space-y-1.5">
+                <label className="block text-xs font-bold text-brand-900 uppercase tracking-wider flex items-center justify-between">
+                  <span>Selecionar Usuário já Cadastrado (Professor / Equipe)</span>
+                  <span className="text-[10px] font-semibold text-brand-600">Preenchimento automático</span>
+                </label>
+                <select
+                  value={selectedUserId}
+                  onChange={(e) => handleSelectUser(e.target.value)}
+                  className="w-full rounded-lg border border-orange-300 bg-white p-2 text-xs font-medium text-slate-800 outline-none focus:border-brand-500"
+                >
+                  <option value="">-- Selecionar usuário do sistema (ou preencher manual abaixo) --</option>
+                  {candidatosEquipe.map((u) => (
+                    <option key={u.id} value={u.id}>
+                      {u.nome} ({u.email}) — Papel: {u.is_master ? 'Master' : (u.cargo_pretendido || u.role)} [{u.status}]
+                    </option>
+                  ))}
+                </select>
+              </div>
+
               <div>
                 <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
                   Nome Completo
