@@ -21,6 +21,14 @@ const PORT = process.env.PORT || 3001;
 app.use(cors());
 app.use(express.json());
 
+// Compatibilidade de roteamento para Vercel Serverless (garante que /api/ rotas batam perfeitamente)
+app.use((req, res, next) => {
+  if (!req.url.startsWith('/api') && req.url !== '/' && !req.url.startsWith('/index.html')) {
+    req.url = '/api' + req.url;
+  }
+  next();
+});
+
 // ==========================================
 // 0. AUTENTICAÇÃO E CONTROLE DE ACESSO (MASTER ADMIN)
 // ==========================================
