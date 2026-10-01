@@ -114,8 +114,8 @@ app.post('/api/auth/login', async (req, res) => {
       query = 'SELECT * FROM usuarios WHERE is_master = 1 ORDER BY is_master DESC LIMIT 1';
       args = [];
     } else {
-      query = 'SELECT * FROM usuarios WHERE LOWER(email) = ? LIMIT 1';
-      args = [cleanLogin];
+      query = 'SELECT * FROM usuarios WHERE LOWER(email) = ? OR LOWER(nome) = ? OR LOWER(nome) LIKE ? LIMIT 1';
+      args = [cleanLogin, cleanLogin, `%${cleanLogin}%`];
     }
 
     const result = await turso.execute({ sql: query, args });

@@ -32,17 +32,20 @@ export const LoginPage: React.FC = () => {
     setErrorMsg(null);
     setPendingNotice(null);
 
-    const res = await login(identifier.trim(), senha);
-    setLoading(false);
+    try {
+      const res = await login(identifier.trim(), senha);
+      setLoading(false);
 
-    if (res.success) {
-      navigate('/');
-    } else {
-      if (res.status === 'pendente') {
+      if (res && res.success) {
+        navigate('/');
+      } else if (res && res.status === 'pendente') {
         setPendingNotice(res.error || 'Seu cadastro está aguardando aprovação do Administrador Master (Thiago Lafite).');
       } else {
-        setErrorMsg(res.error || 'Credenciais inválidas. Verifique seu login e senha.');
+        setErrorMsg(res?.error || 'Credenciais inválidas. Verifique seu login e senha.');
       }
+    } catch (err: any) {
+      setLoading(false);
+      setErrorMsg(err?.message || 'Erro inesperado ao realizar login.');
     }
   };
 
@@ -52,12 +55,17 @@ export const LoginPage: React.FC = () => {
     setErrorMsg(null);
     setPendingNotice(null);
     setLoading(true);
-    const res = await login('thiagolafite', 'admin123');
-    setLoading(false);
-    if (res.success) {
-      navigate('/');
-    } else {
-      setErrorMsg(res.error || 'Erro ao entrar como Administrador Master.');
+    try {
+      const res = await login('thiagolafite', 'admin123');
+      setLoading(false);
+      if (res && res.success) {
+        navigate('/');
+      } else {
+        setErrorMsg(res?.error || 'Erro ao entrar como Administrador Master.');
+      }
+    } catch (err: any) {
+      setLoading(false);
+      setErrorMsg(err?.message || 'Erro inesperado ao entrar como Master.');
     }
   };
 

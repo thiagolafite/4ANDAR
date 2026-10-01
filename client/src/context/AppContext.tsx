@@ -534,6 +534,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         syncWithDatabase();
         return { success: true };
       }
+      throw new Error('Resposta não-JSON do servidor');
     } catch {
       const cleanLogin = loginId.trim().toLowerCase();
       const isMasterLogin =
@@ -544,7 +545,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       const allKnownUsers = [...usuariosList, ...users];
       const matched = isMasterLogin
         ? allKnownUsers.find((u) => u.is_master || u.role === 'master' || u.id === 'usr_master_thiago') || mockUsers[0]
-        : allKnownUsers.find((u) => u.email.toLowerCase() === cleanLogin);
+        : allKnownUsers.find(
+            (u) =>
+              u.email.toLowerCase() === cleanLogin ||
+              u.nome.toLowerCase() === cleanLogin ||
+              u.nome.toLowerCase().includes(cleanLogin)
+          );
 
       if (matched) {
         if (!isMasterLogin && matched.status === 'pendente') {
