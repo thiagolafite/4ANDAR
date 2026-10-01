@@ -199,6 +199,9 @@ export interface Evento {
   status: 'Inscrições Abertas' | 'Esgotado' | 'Encerrado';
 }
 
+export type DestinatarioAviso = 'todos' | 'aluno' | 'professor' | 'admin';
+export type PrioridadeAviso = 'normal' | 'importante' | 'urgente';
+
 export interface Aviso {
   id: string;
   titulo: string;
@@ -208,4 +211,7 @@ export interface Aviso {
   link_texto?: string;
   fixado: boolean;
   autor: string;
+  destinatario_tipo?: DestinatarioAviso;
+  mostrar_popup?: boolean;
+  prioridade?: PrioridadeAviso;
 }

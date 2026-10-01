@@ -167,7 +167,10 @@ export const initTursoDatabase = async () => {
         link_url TEXT,
         link_texto TEXT,
         fixado INTEGER DEFAULT 0,
-        autor TEXT
+        autor TEXT,
+        destinatario_tipo TEXT DEFAULT 'todos',
+        mostrar_popup INTEGER DEFAULT 1,
+        prioridade TEXT DEFAULT 'normal'
       );
     `);
 
@@ -205,6 +208,15 @@ export const initTursoDatabase = async () => {
     } catch {}
     try {
       await turso.execute('ALTER TABLE equipe ADD COLUMN user_id TEXT;');
+    } catch {}
+    try {
+      await turso.execute("ALTER TABLE avisos ADD COLUMN destinatario_tipo TEXT DEFAULT 'todos';");
+    } catch {}
+    try {
+      await turso.execute('ALTER TABLE avisos ADD COLUMN mostrar_popup INTEGER DEFAULT 1;');
+    } catch {}
+    try {
+      await turso.execute("ALTER TABLE avisos ADD COLUMN prioridade TEXT DEFAULT 'normal';");
     } catch {}
 
     // Verifica se o Administrador Master existe

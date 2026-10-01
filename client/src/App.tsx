@@ -23,8 +23,8 @@ import { AulasPage } from './pages/AulasPage';
 import { EventosPage } from './pages/EventosPage';
 import { AvisosPage } from './pages/AvisosPage';
 import { EquipePage } from './pages/EquipePage';
-import { GoogleCalendarPage } from './pages/GoogleCalendarPage';
 import { FrequenciaPage } from './pages/FrequenciaPage';
+import { AvisosPopUpModal } from './components/modals/AvisosPopUpModal';
 
 // Guard for protected routes
 const ProtectedAppLayout: React.FC = () => {
@@ -35,7 +35,12 @@ const ProtectedAppLayout: React.FC = () => {
     return <Navigate to="/login" replace />;
   }
 
-  return <AppLayout />;
+  return (
+    <>
+      <AppLayout />
+      <AvisosPopUpModal />
+    </>
+  );
 };
 
 interface RoleRouteProps {
@@ -115,8 +120,6 @@ export function App() {
             <Route path="eventos" element={<RoleRoute allowAluno><EventosPage /></RoleRoute>} />
             <Route path="avisos" element={<RoleRoute requiredModule="avisos"><AvisosPage /></RoleRoute>} />
             <Route path="equipe" element={<RoleRoute requiredModule="equipe"><EquipePage /></RoleRoute>} />
-            <Route path="agenda-google" element={<RoleRoute><GoogleCalendarPage /></RoleRoute>} />
-            <Route path="agendagoogle" element={<RoleRoute><GoogleCalendarPage /></RoleRoute>} />
             <Route path="frequencia" element={<RoleRoute><FrequenciaPage /></RoleRoute>} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Route>

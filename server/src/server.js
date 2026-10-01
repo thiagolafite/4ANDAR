@@ -1061,7 +1061,14 @@ app.get('/api/eventos', async (req, res) => {
 app.get('/api/avisos', async (req, res) => {
   try {
     const result = await turso.execute('SELECT * FROM avisos ORDER BY fixado DESC, data_publicacao DESC');
-    res.json(result.rows);
+    const rows = result.rows.map((row) => ({
+      ...row,
+      fixado: Boolean(row.fixado),
+      mostrar_popup: row.mostrar_popup === null || row.mostrar_popup === undefined ? true : Boolean(row.mostrar_popup),
+      destinatario_tipo: row.destinatario_tipo || 'todos',
+      prioridade: row.prioridade || 'normal'
+    }));
+    res.json(rows);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -1069,14 +1076,40 @@ app.get('/api/avisos', async (req, res) => {
 
 app.post('/api/avisos', async (req, res) => {
   try {
-    const { titulo, conteudo, link_url, link_texto, fixado, autor } = req.body;
-    const id = `av_${Date.now()}`;
+    const { id: reqId, titulo, conteudo, link_url, link_texto, fixado, autor, destinatario_tipo, mostrar_popup, prioridade } = req.body;
+    const id = reqId || `av_${Date.now()}`;
     const dataPub = new Date().toISOString().substring(0, 10);
     await turso.execute({
-      sql: 'INSERT INTO avisos (id, titulo, conteudo, data_publicacao, link_url, link_texto, fixado, autor) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
-      args: [id, titulo, conteudo, dataPub, link_url || null, link_texto || null, fixado ? 1 : 0, autor || 'Coordenação']
+      sql: `INSERT INTO avisos (id, titulo, conteudo, data_publicacao, link_url, link_texto, fixado, autor, destinatario_tipo, mostrar_popup, prioridade)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      args: [
+        id,
+        titulo,
+        conteudo,
+        dataPub,
+        link_url || null,
+        link_texto || null,
+        fixado ? 1 : 0,
+        autor || 'Coordenação',
+        destinatario_tipo || 'todos',
+        mostrar_popup === false ? 0 : 1,
+        prioridade || 'normal'
+      ]
     });
-    res.status(201).json({ id, titulo });
+    res.status(201).json({ id, titulo, destinatario_tipo, mostrar_popup, prioridade });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.delete('/api/avisos/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    await turso.execute({
+      sql: 'DELETE FROM avisos WHERE id = ?',
+      args: [id]
+    });
+    res.json({ success: true, id });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

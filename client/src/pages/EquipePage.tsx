@@ -148,15 +148,6 @@ export const EquipePage: React.FC = () => {
                     <Mail className="h-3.5 w-3.5 text-slate-400" />
                     <span>{membro.email}</span>
                   </p>
-                  <p className="flex items-center gap-2">
-                    <Calendar className="h-3.5 w-3.5 text-slate-400" />
-                    <span>
-                      Google Calendar:{' '}
-                      <strong className={membro.google_calendar_conectado ? 'text-emerald-600' : 'text-slate-400'}>
-                        {membro.google_calendar_conectado ? 'Conectado' : 'Não conectado'}
-                      </strong>
-                    </span>
-                  </p>
                 </div>
 
                 {/* Specialties */}

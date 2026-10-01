@@ -12,7 +12,6 @@ import {
   BarChart3,
   Clock,
   Calendar,
-  CalendarClock,
   PartyPopper,
   UserCheck,
   Shield,
@@ -140,8 +139,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
               : []),
             ...(hasPermission('avisos')
               ? [{ label: 'Avisos & Comunicados', to: '/avisos', icon: Megaphone }]
-              : []),
-            { label: 'Minha Agenda Google', to: '/agenda-google', icon: CalendarClock }
+              : [])
           ]
         }
       ];

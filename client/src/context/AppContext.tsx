@@ -1035,11 +1035,23 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const addAviso = (av: Omit<Aviso, 'id'>) => {
     const novo: Aviso = { ...av, id: `av_${Date.now()}` };
     setAvisos((prev) => [novo, ...prev]);
+
+    fetch(`${API_URL}/avisos`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(novo)
+    }).catch(() => {});
+
     showToast('Aviso publicado no mural!');
   };
 
   const deleteAviso = (id: string) => {
     setAvisos((prev) => prev.filter((a) => a.id !== id));
+
+    fetch(`${API_URL}/avisos/${id}`, {
+      method: 'DELETE'
+    }).catch(() => {});
+
     showToast('Aviso removido.');
   };
 
