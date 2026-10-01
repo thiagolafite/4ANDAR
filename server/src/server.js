@@ -29,6 +29,24 @@ app.use((req, res, next) => {
   next();
 });
 
+app.get('/', (req, res) => {
+  res.json({
+    status: 'ok',
+    service: '4ANDAR API Server',
+    database: 'Turso (libSQL)',
+    time: new Date().toISOString()
+  });
+});
+
+app.get('/api', (req, res) => {
+  res.json({
+    status: 'ok',
+    service: '4ANDAR API Server',
+    database: 'Turso (libSQL)',
+    time: new Date().toISOString()
+  });
+});
+
 // ==========================================
 // 0. AUTENTICAÇÃO E CONTROLE DE ACESSO (MASTER ADMIN)
 // ==========================================
