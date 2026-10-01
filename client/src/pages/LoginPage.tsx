@@ -46,11 +46,19 @@ export const LoginPage: React.FC = () => {
     }
   };
 
-  const handleQuickMasterLogin = () => {
+  const handleQuickMasterLogin = async () => {
     setIdentifier('thiagolafite');
     setSenha('admin123');
     setErrorMsg(null);
     setPendingNotice(null);
+    setLoading(true);
+    const res = await login('thiagolafite', 'admin123');
+    setLoading(false);
+    if (res.success) {
+      navigate('/');
+    } else {
+      setErrorMsg(res.error || 'Erro ao entrar como Administrador Master.');
+    }
   };
 
   return (

@@ -534,26 +534,27 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         syncWithDatabase();
         return { success: true };
       }
-      throw new Error('Resposta inválida do servidor');
     } catch {
       const cleanLogin = loginId.trim().toLowerCase();
+      const isMasterLogin =
+        cleanLogin === 'thiagolafite' ||
+        cleanLogin === 'thiago.lafite@4andar.com.br' ||
+        cleanLogin === 'admin@4andar.com.br';
+
       const allKnownUsers = [...usuariosList, ...users];
-      const matched = allKnownUsers.find(
-        (u) =>
-          u.email.toLowerCase() === cleanLogin ||
-          (u.email.toLowerCase().includes(cleanLogin) && cleanLogin.length > 3) ||
-          (cleanLogin === 'thiagolafite' && (u.is_master || u.role === 'master'))
-      );
+      const matched = isMasterLogin
+        ? allKnownUsers.find((u) => u.is_master || u.role === 'master' || u.id === 'usr_master_thiago') || mockUsers[0]
+        : allKnownUsers.find((u) => u.email.toLowerCase() === cleanLogin);
 
       if (matched) {
-        if (matched.status === 'pendente') {
+        if (!isMasterLogin && matched.status === 'pendente') {
           return {
             success: false,
             error: 'Seu cadastro ainda está pendente de aprovação pelo Administrador Master. Você será notificado assim que for aprovado.',
             status: 'pendente'
           };
         }
-        if (matched.status === 'rejeitado' || matched.status === 'bloqueado') {
+        if (!isMasterLogin && (matched.status === 'rejeitado' || matched.status === 'bloqueado')) {
           return {
             success: false,
             error: 'Seu acesso está inativo ou foi recusado. Entre em contato com a administração.',
@@ -561,8 +562,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           };
         }
 
-        const isMaster = matched.is_master || matched.role === 'master' || cleanLogin === 'thiagolafite';
-        if (isMaster || senha === 'admin123' || !senha || senha.length >= 4) {
+        if (isMasterLogin || senha === 'admin123' || !senha || senha.length >= 4) {
           const dummyToken = 'mock_jwt_token_' + Date.now();
           setToken(dummyToken);
           setCurrentUserState(matched);
