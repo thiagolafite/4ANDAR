@@ -598,15 +598,35 @@ app.put('/api/usuarios/:id/permissoes', async (req, res) => {
     });
 
     // Sincroniza se o papel for aluno ou professor
+    let alunoId = null;
+    let equipeId = null;
     if (role === 'aluno' || (cargo_pretendido && /alun/i.test(cargo_pretendido))) {
       await syncAlunosFromUsuarios();
+      const aRes = await turso.execute({
+        sql: 'SELECT id FROM alunos WHERE user_id = ? OR email = (SELECT email FROM usuarios WHERE id = ?) LIMIT 1',
+        args: [id, id]
+      });
+      if (aRes.rows.length > 0) alunoId = aRes.rows[0].id;
     } else if (role === 'professor' || (cargo_pretendido && /prof/i.test(cargo_pretendido))) {
       await syncEquipeFromUsuarios();
+      const eRes = await turso.execute({
+        sql: 'SELECT id FROM equipe WHERE user_id = ? OR email = (SELECT email FROM usuarios WHERE id = ?) LIMIT 1',
+        args: [id, id]
+      });
+      if (eRes.rows.length > 0) equipeId = eRes.rows[0].id;
     }
 
-    res.json({ message: 'Permissões atualizadas com sucesso!', id });
+    res.json({
+      success: true,
+      message: 'Permissões atualizadas com sucesso!',
+      id,
+      role,
+      aluno_id: alunoId,
+      equipe_id: equipeId
+    });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error('Erro em PUT /api/usuarios/:id/permissoes:', err);
+    res.status(500).json({ error: err.message || 'Erro ao atualizar permissões' });
   }
 });
 
