@@ -234,12 +234,42 @@ export const initTursoDatabase = async () => {
     try {
       await turso.execute('ALTER TABLE cronogramas ADD COLUMN professor_nome TEXT;');
     } catch {}
+    try {
+      await turso.execute("ALTER TABLE equipe ADD COLUMN status TEXT DEFAULT 'ativo';");
+    } catch {}
 
     try {
       await turso.execute("UPDATE usuarios SET avatar_url = '' WHERE avatar_url LIKE '%unsplash%';");
       await turso.execute("UPDATE alunos SET foto_url = '' WHERE foto_url LIKE '%unsplash%';");
       await turso.execute("UPDATE equipe SET foto_url = '' WHERE foto_url LIKE '%unsplash%';");
     } catch {}
+
+    // Seed default turmas if aulas table is empty
+    try {
+      const aulasCount = await turso.execute('SELECT COUNT(*) as count FROM aulas');
+      if (Number(aulasCount.rows[0]?.count || 0) === 0) {
+        console.log('📚 Populando turmas oficiais no Turso...');
+        const defaultAulas = [
+          { id: 'aul_b1_manha', nome: 'B1 Manhã', nivel: 'B1', turno: 'Manhã', dia_semana: 'Sábado', horario_inicio: '10:00', horario_fim: '11:30', sala: 'Salão 2 (Dominguinhos)', capacidade_maxima: 24 },
+          { id: 'aul_i2_manha', nome: 'I2 Manhã', nivel: 'I2', turno: 'Manhã', dia_semana: 'Sábado', horario_inicio: '10:00', horario_fim: '11:30', sala: 'Salão Principal (Gonzagão)', capacidade_maxima: 20 },
+          { id: 'aul_b2_manha', nome: 'B2 Manhã', nivel: 'B2', turno: 'Manhã', dia_semana: 'Sábado', horario_inicio: '11:30', horario_fim: '13:00', sala: 'Salão Principal (Gonzagão)', capacidade_maxima: 22 },
+          { id: 'aul_i1_manha', nome: 'I1 Manhã', nivel: 'I1', turno: 'Manhã', dia_semana: 'Sábado', horario_inicio: '11:30', horario_fim: '13:00', sala: 'Salão 2 (Dominguinhos)', capacidade_maxima: 20 },
+          { id: 'aul_b1_tarde', nome: 'B1 Tarde', nivel: 'B1', turno: 'Tarde', dia_semana: 'Sábado', horario_inicio: '14:00', horario_fim: '15:30', sala: 'Salão Principal (Gonzagão)', capacidade_maxima: 24 },
+          { id: 'aul_i1_tarde', nome: 'I1 Tarde', nivel: 'I1', turno: 'Tarde', dia_semana: 'Sábado', horario_inicio: '14:00', horario_fim: '15:30', sala: 'Salão 2 (Dominguinhos)', capacidade_maxima: 22 },
+          { id: 'aul_b2_tarde', nome: 'B2 Tarde', nivel: 'B2', turno: 'Tarde', dia_semana: 'Sábado', horario_inicio: '15:30', horario_fim: '17:00', sala: 'Salão 2 (Dominguinhos)', capacidade_maxima: 22 },
+          { id: 'aul_i2_tarde', nome: 'I2 Tarde', nivel: 'I2', turno: 'Tarde', dia_semana: 'Sábado', horario_inicio: '15:30', horario_fim: '17:00', sala: 'Salão Principal (Gonzagão)', capacidade_maxima: 20 }
+        ];
+        for (const a of defaultAulas) {
+          await turso.execute({
+            sql: `INSERT INTO aulas (id, nome, nivel, turno, dia_semana, horario_inicio, horario_fim, sala, capacidade_maxima)
+                  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            args: [a.id, a.nome, a.nivel, a.turno, a.dia_semana, a.horario_inicio, a.horario_fim, a.sala, a.capacidade_maxima]
+          });
+        }
+      }
+    } catch (e) {
+      console.warn('Erro ao verificar turmas padrão:', e.message);
+    }
 
     // Verifica se o Administrador Master existe
     const masterCheck = await turso.execute({

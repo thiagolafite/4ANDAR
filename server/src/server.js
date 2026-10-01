@@ -71,6 +71,15 @@ app.get('/api', (req, res) => {
   });
 });
 
+app.get('/api/health', (req, res) => {
+  res.json({
+    status: 'ok',
+    service: '4ANDAR API Server',
+    database: 'Turso (libSQL)',
+    time: new Date().toISOString()
+  });
+});
+
 // ==========================================
 // 0. AUTENTICAÇÃO E CONTROLE DE ACESSO (MASTER ADMIN)
 // ==========================================
@@ -1130,7 +1139,11 @@ app.delete('/api/aulas/:id', async (req, res) => {
 app.get('/api/presencas', async (req, res) => {
   try {
     const result = await turso.execute('SELECT * FROM presencas ORDER BY data_presenca DESC');
-    res.json(result.rows);
+    const rows = result.rows.map((r) => ({
+      ...r,
+      data_aula: r.data_presenca || r.data_aula
+    }));
+    res.json(rows);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -1138,16 +1151,33 @@ app.get('/api/presencas', async (req, res) => {
 
 app.post('/api/presencas/solicitar', async (req, res) => {
   try {
-    const { aluno_id, aula_id, data_presenca } = req.body;
-    const id = `pre_${Date.now()}`;
-    const dataSolicitacao = new Date().toISOString();
+    const { id: reqId, aluno_id, aula_id, data_presenca, data_aula, data_solicitacao } = req.body;
+    const id = reqId || `pre_${Date.now()}`;
+    const dtPresenca = data_presenca || data_aula;
+    const dataSol = data_solicitacao || new Date().toISOString();
 
     await turso.execute({
       sql: `INSERT INTO presencas (id, aluno_id, aula_id, data_presenca, status, data_solicitacao)
             VALUES (?, ?, ?, ?, 'pendente', ?)`,
-      args: [id, aluno_id, aula_id, data_presenca, dataSolicitacao]
+      args: [id, aluno_id, aula_id, dtPresenca, dataSol]
     });
-    res.status(201).json({ id, aluno_id, aula_id, data_presenca, status: 'pendente' });
+    res.status(201).json({ id, aluno_id, aula_id, data_aula: dtPresenca, data_presenca: dtPresenca, status: 'pendente' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/api/presencas', async (req, res) => {
+  try {
+    const { id: reqId, aluno_id, aula_id, data_presenca, data_aula, status, data_solicitacao, confirmado_por } = req.body;
+    const id = reqId || `pre_${Date.now()}`;
+    const dtPresenca = data_presenca || data_aula;
+    await turso.execute({
+      sql: `INSERT INTO presencas (id, aluno_id, aula_id, data_presenca, status, data_solicitacao, confirmado_por)
+            VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      args: [id, aluno_id, aula_id, dtPresenca, status || 'confirmada', data_solicitacao || new Date().toISOString(), confirmado_por || null]
+    });
+    res.status(201).json({ id, aluno_id, aula_id, data_aula: dtPresenca, status: status || 'confirmada' });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -1180,6 +1210,16 @@ app.put('/api/presencas/:id/ausente', async (req, res) => {
   }
 });
 
+app.delete('/api/presencas/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    await turso.execute({ sql: 'DELETE FROM presencas WHERE id = ?', args: [id] });
+    res.json({ success: true, id });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // ==========================================
 // 6. PAGAMENTOS (TURSO)
 // ==========================================
@@ -1194,12 +1234,23 @@ app.get('/api/pagamentos', async (req, res) => {
 
 app.post('/api/pagamentos', async (req, res) => {
   try {
-    const { aluno_id, valor, data_vencimento, metodo, tipo, status, referencia_mes } = req.body;
-    const id = `pag_${Date.now()}`;
+    const { id: reqId, aluno_id, valor, data_vencimento, data_pagamento, metodo, tipo, status, referencia_mes, comprovante_url } = req.body;
+    const id = reqId || `pag_${Date.now()}`;
     await turso.execute({
-      sql: `INSERT INTO pagamentos (id, aluno_id, valor, data_vencimento, metodo, tipo, status, referencia_mes)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-      args: [id, aluno_id, valor, data_vencimento, metodo || 'PIX', tipo || 'Mensalidade', status || 'Pendente', referencia_mes]
+      sql: `INSERT INTO pagamentos (id, aluno_id, valor, data_pagamento, data_vencimento, metodo, tipo, status, referencia_mes, comprovante_url)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      args: [
+        id,
+        aluno_id,
+        Number(valor) || 0,
+        data_pagamento || null,
+        data_vencimento,
+        metodo || 'PIX',
+        tipo || 'Mensalidade',
+        status || 'Pendente',
+        referencia_mes || '',
+        comprovante_url || null
+      ]
     });
     res.status(201).json({ id, aluno_id, valor, status: status || 'Pendente' });
   } catch (err) {
@@ -1217,6 +1268,40 @@ app.put('/api/pagamentos/:id/baixar', async (req, res) => {
       args: [metodo || 'PIX', dataHoje, id]
     });
     res.json({ id, status: 'Pago', data_pagamento: dataHoje });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.put('/api/pagamentos/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { valor, data_pagamento, data_vencimento, metodo, tipo, status, referencia_mes } = req.body;
+    const updates = [];
+    const args = [];
+    if (valor !== undefined) { updates.push('valor = ?'); args.push(Number(valor)); }
+    if (data_pagamento !== undefined) { updates.push('data_pagamento = ?'); args.push(data_pagamento); }
+    if (data_vencimento !== undefined) { updates.push('data_vencimento = ?'); args.push(data_vencimento); }
+    if (metodo !== undefined) { updates.push('metodo = ?'); args.push(metodo); }
+    if (tipo !== undefined) { updates.push('tipo = ?'); args.push(tipo); }
+    if (status !== undefined) { updates.push('status = ?'); args.push(status); }
+    if (referencia_mes !== undefined) { updates.push('referencia_mes = ?'); args.push(referencia_mes); }
+
+    if (updates.length > 0) {
+      args.push(id);
+      await turso.execute({ sql: `UPDATE pagamentos SET ${updates.join(', ')} WHERE id = ?`, args });
+    }
+    res.json({ success: true, id });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.delete('/api/pagamentos/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    await turso.execute({ sql: 'DELETE FROM pagamentos WHERE id = ?', args: [id] });
+    res.json({ success: true, id });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -1359,12 +1444,23 @@ app.get('/api/nivelamentos', async (req, res) => {
 
 app.post('/api/nivelamentos/agendar', async (req, res) => {
   try {
-    const { aluno_id, data_agendada, nivel_atual, nivel_alvo, papel } = req.body;
-    const id = `niv_${Date.now()}`;
+    const { id: reqId, aluno_id, data_agendada, nivel_atual, nivel_alvo, papel, avaliador_aulao, avaliador_danca, avaliador_observa, feedback_geral } = req.body;
+    const id = reqId || `niv_${Date.now()}`;
     await turso.execute({
-      sql: `INSERT INTO nivelamento_sessoes (id, aluno_id, data_agendada, nivel_atual, nivel_alvo, papel, status, avaliador_aulao, avaliador_danca)
-            VALUES (?, ?, ?, ?, ?, ?, 'Agendado', 'Mestre Gonzaga Silva', 'Mariana Sol')`,
-      args: [id, aluno_id, data_agendada, nivel_atual, nivel_alvo, papel]
+      sql: `INSERT INTO nivelamento_sessoes (id, aluno_id, data_agendada, nivel_atual, nivel_alvo, papel, status, avaliador_aulao, avaliador_danca, avaliador_observa, feedback_geral)
+            VALUES (?, ?, ?, ?, ?, ?, 'Agendado', ?, ?, ?, ?)`,
+      args: [
+        id,
+        aluno_id,
+        data_agendada,
+        nivel_atual,
+        nivel_alvo,
+        papel,
+        avaliador_aulao || 'Mestre Gonzaga Silva',
+        avaliador_danca || 'Mariana Sol',
+        avaliador_observa || 'Tiago Baião',
+        feedback_geral || 'Sessão agendada pelo aluno.'
+      ]
     });
     res.status(201).json({ id, aluno_id, nivel_alvo, status: 'Agendado' });
   } catch (err) {
@@ -1407,6 +1503,16 @@ app.put('/api/nivelamentos/:id/avaliar', async (req, res) => {
   }
 });
 
+app.delete('/api/nivelamentos/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    await turso.execute({ sql: 'DELETE FROM nivelamento_sessoes WHERE id = ?', args: [id] });
+    res.json({ success: true, id });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // ==========================================
 // 10. EVENTOS & AVISOS (TURSO)
 // ==========================================
@@ -1414,6 +1520,90 @@ app.get('/api/eventos', async (req, res) => {
   try {
     const result = await turso.execute('SELECT * FROM eventos ORDER BY data_evento ASC');
     res.json(result.rows);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/api/eventos', async (req, res) => {
+  try {
+    const { id: reqId, titulo, descricao, data_evento, horario, local, foto_url, preco, vagas_limite, vagas_preenchidas, status } = req.body;
+    const id = reqId || `ev_${Date.now()}`;
+    await turso.execute({
+      sql: `INSERT INTO eventos (id, titulo, descricao, data_evento, horario, local, foto_url, preco, vagas_limite, vagas_preenchidas, status)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      args: [
+        id,
+        titulo,
+        descricao || null,
+        data_evento,
+        horario || '19:00',
+        local || 'Sede 4ANDAR',
+        foto_url || null,
+        Number(preco) || 0,
+        Number(vagas_limite) || 50,
+        Number(vagas_preenchidas) || 0,
+        status || 'Inscrições Abertas'
+      ]
+    });
+    res.status(201).json({ id, titulo, status: status || 'Inscrições Abertas' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.put('/api/eventos/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { titulo, descricao, data_evento, horario, local, foto_url, preco, vagas_limite, vagas_preenchidas, status } = req.body;
+    const updates = [];
+    const args = [];
+    if (titulo !== undefined) { updates.push('titulo = ?'); args.push(titulo); }
+    if (descricao !== undefined) { updates.push('descricao = ?'); args.push(descricao); }
+    if (data_evento !== undefined) { updates.push('data_evento = ?'); args.push(data_evento); }
+    if (horario !== undefined) { updates.push('horario = ?'); args.push(horario); }
+    if (local !== undefined) { updates.push('local = ?'); args.push(local); }
+    if (foto_url !== undefined) { updates.push('foto_url = ?'); args.push(foto_url); }
+    if (preco !== undefined) { updates.push('preco = ?'); args.push(Number(preco)); }
+    if (vagas_limite !== undefined) { updates.push('vagas_limite = ?'); args.push(Number(vagas_limite)); }
+    if (vagas_preenchidas !== undefined) { updates.push('vagas_preenchidas = ?'); args.push(Number(vagas_preenchidas)); }
+    if (status !== undefined) { updates.push('status = ?'); args.push(status); }
+
+    if (updates.length > 0) {
+      args.push(id);
+      await turso.execute({ sql: `UPDATE eventos SET ${updates.join(', ')} WHERE id = ?`, args });
+    }
+    res.json({ success: true, id });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/api/eventos/:id/inscrever', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const evResult = await turso.execute({ sql: 'SELECT * FROM eventos WHERE id = ?', args: [id] });
+    if (evResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Evento não encontrado' });
+    }
+    const evento = evResult.rows[0];
+    const preenchidas = (Number(evento.vagas_preenchidas) || 0) + 1;
+    const novoStatus = preenchidas >= Number(evento.vagas_limite) ? 'Esgotado' : (evento.status || 'Inscrições Abertas');
+    await turso.execute({
+      sql: 'UPDATE eventos SET vagas_preenchidas = ?, status = ? WHERE id = ?',
+      args: [preenchidas, novoStatus, id]
+    });
+    res.json({ success: true, id, vagas_preenchidas: preenchidas, status: novoStatus });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.delete('/api/eventos/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    await turso.execute({ sql: 'DELETE FROM eventos WHERE id = ?', args: [id] });
+    res.json({ success: true, id });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

@@ -55,6 +55,7 @@ interface AppContextType {
   usuariosList: User[];
   pendingUsersCount: number;
   fetchUsuarios: () => Promise<void>;
+  syncWithDatabase: () => Promise<void>;
   updateUserStatus: (id: string, status: string, options?: { role?: string; permissoes?: any; motivo_recusa?: string }) => Promise<boolean>;
   updateUserPermissions: (id: string, permissoes: any, role?: string, cargo_pretendido?: string) => Promise<boolean>;
   vincularAlunoUsuario: (userId: string) => Promise<boolean>;
@@ -195,36 +196,80 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const API_URL = import.meta.env.VITE_API_URL || (import.meta.env.PROD ? '/api' : 'http://localhost:3001/api');
 
-  // Sincronização inicial com o backend Turso
+  // Sincronização direta e contínua com o banco Turso
+  const syncWithDatabase = async () => {
+    try {
+      const [
+        tursoUsuarios,
+        tursoAlunos,
+        tursoEquipe,
+        tursoAulas,
+        tursoCronos,
+        tursoPres,
+        tursoPags,
+        tursoNiv,
+        tursoEv,
+        tursoAv
+      ] = await Promise.all([
+        fetch(`${API_URL}/usuarios`).then((r) => r.json()).catch(() => null),
+        fetch(`${API_URL}/alunos`).then((r) => r.json()).catch(() => null),
+        fetch(`${API_URL}/equipe`).then((r) => r.json()).catch(() => null),
+        fetch(`${API_URL}/aulas`).then((r) => r.json()).catch(() => null),
+        fetch(`${API_URL}/cronograma`).then((r) => r.json()).catch(() => null),
+        fetch(`${API_URL}/presencas`).then((r) => r.json()).catch(() => null),
+        fetch(`${API_URL}/pagamentos`).then((r) => r.json()).catch(() => null),
+        fetch(`${API_URL}/nivelamentos`).then((r) => r.json()).catch(() => null),
+        fetch(`${API_URL}/eventos`).then((r) => r.json()).catch(() => null),
+        fetch(`${API_URL}/avisos`).then((r) => r.json()).catch(() => null)
+      ]);
+
+      if (Array.isArray(tursoUsuarios) && tursoUsuarios.length > 0) {
+        setUsuariosList(tursoUsuarios);
+        localStorage.setItem('4andar_usuariosList', JSON.stringify(tursoUsuarios));
+      }
+      if (Array.isArray(tursoAlunos)) {
+        setAlunos(tursoAlunos);
+        localStorage.setItem('4andar_alunos', JSON.stringify(tursoAlunos));
+      }
+      if (Array.isArray(tursoEquipe)) {
+        setEquipe(tursoEquipe);
+        localStorage.setItem('4andar_equipe', JSON.stringify(tursoEquipe));
+      }
+      if (Array.isArray(tursoAulas) && tursoAulas.length > 0) {
+        setAulas(tursoAulas);
+        localStorage.setItem('4andar_aulas', JSON.stringify(tursoAulas));
+      }
+      if (Array.isArray(tursoCronos) && tursoCronos.length > 0) {
+        setCronogramas(tursoCronos);
+        localStorage.setItem('4andar_cronogramas', JSON.stringify(tursoCronos));
+      }
+      if (Array.isArray(tursoPres)) {
+        setPresencas(tursoPres);
+        localStorage.setItem('4andar_presencas', JSON.stringify(tursoPres));
+      }
+      if (Array.isArray(tursoPags)) {
+        setPagamentos(tursoPags);
+        localStorage.setItem('4andar_pagamentos', JSON.stringify(tursoPags));
+      }
+      if (Array.isArray(tursoNiv)) {
+        setNivelamentoSessoes(tursoNiv);
+        localStorage.setItem('4andar_nivelamentoSessoes', JSON.stringify(tursoNiv));
+      }
+      if (Array.isArray(tursoEv)) {
+        setEventos(tursoEv);
+        localStorage.setItem('4andar_eventos', JSON.stringify(tursoEv));
+      }
+      if (Array.isArray(tursoAv)) {
+        setAvisos(tursoAv);
+        localStorage.setItem('4andar_avisos', JSON.stringify(tursoAv));
+      }
+    } catch (err) {
+      console.warn('Erro ao sincronizar com banco Turso:', err);
+    }
+  };
+
   useEffect(() => {
-    fetch(`${API_URL}/health`)
-      .then((r) => r.json())
-      .then(() => {
-        Promise.all([
-          fetch(`${API_URL}/alunos`).then((r) => r.json()).catch(() => null),
-          fetch(`${API_URL}/equipe`).then((r) => r.json()).catch(() => null),
-          fetch(`${API_URL}/aulas`).then((r) => r.json()).catch(() => null),
-          fetch(`${API_URL}/cronograma`).then((r) => r.json()).catch(() => null),
-          fetch(`${API_URL}/presencas`).then((r) => r.json()).catch(() => null),
-          fetch(`${API_URL}/pagamentos`).then((r) => r.json()).catch(() => null),
-          fetch(`${API_URL}/nivelamentos`).then((r) => r.json()).catch(() => null),
-          fetch(`${API_URL}/eventos`).then((r) => r.json()).catch(() => null),
-          fetch(`${API_URL}/avisos`).then((r) => r.json()).catch(() => null)
-        ]).then(([tursoAlunos, tursoEquipe, tursoAulas, tursoCronos, tursoPres, tursoPags, tursoNiv, tursoEv, tursoAv]) => {
-          if (Array.isArray(tursoAlunos)) setAlunos(tursoAlunos);
-          if (Array.isArray(tursoEquipe)) setEquipe(tursoEquipe);
-          if (Array.isArray(tursoAulas)) setAulas(tursoAulas);
-          if (Array.isArray(tursoCronos)) setCronogramas(tursoCronos);
-          if (Array.isArray(tursoPres)) setPresencas(tursoPres);
-          if (Array.isArray(tursoPags)) setPagamentos(tursoPags);
-          if (Array.isArray(tursoNiv)) setNivelamentoSessoes(tursoNiv);
-          if (Array.isArray(tursoEv)) setEventos(tursoEv);
-          if (Array.isArray(tursoAv)) setAvisos(tursoAv);
-        });
-      })
-      .catch(() => {
-        // Modo offline / servidor não iniciado, mantém localStorage
-      });
+    syncWithDatabase();
   }, []);
 
   // Search & Modal State
@@ -486,6 +531,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         localStorage.setItem('4andar_currentUser', JSON.stringify(mappedUser));
         showToast(`Bem-vindo, ${data.user.nome.split(' ')[0]}!`, 'success');
         fetchUsuarios();
+        syncWithDatabase();
         return { success: true };
       }
       throw new Error('Resposta inválida do servidor');
@@ -547,6 +593,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           return { success: false, error: data.error || 'Erro ao realizar cadastro' };
         }
         fetchUsuarios();
+        syncWithDatabase();
         return { success: true, message: data.message, status: data.status };
       }
       throw new Error('Resposta inválida do servidor');
@@ -1089,17 +1136,39 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       data_solicitacao: new Date().toISOString().replace('T', ' ').substring(0, 16)
     };
     setPresencas((prev) => [nova, ...prev]);
+
+    fetch(`${API_URL}/presencas/solicitar`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        id: nova.id,
+        aluno_id: alunoId,
+        aula_id: aulaId,
+        data_aula: dataAula,
+        data_presenca: dataAula,
+        data_solicitacao: nova.data_solicitacao
+      })
+    }).catch((e) => console.warn('Erro ao salvar presença no Turso:', e));
+
     showToast('Presença solicitada! Aguarde a confirmação da equipe.');
   };
 
   const confirmarPresenca = (presencaId: string) => {
+    const confirmador = currentUser?.nome || 'Admin';
     setPresencas((prev) =>
       prev.map((p) =>
         p.id === presencaId
-          ? { ...p, status: 'confirmada', confirmado_por: currentUser?.nome || 'Admin' }
+          ? { ...p, status: 'confirmada', confirmado_por: confirmador }
           : p
       )
     );
+
+    fetch(`${API_URL}/presencas/${presencaId}/confirmar`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ confirmado_por: confirmador })
+    }).catch((e) => console.warn('Erro ao confirmar presença no Turso:', e));
+
     showToast('Presença confirmada!');
   };
 
@@ -1107,6 +1176,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setPresencas((prev) =>
       prev.map((p) => (p.id === presencaId ? { ...p, status: 'ausente' } : p))
     );
+
+    fetch(`${API_URL}/presencas/${presencaId}/ausente`, {
+      method: 'PUT'
+    }).catch((e) => console.warn('Erro ao marcar ausente no Turso:', e));
+
     showToast('Presença marcada como ausente.', 'info');
   };
 
@@ -1120,12 +1194,26 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           : pag
       )
     );
+
+    fetch(`${API_URL}/pagamentos/${id}/baixar`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ metodo })
+    }).catch((e) => console.warn('Erro ao registrar pagamento no Turso:', e));
+
     showToast(`Pagamento registrado com sucesso via ${metodo}!`);
   };
 
   const addPagamento = (pagamento: Omit<Pagamento, 'id'>) => {
     const novo: Pagamento = { ...pagamento, id: `pag_${Date.now()}` };
     setPagamentos((prev) => [novo, ...prev]);
+
+    fetch(`${API_URL}/pagamentos`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(novo)
+    }).catch((e) => console.warn('Erro ao criar pagamento no Turso:', e));
+
     showToast('Cobrança / mensalidade gerada!');
   };
 
@@ -1180,6 +1268,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     };
 
     setNivelamentoSessoes((prev) => [nova, ...prev]);
+
+    fetch(`${API_URL}/nivelamentos/agendar`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(nova)
+    }).catch((e) => console.warn('Erro ao agendar nivelamento no Turso:', e));
+
     showToast(`Sessão de nivelamento para o nível ${nivelAlvo} agendada com sucesso!`);
   };
 
@@ -1224,6 +1319,21 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             : al
         )
       );
+    }
+
+    fetch(`${API_URL}/nivelamentos/${sessaoId}/avaliar`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        resultado,
+        feedback_geral: feedbackGeral,
+        feedback_aulao: feedbackAulao,
+        feedback_danca: feedbackDanca,
+        notas
+      })
+    }).catch((e) => console.warn('Erro ao salvar avaliação de nivelamento no Turso:', e));
+
+    if (resultado === 'Aprovado') {
       showToast(
         `Avaliação concluída: Aluno(a) APROVADO(A) e promovido(a) para ${sessao.nivel_alvo}! 🏆🎉`,
         'success'
@@ -1237,6 +1347,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const addEvento = (ev: Omit<Evento, 'id'>) => {
     const novo: Evento = { ...ev, id: `ev_${Date.now()}` };
     setEventos((prev) => [novo, ...prev]);
+
+    fetch(`${API_URL}/eventos`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(novo)
+    }).catch((e) => console.warn('Erro ao salvar evento no Turso:', e));
+
     showToast(`Evento "${novo.titulo}" cadastrado!`);
   };
 
@@ -1259,6 +1376,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           : e
       )
     );
+
+    fetch(`${API_URL}/eventos/${eventoId}/inscrever`, {
+      method: 'POST'
+    }).catch((e) => console.warn('Erro ao inscrever evento no Turso:', e));
+
     showToast(`Inscrição confirmada para "${ev.titulo}"!`, 'success');
     return true;
   };
@@ -1302,6 +1424,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         usuariosList,
         pendingUsersCount,
         fetchUsuarios,
+        syncWithDatabase,
         updateUserStatus,
         updateUserPermissions,
         vincularAlunoUsuario,
