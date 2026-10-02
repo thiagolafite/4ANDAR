@@ -132,6 +132,8 @@ export const initTursoDatabase = async () => {
       CREATE TABLE IF NOT EXISTS nivelamento_sessoes (
         id TEXT PRIMARY KEY,
         aluno_id TEXT NOT NULL,
+        aluno_nome TEXT,
+        aluno_email TEXT,
         data_agendada TEXT NOT NULL,
         nivel_atual TEXT NOT NULL,
         nivel_alvo TEXT NOT NULL,
@@ -243,6 +245,12 @@ export const initTursoDatabase = async () => {
     } catch {}
     try {
       await turso.execute("ALTER TABLE equipe ADD COLUMN status TEXT DEFAULT 'ativo';");
+    } catch {}
+    try {
+      await turso.execute('ALTER TABLE nivelamento_sessoes ADD COLUMN aluno_nome TEXT;');
+    } catch {}
+    try {
+      await turso.execute('ALTER TABLE nivelamento_sessoes ADD COLUMN aluno_email TEXT;');
     } catch {}
 
     try {

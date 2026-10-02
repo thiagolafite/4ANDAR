@@ -94,6 +94,25 @@ export const DashboardPage: React.FC = () => {
         ) || null
       : null;
 
+  // Scheduled leveling session for the student
+  const proximoNivelamentoAluno = alunoLogado
+    ? nivelamentoSessoes.find(
+        (s) =>
+          s.status === 'Agendado' &&
+          ((alunoLogado?.id && s.aluno_id === alunoLogado.id) ||
+            (alunoLogado?.aluno_id && s.aluno_id === alunoLogado.aluno_id) ||
+            (alunoLogado?.user_id && s.aluno_id === alunoLogado.user_id) ||
+            (currentUser?.aluno_id && s.aluno_id === currentUser.aluno_id) ||
+            (currentUser?.id && s.aluno_id === currentUser.id) ||
+            (s.aluno_email &&
+              currentUser?.email &&
+              s.aluno_email.trim().toLowerCase() === currentUser.email.trim().toLowerCase()) ||
+            (s.aluno_nome &&
+              currentUser?.nome &&
+              s.aluno_nome.trim().toLowerCase() === currentUser.nome.trim().toLowerCase()))
+      )
+    : null;
+
   return (
     <div className="space-y-6">
       {/* Top Welcome Banner */}
@@ -569,6 +588,39 @@ export const DashboardPage: React.FC = () => {
       {/* ======================================================== */}
       {!isEquipe && alunoLogado && (
         <div className="space-y-6">
+          {/* Alerta de Nivelamento Agendado na Conta do Aluno */}
+          {proximoNivelamentoAluno && (
+            <div className="rounded-3xl border-2 border-brand-500 bg-gradient-to-r from-brand-600 via-orange-600 to-amber-500 p-5 md:p-6 text-white shadow-xl shadow-brand-500/15 flex flex-col sm:flex-row sm:items-center justify-between gap-4 animate-in fade-in">
+              <div className="flex items-center gap-4">
+                <div className="h-12 w-12 rounded-2xl bg-white/20 backdrop-blur-md flex items-center justify-center shrink-0 shadow-inner">
+                  <Award className="h-6 w-6 text-white" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-[11px] font-black uppercase tracking-wider bg-white/25 px-2.5 py-0.5 rounded-full inline-flex items-center gap-1.5">
+                      <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
+                      Banca Agendada na Agenda Oficial
+                    </span>
+                  </div>
+                  <h3 className="text-lg font-black mt-1">
+                    Seu Nivelamento para Nível {proximoNivelamentoAluno.nivel_alvo} ({proximoNivelamentoAluno.papel}) está confirmado!
+                  </h3>
+                  <p className="text-xs text-orange-100 font-medium mt-0.5">
+                    📅 {proximoNivelamentoAluno.data_agendada} • Banca: {proximoNivelamentoAluno.avaliador_aulao} & {proximoNivelamentoAluno.avaliador_danca} • Salão 2
+                  </p>
+                </div>
+              </div>
+
+              <button
+                onClick={() => navigate('/meus-nivelamentos')}
+                className="shrink-0 rounded-xl bg-white text-brand-700 hover:bg-orange-50 font-bold px-4 py-2.5 text-xs shadow-md transition-all self-start sm:self-auto flex items-center gap-1.5"
+              >
+                <span>Ver Instruções e Ficha</span>
+                <ArrowRight className="h-3.5 w-3.5" />
+              </button>
+            </div>
+          )}
+
           {/* Card em Destaque: Minha Próxima Aula & Presença */}
           <div className="rounded-3xl bg-white p-6 md:p-8 border border-orange-100 shadow-md">
             {proximaAulaAluno ? (
@@ -679,40 +731,78 @@ export const DashboardPage: React.FC = () => {
                     onClick={() => navigate('/meus-nivelamentos')}
                     className="text-xs font-semibold text-brand-600 hover:text-brand-700 flex items-center gap-1"
                   >
-                    Ver Histórico <ArrowRight className="h-3.5 w-3.5" />
+                    Ver Detalhes <ArrowRight className="h-3.5 w-3.5" />
                   </button>
                 </div>
 
-                <div className="p-4 rounded-xl bg-purple-50/50 border border-purple-100 space-y-2">
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-bold text-purple-900 uppercase">
-                      Nível Atual: {alunoLogado.nivel_atual} ({alunoLogado.papel})
-                    </span>
-                    <span className="text-xs text-purple-700 font-semibold">
-                      Desde {alunoLogado.data_inicio_nivel}
-                    </span>
+                {proximoNivelamentoAluno ? (
+                  <div className="p-4 rounded-xl bg-gradient-to-br from-purple-50/60 via-brand-50/40 to-amber-50/50 border border-brand-200/80 space-y-2.5">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[11px] font-black text-brand-900 uppercase flex items-center gap-1.5">
+                        <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
+                        Banca Agendada na Escola
+                      </span>
+                      <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-brand-600 text-white">
+                        Alvo: {proximoNivelamentoAluno.nivel_alvo} ({proximoNivelamentoAluno.papel})
+                      </span>
+                    </div>
+
+                    <div className="rounded-lg bg-white p-2.5 border border-slate-200/70 space-y-1 text-xs">
+                      <p className="flex items-center gap-2 text-slate-800">
+                        <Calendar className="h-3.5 w-3.5 text-brand-600" />
+                        <span>Data: <strong>{proximoNivelamentoAluno.data_agendada}</strong></span>
+                      </p>
+                      <p className="flex items-center gap-2 text-slate-600 text-[11px]">
+                        <User className="h-3.5 w-3.5 text-slate-400" />
+                        <span>Banca: {proximoNivelamentoAluno.avaliador_aulao} & {proximoNivelamentoAluno.avaliador_danca}</span>
+                      </p>
+                    </div>
+
+                    <p className="text-[11px] text-slate-600 leading-relaxed">
+                      Sua banca foi marcada na agenda oficial da escola. Acesse os detalhes para conferir os critérios do Aulão e Dança a dois.
+                    </p>
                   </div>
-                  <p className="text-xs text-slate-600 leading-relaxed">
-                    Você pode agendar sua banca de avaliação técnica para a transição para{' '}
-                    <strong>
-                      {alunoLogado.nivel_atual === 'B1'
-                        ? 'B2 (Básico 2)'
-                        : alunoLogado.nivel_atual === 'B2'
-                        ? 'I1 (Intermediário 1)'
-                        : 'I2'}
-                    </strong>
-                    . As bancas avaliam Aulão de ritmo e Dança a dois.
-                  </p>
-                </div>
+                ) : (
+                  <div className="p-4 rounded-xl bg-purple-50/50 border border-purple-100 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-bold text-purple-900 uppercase">
+                        Nível Atual: {alunoLogado.nivel_atual} ({alunoLogado.papel})
+                      </span>
+                      <span className="text-xs text-purple-700 font-semibold">
+                        Desde {alunoLogado.data_inicio_nivel}
+                      </span>
+                    </div>
+                    <p className="text-xs text-slate-600 leading-relaxed">
+                      Você pode agendar sua banca de avaliação técnica para a transição para{' '}
+                      <strong>
+                        {alunoLogado.nivel_atual === 'B1'
+                          ? 'B2 (Básico 2)'
+                          : alunoLogado.nivel_atual === 'B2'
+                          ? 'I1 (Intermediário 1)'
+                          : 'I2'}
+                      </strong>
+                      . As bancas avaliam Aulão de ritmo e Dança a dois.
+                    </p>
+                  </div>
+                )}
               </div>
 
               <div className="mt-4 pt-3 border-t border-slate-100">
-                <button
-                  onClick={() => navigate('/agendamento-nivelamento')}
-                  className="w-full py-2.5 rounded-xl bg-purple-600 hover:bg-purple-700 text-white font-semibold text-xs transition-colors"
-                >
-                  Agendar Sessão de Avaliação
-                </button>
+                {proximoNivelamentoAluno ? (
+                  <button
+                    onClick={() => navigate('/meus-nivelamentos')}
+                    className="w-full py-2.5 rounded-xl bg-brand-600 hover:bg-brand-700 text-white font-semibold text-xs transition-colors shadow-md shadow-brand-500/20"
+                  >
+                    Ver Ficha e Instruções do Nivelamento
+                  </button>
+                ) : (
+                  <button
+                    onClick={() => navigate('/agendamento-nivelamento')}
+                    className="w-full py-2.5 rounded-xl bg-purple-600 hover:bg-purple-700 text-white font-semibold text-xs transition-colors"
+                  >
+                    Agendar Sessão de Avaliação
+                  </button>
+                )}
               </div>
             </div>
 

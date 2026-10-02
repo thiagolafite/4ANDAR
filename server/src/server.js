@@ -1495,14 +1495,55 @@ app.get('/api/nivelamentos', async (req, res) => {
 
 app.post('/api/nivelamentos/agendar', async (req, res) => {
   try {
-    const { id: reqId, aluno_id, data_agendada, nivel_atual, nivel_alvo, papel, avaliador_aulao, avaliador_danca, avaliador_observa, feedback_geral } = req.body;
+    const {
+      id: reqId,
+      aluno_id,
+      aluno_nome: reqNome,
+      aluno_email: reqEmail,
+      data_agendada,
+      nivel_atual,
+      nivel_alvo,
+      papel,
+      avaliador_aulao,
+      avaliador_danca,
+      avaliador_observa,
+      feedback_geral
+    } = req.body;
     const id = reqId || `niv_${Date.now()}`;
+
+    let alunoNome = reqNome || '';
+    let alunoEmail = reqEmail || '';
+
+    if (!alunoNome || !alunoEmail) {
+      try {
+        const uRes = await turso.execute({
+          sql: 'SELECT nome, email FROM usuarios WHERE id = ? OR aluno_id = ? LIMIT 1',
+          args: [aluno_id, aluno_id]
+        });
+        if (uRes.rows.length > 0) {
+          alunoNome = alunoNome || String(uRes.rows[0].nome || '');
+          alunoEmail = alunoEmail || String(uRes.rows[0].email || '');
+        } else {
+          const aRes = await turso.execute({
+            sql: 'SELECT nome, email FROM alunos WHERE id = ? OR user_id = ? LIMIT 1',
+            args: [aluno_id, aluno_id]
+          });
+          if (aRes.rows.length > 0) {
+            alunoNome = alunoNome || String(aRes.rows[0].nome || '');
+            alunoEmail = alunoEmail || String(aRes.rows[0].email || '');
+          }
+        }
+      } catch {}
+    }
+
     await turso.execute({
-      sql: `INSERT INTO nivelamento_sessoes (id, aluno_id, data_agendada, nivel_atual, nivel_alvo, papel, status, avaliador_aulao, avaliador_danca, avaliador_observa, feedback_geral)
-            VALUES (?, ?, ?, ?, ?, ?, 'Agendado', ?, ?, ?, ?)`,
+      sql: `INSERT INTO nivelamento_sessoes (id, aluno_id, aluno_nome, aluno_email, data_agendada, nivel_atual, nivel_alvo, papel, status, avaliador_aulao, avaliador_danca, avaliador_observa, feedback_geral)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'Agendado', ?, ?, ?, ?)`,
       args: [
         id,
         aluno_id,
+        alunoNome,
+        alunoEmail,
         data_agendada,
         nivel_atual,
         nivel_alvo,
@@ -1510,10 +1551,10 @@ app.post('/api/nivelamentos/agendar', async (req, res) => {
         avaliador_aulao || 'Mestre Gonzaga Silva',
         avaliador_danca || 'Mariana Sol',
         avaliador_observa || 'Tiago Baião',
-        feedback_geral || 'Sessão agendada pelo aluno.'
+        feedback_geral || 'Sessão agendada para avaliação técnica.'
       ]
     });
-    res.status(201).json({ id, aluno_id, nivel_alvo, status: 'Agendado' });
+    res.status(201).json({ id, aluno_id, aluno_nome: alunoNome, aluno_email: alunoEmail, nivel_alvo, status: 'Agendado' });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

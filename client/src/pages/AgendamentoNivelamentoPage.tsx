@@ -14,7 +14,7 @@ import { NivelForro, PapelDanca, Aluno } from '../types';
 import { UserAvatar } from '../components/common/UserAvatar';
 
 export const AgendamentoNivelamentoPage: React.FC = () => {
-  const { currentUser, alunos, alunosCadastrados, agendarNivelamento, showToast } = useApp();
+  const { currentUser, alunos, alunosCadastrados, nivelamentoSessoes, agendarNivelamento, showToast } = useApp();
   const navigate = useNavigate();
 
   const isEquipeOrMaster = Boolean(
@@ -51,6 +51,15 @@ export const AgendamentoNivelamentoPage: React.FC = () => {
       frequencia_percentual: 100,
       foto_url: currentUser.avatar_url || ''
     };
+
+  const jaAgendado = nivelamentoSessoes.find(
+    (s) =>
+      s.status === 'Agendado' &&
+      (s.aluno_id === targetAluno?.id ||
+        s.aluno_id === targetAluno?.aluno_id ||
+        s.aluno_id === targetAluno?.user_id ||
+        (s.aluno_email && targetAluno?.email && s.aluno_email.toLowerCase() === targetAluno.email.toLowerCase()))
+  );
 
   // Target level default
   const proximoNivelMap: Record<NivelForro, NivelForro> = {
@@ -89,6 +98,31 @@ export const AgendamentoNivelamentoPage: React.FC = () => {
           A banca avaliadora analisa sua evolução através do Aulão coletivo e da Dança a dois.
         </p>
       </div>
+
+      {/* Alerta se o aluno já tiver agendamento */}
+      {!isEquipeOrMaster && jaAgendado && (
+        <div className="rounded-2xl border-2 border-brand-500 bg-amber-50 p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-md animate-in fade-in">
+          <div className="flex items-center gap-3">
+            <div className="h-10 w-10 rounded-xl bg-brand-600 text-white flex items-center justify-center shrink-0">
+              <Calendar className="h-5 w-5" />
+            </div>
+            <div>
+              <p className="text-xs font-bold text-amber-900 uppercase tracking-wider">
+                Você já tem um nivelamento agendado!
+              </p>
+              <p className="text-sm font-black text-slate-900">
+                Banca marcada para {jaAgendado.data_agendada} (Nível Alvo: {jaAgendado.nivel_alvo})
+              </p>
+            </div>
+          </div>
+          <button
+            onClick={() => navigate('/meus-nivelamentos')}
+            className="px-4 py-2 rounded-xl bg-brand-600 hover:bg-brand-700 text-white font-bold text-xs shadow-sm transition-all"
+          >
+            Ver Meus Nivelamentos
+          </button>
+        </div>
+      )}
 
       {/* Info Card */}
       <div className="rounded-2xl bg-orange-50 border border-orange-200 p-5 text-xs text-orange-950 space-y-2">

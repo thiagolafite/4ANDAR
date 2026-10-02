@@ -36,9 +36,28 @@ export const MeusNivelamentosPage: React.FC = () => {
       foto_url: currentUser.avatar_url || ''
     };
 
-  const minhasSessoes = nivelamentoSessoes.filter(
-    (s) => s.aluno_id === alunoLogado.id || s.aluno_id === currentUser.aluno_id || s.aluno_id === currentUser.id
-  );
+  const minhasSessoes = nivelamentoSessoes.filter((s) => {
+    const matchId =
+      (alunoLogado?.id && s.aluno_id === alunoLogado.id) ||
+      (alunoLogado?.aluno_id && s.aluno_id === alunoLogado.aluno_id) ||
+      (alunoLogado?.user_id && s.aluno_id === alunoLogado.user_id) ||
+      (currentUser?.aluno_id && s.aluno_id === currentUser.aluno_id) ||
+      (currentUser?.id && s.aluno_id === currentUser.id);
+
+    const matchEmail =
+      s.aluno_email &&
+      currentUser?.email &&
+      s.aluno_email.trim().toLowerCase() === currentUser.email.trim().toLowerCase();
+
+    const matchNome =
+      s.aluno_nome &&
+      currentUser?.nome &&
+      s.aluno_nome.trim().toLowerCase() === currentUser.nome.trim().toLowerCase();
+
+    return Boolean(matchId || matchEmail || matchNome);
+  });
+
+  const proximoAgendado = minhasSessoes.find((s) => s.status === 'Agendado');
 
   return (
     <div className="space-y-6 max-w-4xl mx-auto">
@@ -83,6 +102,63 @@ export const MeusNivelamentosPage: React.FC = () => {
           </p>
         </div>
       </div>
+
+      {/* Destaque do Nivelamento Agendado (Sincronizado na Conta do Aluno) */}
+      {proximoAgendado && (
+        <div className="rounded-3xl border-2 border-brand-500 bg-gradient-to-br from-brand-50 via-white to-amber-50/60 p-6 md:p-8 shadow-md space-y-4 animate-in fade-in">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <div className="h-11 w-11 rounded-2xl bg-brand-600 text-white flex items-center justify-center shadow-md shadow-brand-500/25">
+                <Calendar className="h-6 w-6" />
+              </div>
+              <div>
+                <span className="text-[11px] font-black uppercase tracking-wider text-brand-700 bg-brand-100/80 px-2.5 py-0.5 rounded-full inline-flex items-center gap-1.5">
+                  <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
+                  Agendamento Oficial Confirmado
+                </span>
+                <h3 className="text-xl font-black text-slate-900 mt-1">
+                  Banca de Nivelamento: Transição para Nível {proximoAgendado.nivel_alvo} ({proximoAgendado.papel})
+                </h3>
+              </div>
+            </div>
+
+            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-amber-100 text-amber-900 border border-amber-200/80 self-start sm:self-auto">
+              <Sparkles className="h-3.5 w-3.5 text-amber-600" />
+              Aguardando Avaliação
+            </span>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2">
+            <div className="rounded-2xl bg-white p-3.5 border border-slate-200/80 shadow-sm">
+              <p className="text-[11px] font-semibold text-slate-400">Data e Horário</p>
+              <p className="text-sm font-black text-slate-900 mt-0.5">{proximoAgendado.data_agendada}</p>
+            </div>
+            <div className="rounded-2xl bg-white p-3.5 border border-slate-200/80 shadow-sm">
+              <p className="text-[11px] font-semibold text-slate-400">Banca Avaliadora</p>
+              <p className="text-xs font-bold text-slate-800 mt-0.5">
+                {proximoAgendado.avaliador_aulao} & {proximoAgendado.avaliador_danca}
+              </p>
+            </div>
+            <div className="rounded-2xl bg-white p-3.5 border border-slate-200/80 shadow-sm">
+              <p className="text-[11px] font-semibold text-slate-400">Local da Sessão</p>
+              <p className="text-xs font-bold text-slate-800 mt-0.5">Salão 2 (Dominguinhos)</p>
+            </div>
+          </div>
+
+          {proximoAgendado.feedback_geral && (
+            <div className="rounded-2xl bg-white/80 border border-brand-200/70 p-3.5 text-xs text-slate-700">
+              <strong className="text-brand-900">Orientações da Coordenação:</strong> {proximoAgendado.feedback_geral}
+            </div>
+          )}
+
+          <div className="rounded-2xl bg-amber-100/50 border border-amber-200/80 p-3.5 text-xs text-amber-950 flex items-start gap-2.5">
+            <Sparkles className="h-4 w-4 text-amber-600 shrink-0 mt-0.5" />
+            <p>
+              <strong>Como se preparar:</strong> Chegue com 15 minutos de antecedência com calçado apropriado para forró e toalha. A avaliação contempla a dinâmica de Aulão (ritmo, postura e tempo 1) e Dança a dois (conexão e repertório).
+            </p>
+          </div>
+        </div>
+      )}
 
       {/* History of Sessions */}
       <div className="space-y-4">

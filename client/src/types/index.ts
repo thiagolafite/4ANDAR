@@ -175,6 +175,8 @@ export interface CriterioNivelamento {
 export interface NivelamentoSessao {
   id: string;
   aluno_id: string;
+  aluno_nome?: string;
+  aluno_email?: string;
   data_agendada: string; // YYYY-MM-DD HH:mm
   nivel_atual: NivelForro;
   nivel_alvo: NivelForro;

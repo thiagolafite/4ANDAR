@@ -112,7 +112,19 @@ interface AppContextType {
   // Nivelamento
   criteriosNivelamento: CriterioNivelamento[];
   nivelamentoSessoes: NivelamentoSessao[];
-  agendarNivelamento: (alunoId: string, nivelAlvo: NivelForro, papel: PapelDanca, dataAgendada: string) => void;
+  agendarNivelamento: (
+    alunoId: string,
+    nivelAlvo: NivelForro,
+    papel: PapelDanca,
+    dataAgendada: string,
+    options?: {
+      avaliador_aulao?: string;
+      avaliador_danca?: string;
+      avaliador_observa?: string;
+      feedback_geral?: string;
+      sincronizarAgenda?: boolean;
+    }
+  ) => void;
   avaliarNivelamento: (
     sessaoId: string,
     resultado: 'Aprovado' | 'Reprovado',
@@ -1446,34 +1458,86 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     alunoId: string,
     nivelAlvo: NivelForro,
     papel: PapelDanca,
-    dataAgendada: string
+    dataAgendada: string,
+    options?: {
+      avaliador_aulao?: string;
+      avaliador_danca?: string;
+      avaliador_observa?: string;
+      feedback_geral?: string;
+      sincronizarAgenda?: boolean;
+    }
   ) => {
-    const aluno = alunos.find((a) => a.id === alunoId);
-    if (!aluno) return;
+    const aluno =
+      alunosCadastrados.find((a) => a.id === alunoId || a.aluno_id === alunoId || a.user_id === alunoId) ||
+      alunos.find((a) => a.id === alunoId || a.user_id === alunoId);
+
+    const finalAlunoId = aluno?.aluno_id || aluno?.id || alunoId;
+    const alunoNome = aluno?.nome || 'Aluno';
+    const alunoEmail = aluno?.email || '';
 
     const nova: NivelamentoSessao = {
       id: `niv_${Date.now()}`,
-      aluno_id: alunoId,
+      aluno_id: finalAlunoId,
+      aluno_nome: alunoNome,
+      aluno_email: alunoEmail,
       data_agendada: dataAgendada,
-      nivel_atual: aluno.nivel_atual,
+      nivel_atual: (aluno?.nivel_atual as NivelForro) || 'B1',
       nivel_alvo: nivelAlvo,
       papel,
-      avaliador_aulao: 'Mestre Gonzaga Silva',
-      avaliador_danca: 'Mariana Sol',
-      avaliador_observa: 'Tiago Baião',
+      avaliador_aulao: options?.avaliador_aulao || 'Mestre Gonzaga Silva',
+      avaliador_danca: options?.avaliador_danca || 'Mariana Sol',
+      avaliador_observa: options?.avaliador_observa || 'Tiago Baião',
       status: 'Agendado',
-      feedback_geral: 'Sessão agendada pelo aluno.'
+      feedback_geral: options?.feedback_geral || 'Sessão agendada para avaliação técnica.'
     };
 
-    setNivelamentoSessoes((prev) => [nova, ...prev]);
+    setNivelamentoSessoes((prev) => {
+      const updated = [nova, ...prev];
+      localStorage.setItem('4andar_nivelamentoSessoes', JSON.stringify(updated));
+      return updated;
+    });
 
+    // Se solicitado, adiciona evento na agenda da escola
+    if (options?.sincronizarAgenda !== false) {
+      const dataParte = dataAgendada.split(' ')[0] || new Date().toISOString().substring(0, 10);
+      const horaParte = dataAgendada.split(' ')[1] || '14:00';
+      const novoEvento: Evento = {
+        id: `ev_niv_${Date.now()}`,
+        titulo: `Banca de Nivelamento — ${alunoNome} (${nivelAlvo})`,
+        descricao: `Avaliação técnica de progressão para o nível ${nivelAlvo} (${papel}). Banca: ${nova.avaliador_aulao} e ${nova.avaliador_danca}.`,
+        data_evento: dataParte,
+        horario: horaParte,
+        local: 'Salão 2 (Dominguinhos)',
+        foto_url: '',
+        preco: 0,
+        vagas_limite: 1,
+        vagas_preenchidas: 1,
+        status: 'Inscrições Abertas'
+      };
+      setEventos((prev) => {
+        const updated = [novoEvento, ...prev];
+        localStorage.setItem('4andar_eventos', JSON.stringify(updated));
+        return updated;
+      });
+      fetch(`${API_URL}/eventos`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(novoEvento)
+      }).catch(() => {});
+    }
+
+    // Persiste no banco Turso
     fetch(`${API_URL}/nivelamentos/agendar`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(nova)
+      body: JSON.stringify({
+        ...nova,
+        aluno_nome: alunoNome,
+        aluno_email: alunoEmail
+      })
     }).catch((e) => console.warn('Erro ao agendar nivelamento no Turso:', e));
 
-    showToast(`Sessão de nivelamento para o nível ${nivelAlvo} agendada com sucesso!`);
+    showToast(`Nivelamento para ${alunoNome} (${nivelAlvo}) agendado e sincronizado com sucesso!`, 'success');
   };
 
   const avaliarNivelamento = (
