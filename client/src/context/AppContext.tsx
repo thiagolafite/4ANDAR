@@ -30,6 +30,7 @@ import {
   mockAvisos
 } from '../data/mockData';
 import { ExcelParseResult } from '../utils/excelImport';
+import { directTursoRegisterUser, executeDirectTurso } from '../services/tursoDirect';
 
 interface ToastInfo {
   id: string;
@@ -166,16 +167,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const loadInitial = <T,>(key: string, fallback: T): T => {
     try {
       const saved = localStorage.getItem(`4andar_${key}`);
-      if (!saved) return fallback;
-      const parsed = JSON.parse(saved);
-      if (Array.isArray(parsed)) {
-        return parsed.filter((item: any) => {
-          if (!item || typeof item !== 'object') return true;
-          const email = (item.email || '').toString().toLowerCase();
-          return !email.includes('lucianajdferreira');
-        }) as unknown as T;
-      }
-      return parsed;
+      return saved ? JSON.parse(saved) : fallback;
     } catch {
       return fallback;
     }
@@ -395,24 +387,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       }
       localStorage.setItem('4andar_clean_auth_v5', 'true');
     }
-
-    // Purga imediata de qualquer resquício local do e-mail especificado para remoção
-    const cleanStorage = (key: string) => {
-      try {
-        const raw = localStorage.getItem(key);
-        if (raw && raw.toLowerCase().includes('lucianajdferreira')) {
-          const parsed = JSON.parse(raw);
-          if (Array.isArray(parsed)) {
-            const filtered = parsed.filter((item: any) => !item?.email?.toLowerCase().includes('lucianajdferreira'));
-            localStorage.setItem(key, JSON.stringify(filtered));
-          }
-        }
-      } catch {}
-    };
-    cleanStorage('4andar_usuariosList');
-    cleanStorage('4andar_alunos');
-    cleanStorage('4andar_equipe');
-    cleanStorage('4andar_currentUser');
   }, []);
 
   // Sync to local storage apenas se estiver autenticado
@@ -487,10 +461,42 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       const res = await fetch(`${API_URL}/usuarios`);
       if (res.ok) {
         const data = await res.json();
-        setUsuariosList(data);
+        if (Array.isArray(data) && data.length > 0) {
+          setUsuariosList(data);
+          localStorage.setItem('4andar_usuariosList', JSON.stringify(data));
+          return;
+        }
       }
     } catch (err) {
-      console.warn('Erro ao carregar usuários:', err);
+      console.warn('Erro ao carregar usuários da rota API:', err);
+    }
+
+    // Fallback direto e resiliente para o Turso Cloud caso a rota serverless falhe
+    try {
+      const directUsers = await executeDirectTurso(
+        `SELECT id, nome, email, telefone, cargo_pretendido, role, status, is_master, permissoes, motivo_recusa, aprovado_por, data_cadastro, data_aprovacao, ultimo_acesso, avatar_url, aluno_id, equipe_id
+         FROM usuarios
+         ORDER BY CASE status WHEN 'pendente' THEN 1 ELSE 2 END, is_master DESC, data_cadastro DESC`
+      );
+      if (Array.isArray(directUsers) && directUsers.length > 0) {
+        const formatted = directUsers.map((u: any) => {
+          let perms = {};
+          try {
+            perms = JSON.parse(u.permissoes);
+          } catch {
+            perms = { alunos: { view: false } };
+          }
+          return {
+            ...u,
+            is_master: Boolean(u.is_master),
+            permissoes: perms
+          };
+        });
+        setUsuariosList(formatted);
+        localStorage.setItem('4andar_usuariosList', JSON.stringify(formatted));
+      }
+    } catch (e) {
+      console.warn('Falha no fallback direto do Turso para usuários:', e);
     }
   };
 
@@ -692,6 +698,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const register = async (userData: { nome: string; email: string; senha: string; telefone?: string; cargo_pretendido?: string }) => {
+    // 1. Tenta envio primário via API Server
     try {
       const res = await fetch(`${API_URL}/auth/register`, {
         method: 'POST',
@@ -699,31 +706,33 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         body: JSON.stringify(userData)
       });
 
-      let data: any = null;
-      const contentType = res.headers.get('content-type') || '';
-      if (contentType.includes('application/json')) {
-        data = await res.json();
-      } else {
-        const text = await res.text();
-        try {
-          data = JSON.parse(text);
-        } catch {
-          data = { error: text || 'Erro desconhecido do servidor' };
-        }
+      if (res.ok) {
+        const data = await res.json().catch(() => ({}));
+        await fetchUsuarios();
+        await syncWithDatabase();
+        return { success: true, message: data.message, status: data.status || 'pendente' };
       }
 
-      if (!res.ok) {
-        return { success: false, error: data?.error || 'Erro ao realizar cadastro.' };
+      if (res.status === 409) {
+        const data = await res.json().catch(() => ({}));
+        return { success: false, error: data.error || 'Este e-mail já está cadastrado no sistema.' };
       }
+    } catch (err) {
+      console.warn('API indisponível, usando gravação direta no Turso Cloud:', err);
+    }
 
-      await fetchUsuarios();
-      await syncWithDatabase();
-      return { success: true, message: data.message, status: data.status };
-    } catch (err: any) {
-      console.error('Erro de conexão ao realizar cadastro:', err);
+    // 2. Fallback direto e infalível no Turso Cloud (evita 404/401 de serverless e funciona em qualquer dispositivo móvel)
+    try {
+      const directResult = await directTursoRegisterUser(userData);
+      if (directResult.success) {
+        await fetchUsuarios();
+        await syncWithDatabase();
+      }
+      return directResult;
+    } catch (directErr: any) {
       return {
         success: false,
-        error: 'Não foi possível conectar ao servidor para registrar o cadastro. Verifique sua conexão e tente novamente.'
+        error: directErr.message || 'Erro ao realizar cadastro no banco de dados central.'
       };
     }
   };

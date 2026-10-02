@@ -13,10 +13,22 @@ export function hashPassword(password) {
  * Valida a senha informada contra o hash armazenado
  */
 export function verifyPassword(password, stored) {
-  if (!stored || !stored.includes(':')) return false;
+  if (!stored) return false;
+  if (stored.startsWith('sha256:')) {
+    const raw = stored.replace('sha256:', '');
+    const computed = crypto.createHash('sha256').update(password).digest('hex');
+    return computed === raw;
+  }
+  if (!stored.includes(':')) {
+    return password === stored;
+  }
   const [salt, key] = stored.split(':');
-  const hash = crypto.scryptSync(password, salt, 64).toString('hex');
-  return hash === key;
+  try {
+    const hash = crypto.scryptSync(password, salt, 64).toString('hex');
+    return hash === key;
+  } catch {
+    return false;
+  }
 }
 
 /**
