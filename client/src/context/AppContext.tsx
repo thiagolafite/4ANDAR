@@ -200,7 +200,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [users] = useState<User[]>(mockUsers);
   const [alunos, setAlunos] = useState<Aluno[]>(() => loadInitial('alunos', []));
   const [equipe, setEquipe] = useState<Equipe[]>(() => loadInitial('equipe', []));
-  const [aulas, setAulas] = useState<Aula[]>(() => loadInitial('aulas', []));
+  const [aulas, setAulas] = useState<Aula[]>(() => {
+    const initial = loadInitial('aulas', mockAulas);
+    return Array.isArray(initial) && initial.length > 0 ? initial : mockAulas;
+  });
   const [cronogramas, setCronogramas] = useState<Cronograma[]>(() => loadInitial('cronogramas', []));
   const [presencas, setPresencas] = useState<Presenca[]>(() => loadInitial('presencas', []));
   const [pagamentos, setPagamentos] = useState<Pagamento[]>(() => loadInitial('pagamentos', []));
@@ -253,12 +256,30 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         localStorage.setItem('4andar_equipe', JSON.stringify(tursoEquipe));
       }
       if (Array.isArray(tursoAulas) && tursoAulas.length > 0) {
-        setAulas(tursoAulas);
-        localStorage.setItem('4andar_aulas', JSON.stringify(tursoAulas));
+        setAulas((prev) => {
+          const map = new Map<string, Aula>();
+          mockAulas.forEach((a) => map.set(a.id, a));
+          prev.forEach((a) => map.set(a.id, a));
+          tursoAulas.forEach((a: Aula) => map.set(a.id, a));
+          const merged = Array.from(map.values());
+          localStorage.setItem('4andar_aulas', JSON.stringify(merged));
+          return merged;
+        });
       }
       if (Array.isArray(tursoCronos) && tursoCronos.length > 0) {
-        setCronogramas(tursoCronos);
-        localStorage.setItem('4andar_cronogramas', JSON.stringify(tursoCronos));
+        setCronogramas((prev) => {
+          // Mescla com os itens locais para nunca perder a planilha importada caso o banco retorne menos registros
+          const map = new Map<string, Cronograma>();
+          tursoCronos.forEach((c: Cronograma) => map.set(`${c.aula_id}_${c.data_aula}`, c));
+          prev.forEach((c: Cronograma) => {
+            if (!map.has(`${c.aula_id}_${c.data_aula}`)) {
+              map.set(`${c.aula_id}_${c.data_aula}`, c);
+            }
+          });
+          const merged = Array.from(map.values());
+          localStorage.setItem('4andar_cronogramas', JSON.stringify(merged));
+          return merged;
+        });
       }
       if (Array.isArray(tursoPres)) {
         setPresencas(tursoPres);
@@ -372,6 +393,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       localStorage.removeItem('4andar_token');
     }
   }, [currentUser, isAuthenticated]);
+  useEffect(() => {
+    if (aulas && aulas.length > 0) {
+      localStorage.setItem('4andar_aulas', JSON.stringify(aulas));
+    }
+  }, [aulas]);
   useEffect(() => {
     localStorage.setItem('4andar_alunos', JSON.stringify(alunos));
   }, [alunos]);
@@ -1343,10 +1369,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     });
 
     setCronogramas(updatedCronos);
+    localStorage.setItem('4andar_cronogramas', JSON.stringify(updatedCronos));
+    localStorage.setItem('4andar_aulas', JSON.stringify(currentAulas));
 
-    // 3. Persiste no backend Turso
+    // 3. Persiste no backend Turso de forma atômica
     try {
-      await fetch(`${API_URL}/cronograma/bulk`, {
+      const res = await fetch(`${API_URL}/cronograma/bulk`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -1354,6 +1382,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           turmasNovas: newAulasToCreate
         })
       });
+      if (!res.ok) {
+        console.warn('Aviso: endpoint /api/cronograma/bulk retornou status:', res.status);
+      }
     } catch (e) {
       console.warn('Erro ao sincronizar com backend Turso:', e);
     }

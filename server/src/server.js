@@ -1053,61 +1053,62 @@ app.put('/api/cronograma', async (req, res) => {
   }
 });
 
-// Importação em massa de cronograma via Excel
+// Importação em massa de cronograma via Excel (otimizado com batch atômico de alta performance)
 app.post('/api/cronograma/bulk', async (req, res) => {
   try {
     const { items, turmasNovas } = req.body;
 
-    // Se houver turmas novas que foram criadas no Excel e não existiam no banco
-    if (turmasNovas && Array.isArray(turmasNovas)) {
-      for (const t of turmasNovas) {
-        const check = await turso.execute({
-          sql: 'SELECT id FROM aulas WHERE id = ?',
-          args: [t.id]
-        });
-        if (check.rows.length === 0) {
-          await turso.execute({
-            sql: `INSERT INTO aulas (id, nome, nivel, turno, dia_semana, horario_inicio, horario_fim, sala, equipe_id, capacidade_maxima)
-                  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-            args: [
-              t.id,
-              t.nome,
-              t.nivel || 'B1',
-              t.turno || 'Manhã',
-              t.dia_semana || 'Sábado',
-              t.horario_inicio || '10:00',
-              t.horario_fim || '11:30',
-              t.sala || 'Salão Principal',
-              t.equipe_id || 'eq_1',
-              t.capacidade_maxima || 24
-            ]
-          });
-        }
-      }
+    // Garante que o índice único existe para upserts instantâneos ON CONFLICT
+    await turso.execute('CREATE UNIQUE INDEX IF NOT EXISTS idx_cronogramas_aula_data ON cronogramas(aula_id, data_aula)').catch(() => {});
+
+    // 1. Se houver turmas novas que foram criadas no Excel e não existiam no banco
+    if (turmasNovas && Array.isArray(turmasNovas) && turmasNovas.length > 0) {
+      const turmaStmts = turmasNovas.map((t) => ({
+        sql: `INSERT INTO aulas (id, nome, nivel, turno, dia_semana, horario_inicio, horario_fim, sala, equipe_id, capacidade_maxima)
+              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+              ON CONFLICT(id) DO UPDATE SET
+                nome = excluded.nome,
+                nivel = excluded.nivel,
+                turno = excluded.turno`,
+        args: [
+          t.id,
+          t.nome,
+          t.nivel || 'B1',
+          t.turno || 'Manhã',
+          t.dia_semana || 'Sábado',
+          t.horario_inicio || '10:00',
+          t.horario_fim || '11:30',
+          t.sala || 'Salão Principal',
+          t.equipe_id || 'eq_1',
+          t.capacidade_maxima || 24
+        ]
+      }));
+      await turso.batch(turmaStmts).catch((e) => console.warn('Erro ao inserir turmas novas em lote:', e.message));
     }
 
-    // Processa os itens do cronograma
+    // 2. Processa os itens do cronograma em lotes atômicos com turso.batch (100 por chamada)
     let upsertedCount = 0;
-    if (items && Array.isArray(items)) {
-      for (const item of items) {
-        const existing = await turso.execute({
-          sql: 'SELECT id FROM cronogramas WHERE aula_id = ? AND data_aula = ?',
-          args: [item.aula_id, item.data_aula]
-        });
+    if (items && Array.isArray(items) && items.length > 0) {
+      const CHUNK_SIZE = 100;
+      for (let i = 0; i < items.length; i += CHUNK_SIZE) {
+        const chunk = items.slice(i, i + CHUNK_SIZE);
+        const stmts = chunk.map((item) => ({
+          sql: `INSERT INTO cronogramas (id, aula_id, data_aula, tema_aula, observacoes)
+                VALUES (?, ?, ?, ?, ?)
+                ON CONFLICT(aula_id, data_aula) DO UPDATE SET
+                  tema_aula = excluded.tema_aula,
+                  observacoes = COALESCE(excluded.observacoes, cronogramas.observacoes)`,
+          args: [
+            item.id || `crono_${Date.now()}_${Math.random().toString(36).substr(2, 6)}`,
+            item.aula_id,
+            item.data_aula,
+            item.tema_aula,
+            item.observacoes || null
+          ]
+        }));
 
-        if (existing.rows.length > 0) {
-          await turso.execute({
-            sql: 'UPDATE cronogramas SET tema_aula = ?, observacoes = ? WHERE id = ?',
-            args: [item.tema_aula, item.observacoes || null, existing.rows[0].id]
-          });
-        } else {
-          const id = item.id || `crono_${Date.now()}_${Math.random().toString(36).substr(2, 6)}`;
-          await turso.execute({
-            sql: 'INSERT INTO cronogramas (id, aula_id, data_aula, tema_aula, observacoes) VALUES (?, ?, ?, ?, ?)',
-            args: [id, item.aula_id, item.data_aula, item.tema_aula, item.observacoes || null]
-          });
-        }
-        upsertedCount++;
+        await turso.batch(stmts);
+        upsertedCount += chunk.length;
       }
     }
 

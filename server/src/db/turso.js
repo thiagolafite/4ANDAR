@@ -97,6 +97,9 @@ export const initTursoDatabase = async () => {
         observacoes TEXT
       );
     `);
+    await turso.execute(`
+      CREATE UNIQUE INDEX IF NOT EXISTS idx_cronogramas_aula_data ON cronogramas(aula_id, data_aula);
+    `);
 
     // 5. Presenças
     await turso.execute(`

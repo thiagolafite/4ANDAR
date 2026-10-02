@@ -35,6 +35,7 @@ import {
   ExcelParseResult
 } from '../utils/excelImport';
 import { annualScheduleRows, historicalScheduleRows2023 } from '../data/annualScheduleData';
+import { mockAulas } from '../data/mockData';
 
 export const CronogramaPage: React.FC = () => {
   const {
@@ -140,7 +141,8 @@ export const CronogramaPage: React.FC = () => {
       'I2 Tarde'
     ];
 
-    const list = [...aulas].filter((aula) => {
+    const sourceAulas = (aulas && aulas.length > 0) ? aulas : mockAulas;
+    const list = [...sourceAulas].filter((aula) => {
       if (filterMinhasTurmas && !isProfessorDaTurma(aula, currentUser)) return false;
       if (selectedNivel !== 'todos' && aula.nivel !== selectedNivel) return false;
       if (selectedTurno !== 'todos' && aula.turno !== selectedTurno) return false;
@@ -825,7 +827,10 @@ export const CronogramaPage: React.FC = () => {
                         {/* Cell for each Turma */}
                         {sortedAulas.map((turma) => {
                           const crono = cronogramas.find(
-                            (c) => c.aula_id === turma.id && c.data_aula === isoDate
+                            (c) =>
+                              c.data_aula === isoDate &&
+                              (c.aula_id === turma.id ||
+                                aulas.find((a) => a.id === c.aula_id)?.nome?.trim().toLowerCase() === turma.nome.trim().toLowerCase())
                           );
                           const fallbackSchedule =
                             annualScheduleRows.find((r) => r.data === isoDate) ||
@@ -954,8 +959,15 @@ export const CronogramaPage: React.FC = () => {
               sortedAulas.map((turma) => {
                 const currentDate = filteredDates[selectedWeekIndex];
                 const crono = cronogramas.find(
-                  (c) => c.aula_id === turma.id && c.data_aula === currentDate
+                  (c) =>
+                    c.data_aula === currentDate &&
+                    (c.aula_id === turma.id ||
+                      aulas.find((a) => a.id === c.aula_id)?.nome?.trim().toLowerCase() === turma.nome.trim().toLowerCase())
                 );
+                const fallbackSchedule =
+                  annualScheduleRows.find((r) => r.data === currentDate) ||
+                  historicalScheduleRows2023.find((r) => r.data === currentDate);
+                const tema = crono?.tema_aula || fallbackSchedule?.temas?.[turma.nome];
                 const prof =
                   professoresCadastrados.find((p) => p.id === turma.equipe_id || p.equipe_id === turma.equipe_id || p.user_id === turma.equipe_id) ||
                   equipe.find((e) => e.id === turma.equipe_id);
@@ -1006,7 +1018,7 @@ export const CronogramaPage: React.FC = () => {
                         <span className="text-[10px] font-bold uppercase tracking-wider text-brand-700 block mb-1">
                           Tema Planejado:
                         </span>
-                        <div>{renderThemeBadge(crono?.tema_aula)}</div>
+                        <div>{renderThemeBadge(tema)}</div>
                         {crono?.observacoes && (
                           <p className="text-[11px] text-slate-500 italic mt-2 border-t border-orange-100/60 pt-1.5">
                             {crono.observacoes}
