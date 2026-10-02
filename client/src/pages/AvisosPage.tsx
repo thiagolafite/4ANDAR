@@ -25,7 +25,7 @@ export const AvisosPage: React.FC = () => {
 
   const isMaster = Boolean(currentUser.is_master || currentUser.role === 'master' || currentUser.tipo_usuario === 'AdminMaster');
   const isProfessor = currentUser.role === 'professor' || currentUser.tipo_usuario === 'Equipe';
-  const isAluno = currentUser.role === 'aluno' || (!isMaster && !isProfessor && currentUser.tipo_usuario === 'Aluno');
+  const isAluno = currentUser.role === 'aluno' || (!isMaster && !isProfessor && currentUser.role !== 'secretaria' && currentUser.tipo_usuario === 'Aluno');
 
   const canManage = isMaster || isProfessor || hasPermission('avisos', 'manage');
 

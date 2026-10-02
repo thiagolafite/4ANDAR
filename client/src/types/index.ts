@@ -2,9 +2,9 @@ export type NivelForro = 'B1' | 'B2' | 'I1' | 'I2';
 
 export type PapelDanca = 'Condutor' | 'Conduzido' | 'Ambos';
 
-export type TipoUsuario = 'Equipe' | 'Aluno' | 'AdminMaster';
+export type TipoUsuario = 'Equipe' | 'Aluno' | 'AdminMaster' | 'Secretaria';
 
-export type UserRole = 'master' | 'admin' | 'professor' | 'aluno';
+export type UserRole = 'master' | 'admin' | 'professor' | 'secretaria' | 'aluno' | 'pendente';
 
 export type UserStatus = 'pendente' | 'aprovado' | 'rejeitado' | 'bloqueado';
 

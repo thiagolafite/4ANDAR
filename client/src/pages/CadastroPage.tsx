@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useApp } from '../context/AppContext';
-import { User, Mail, Lock, Phone, Briefcase, CheckCircle2, AlertCircle, ArrowLeft, ShieldCheck, Eye, EyeOff, Moon, Sun } from 'lucide-react';
+import { User, Mail, Lock, Phone, CheckCircle2, AlertCircle, ArrowLeft, ShieldCheck, Eye, EyeOff, Moon, Sun } from 'lucide-react';
 
 export const CadastroPage: React.FC = () => {
   const navigate = useNavigate();
@@ -10,7 +10,6 @@ export const CadastroPage: React.FC = () => {
   const [nome, setNome] = useState('');
   const [email, setEmail] = useState('');
   const [telefone, setTelefone] = useState('');
-  const [cargoPretendido, setCargoPretendido] = useState('Aluno');
   const [senha, setSenha] = useState('');
   const [confirmSenha, setConfirmSenha] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -42,7 +41,7 @@ export const CadastroPage: React.FC = () => {
       nome: nome.trim(),
       email: email.trim().toLowerCase(),
       telefone: telefone.trim(),
-      cargo_pretendido: cargoPretendido,
+      cargo_pretendido: 'Aguardando Classificação do Master',
       senha
     });
     setLoading(false);
@@ -87,7 +86,7 @@ export const CadastroPage: React.FC = () => {
             Solicitação de Cadastro <span className="text-brand-600">•</span> 4ANDAR
           </h1>
           <p className="text-xs text-slate-500 mt-1 font-medium">
-            Preencha seus dados para que o Administrador Master libere suas permissões de acesso
+            Preencha seus dados para solicitação de acesso. O Administrador Master atribuirá sua função (Secretaria, Aluno ou Professor) e liberará sua conta.
           </p>
         </div>
 
@@ -115,8 +114,8 @@ export const CadastroPage: React.FC = () => {
                   Sua conta foi registrada com o status <strong>Pendente</strong>. O Administrador Master (<strong>Thiago Lafite</strong>) receberá seu pedido no painel e irá:
                 </p>
                 <ul className="text-xs text-amber-800 list-disc list-inside space-y-1 pl-1">
-                  <li>Avaliar e aprovar seu cadastro.</li>
-                  <li>Definir quais módulos você poderá acessar no sistema.</li>
+                  <li>Atribuir sua função no sistema: <strong>Secretaria</strong>, <strong>Aluno</strong> ou <strong>Professor</strong>.</li>
+                  <li>Liberar e configurar suas permissões de acesso aos módulos.</li>
                 </ul>
               </div>
 
@@ -182,46 +181,22 @@ export const CadastroPage: React.FC = () => {
                 </div>
               </div>
 
-              {/* Telefone & Perfil em 2 Colunas */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                {/* Telefone */}
-                <div>
-                  <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1">
-                    WhatsApp / Telefone
-                  </label>
-                  <div className="relative">
-                    <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
-                      <Phone className="h-4 w-4" />
-                    </div>
-                    <input
-                      type="text"
-                      value={telefone}
-                      onChange={(e) => setTelefone(e.target.value)}
-                      placeholder="(11) 99999-9999"
-                      className="w-full pl-10 pr-3 py-2 rounded-xl border border-slate-200 bg-slate-50/50 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-brand-500 focus:bg-white"
-                    />
+              {/* Telefone */}
+              <div>
+                <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1">
+                  WhatsApp / Telefone
+                </label>
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+                    <Phone className="h-4 w-4" />
                   </div>
-                </div>
-
-                {/* Perfil Pretendido */}
-                <div>
-                  <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1">
-                    Perfil Pretendido
-                  </label>
-                  <div className="relative">
-                    <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
-                      <Briefcase className="h-4 w-4" />
-                    </div>
-                    <select
-                      value={cargoPretendido}
-                      onChange={(e) => setCargoPretendido(e.target.value)}
-                      className="w-full pl-10 pr-3 py-2 rounded-xl border border-slate-200 bg-slate-50/50 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-brand-500 focus:bg-white"
-                    >
-                      <option value="Aluno">Aluno</option>
-                      <option value="Professor">Professor / Instrutor</option>
-                      <option value="Administrador">Administrativo / Secretaria</option>
-                    </select>
-                  </div>
+                  <input
+                    type="text"
+                    value={telefone}
+                    onChange={(e) => setTelefone(e.target.value)}
+                    placeholder="(11) 99999-9999"
+                    className="w-full pl-10 pr-3 py-2 rounded-xl border border-slate-200 bg-slate-50/50 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-brand-500 focus:bg-white"
+                  />
                 </div>
               </div>
 
@@ -275,7 +250,7 @@ export const CadastroPage: React.FC = () => {
 
               {/* Informative Note */}
               <div className="rounded-xl bg-orange-50/70 border border-orange-200/60 p-3 text-[11px] text-slate-600 leading-relaxed">
-                ℹ️ <strong>Como funciona a liberação:</strong> Ao enviar seu cadastro, ele ficará pendente até que o <strong>Administrador Master (Thiago Lafite)</strong> aprove e configure as permissões da sua conta.
+                ℹ️ <strong>Como funciona a liberação:</strong> Ao enviar seu cadastro, ele ficará pendente até que o <strong>Administrador Master (Thiago Lafite)</strong> aprove e defina sua atribuição (Secretaria, Aluno ou Professor) e configure suas permissões.
               </div>
 
               {/* Submit */}

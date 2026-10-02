@@ -571,7 +571,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         }
         const mappedUser = {
           ...data.user,
-          tipo_usuario: data.user.tipo_usuario || (data.user.is_master || data.user.role === 'master' ? 'AdminMaster' : (data.user.role === 'professor' || data.user.role === 'admin' ? 'Equipe' : 'Aluno'))
+          tipo_usuario: data.user.tipo_usuario || (data.user.is_master || data.user.role === 'master' ? 'AdminMaster' : (data.user.role === 'professor' || data.user.role === 'admin' || data.user.role === 'secretaria' ? 'Equipe' : 'Aluno'))
         };
         setToken(data.token);
         setCurrentUserState(mappedUser);
@@ -661,18 +661,18 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         return { success: false, error: 'Este e-mail já está cadastrado no sistema.' };
       }
 
-      const role: UserRole = userData.cargo_pretendido === 'professor' ? 'professor' : userData.cargo_pretendido === 'admin' ? 'admin' : 'aluno';
+      const role: UserRole = 'pendente';
       const novoUsuario: User = {
         id: 'usr_' + Date.now(),
         nome: userData.nome.trim(),
         email: cleanEmail,
         telefone: userData.telefone || '',
-        role,
-        tipo_usuario: role === 'aluno' ? 'Aluno' : 'Equipe',
+        role: 'pendente',
+        tipo_usuario: 'Aluno',
         status: 'pendente',
         is_master: false,
-        permissoes: role === 'aluno' ? { alunos: { view: true }, cronograma: { view: true }, presenca: { checkin: true } } : { alunos: { view: true } },
-        cargo_pretendido: userData.cargo_pretendido,
+        permissoes: { alunos: { view: false } },
+        cargo_pretendido: userData.cargo_pretendido || 'Pendente (Aguardando Classificação do Master)',
         data_cadastro: new Date().toISOString()
       };
 
@@ -711,7 +711,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     // 3. O nivelamento dele
     // 4. Marcar presença na aula
     // Qualquer outro acesso é restrito para Master e Professor
-    const isAluno = currentUser.role === 'aluno' || currentUser.tipo_usuario === 'Aluno';
+    const isAluno = currentUser.role === 'aluno' || (!currentUser.is_master && currentUser.role !== 'master' && currentUser.role !== 'professor' && currentUser.role !== 'secretaria' && currentUser.role !== 'admin' && currentUser.tipo_usuario === 'Aluno');
     if (isAluno) {
       if (module === 'eventos') return true;
       if (module === 'aulas' && (action === 'view_own' || !action)) return true;

@@ -46,7 +46,7 @@ export const DashboardPage: React.FC = () => {
 
   const navigate = useNavigate();
   const isMaster = Boolean(currentUser.is_master || currentUser.role === 'master' || currentUser.tipo_usuario === 'AdminMaster');
-  const isAluno = currentUser.role === 'aluno' || (!isMaster && currentUser.role !== 'professor' && currentUser.tipo_usuario === 'Aluno');
+  const isAluno = currentUser.role === 'aluno' || (!isMaster && currentUser.role !== 'professor' && currentUser.role !== 'secretaria' && currentUser.tipo_usuario === 'Aluno');
   const isEquipe = !isAluno;
 
   // Safe alunoLogado fallback when database is empty

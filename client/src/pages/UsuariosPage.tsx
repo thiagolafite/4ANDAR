@@ -44,7 +44,7 @@ export const UsuariosPage: React.FC = () => {
   // Modal State for Approving / Editing Permissions
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [modalMode, setModalMode] = useState<'approve' | 'edit'>('approve');
-  const [selectedPreset, setSelectedPreset] = useState<'aluno' | 'professor' | 'admin' | 'full' | 'custom'>('aluno');
+  const [selectedPreset, setSelectedPreset] = useState<'aluno' | 'professor' | 'secretaria' | 'full' | 'custom'>('aluno');
   const [editRole, setEditRole] = useState<UserRole>('aluno');
   const [editCargo, setEditCargo] = useState('Aluno');
   const [editPerms, setEditPerms] = useState<PermissoesUsuario>({});
@@ -83,8 +83,10 @@ export const UsuariosPage: React.FC = () => {
 
     if (user.role === 'professor' || /prof/i.test(user.cargo_pretendido || '')) {
       setSelectedPreset('professor');
-    } else if (user.role === 'admin' || /secretar|admin/i.test(user.cargo_pretendido || '')) {
-      setSelectedPreset('admin');
+    } else if (user.role === 'secretaria' || /secretar/i.test(user.cargo_pretendido || '')) {
+      setSelectedPreset('secretaria');
+    } else if (user.role === 'admin' || /admin/i.test(user.cargo_pretendido || '')) {
+      setSelectedPreset('secretaria');
     } else {
       setSelectedPreset('aluno');
       if (mode === 'approve' && (!user.permissoes || Object.keys(user.permissoes).length === 0)) {
@@ -94,7 +96,7 @@ export const UsuariosPage: React.FC = () => {
   };
 
   // Quick Preset Helper
-  const applyPreset = (preset: 'aluno' | 'professor' | 'admin' | 'full') => {
+  const applyPreset = (preset: 'aluno' | 'professor' | 'secretaria' | 'full') => {
     setSelectedPreset(preset);
     if (preset === 'aluno') {
       setEditRole('aluno');
@@ -113,7 +115,7 @@ export const UsuariosPage: React.FC = () => {
         equipe: { view: false, manage: false },
         usuarios: { view: false, manage: false, approve: false }
       });
-      showToast('Predefinição de Aluno selecionada e aplicada com sucesso!', 'info');
+      showToast('Função de Aluno selecionada!', 'info');
     } else if (preset === 'professor') {
       setEditRole('professor');
       setEditCargo('Professor / Instrutor');
@@ -131,25 +133,25 @@ export const UsuariosPage: React.FC = () => {
         equipe: { view: true, manage: false },
         usuarios: { view: false, manage: false, approve: false }
       });
-      showToast('Predefinição de Professor aplicada!', 'info');
-    } else if (preset === 'admin') {
-      setEditRole('admin');
-      setEditCargo('Administrativo / Secretaria');
+      showToast('Função de Professor selecionada!', 'info');
+    } else if (preset === 'secretaria') {
+      setEditRole('secretaria');
+      setEditCargo('Secretaria / Administrativo');
       setEditPerms({
         all: false,
         dashboard: { view: true },
         alunos: { view: true, create: true, edit: true, delete: false },
-        cronograma: { view: true, edit: true, import_excel: true },
+        cronograma: { view: true, edit: false, import_excel: false },
         presenca: { view: true, checkin: true, manage: true },
         pagamentos: { view: true, manage: true, export: true },
-        nivelamento: { view: true, evaluate: true, schedule: true },
+        nivelamento: { view: true, evaluate: false, schedule: true },
         aulas: { view: true, manage: true },
         eventos: { view: true, manage: true },
         avisos: { view: true, manage: true },
         equipe: { view: true, manage: false },
         usuarios: { view: false, manage: false, approve: false }
       });
-      showToast('Predefinição de Administrativo aplicada!', 'info');
+      showToast('Função de Secretaria selecionada!', 'info');
     } else if (preset === 'full') {
       setEditRole('admin');
       setEditCargo('Coordenador Geral');
@@ -427,7 +429,7 @@ export const UsuariosPage: React.FC = () => {
                         <div>
                           <h4 className="text-sm font-bold text-slate-800">{user.nome}</h4>
                           <span className="inline-block mt-0.5 px-2 py-0.5 rounded-md bg-amber-100 text-amber-800 text-[10px] font-bold">
-                            Interesse: {user.cargo_pretendido || 'Aluno'}
+                            {user.cargo_pretendido ? `Classificação: ${user.cargo_pretendido}` : 'Aguardando Atribuição do Master'}
                           </span>
                         </div>
                       </div>
@@ -462,7 +464,7 @@ export const UsuariosPage: React.FC = () => {
                         className="flex-1 py-2 px-3 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white text-xs font-bold shadow-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer"
                       >
                         <CheckCircle className="h-4 w-4" />
-                        <span>Aprovar & Definir Acessos</span>
+                        <span>Aprovar & Atribuir Função</span>
                       </button>
 
                       <button
@@ -547,6 +549,13 @@ export const UsuariosPage: React.FC = () => {
                           <div className="mt-1">
                             <span className="inline-flex items-center gap-1 text-[10px] font-bold text-blue-700 bg-blue-50 px-2 py-0.5 rounded border border-blue-200">
                               👨‍🏫 Membro da Equipe
+                            </span>
+                          </div>
+                        )}
+                        {user.role === 'secretaria' && (
+                          <div className="mt-1">
+                            <span className="inline-flex items-center gap-1 text-[10px] font-bold text-purple-700 bg-purple-50 px-2 py-0.5 rounded border border-purple-200">
+                              📋 Secretaria da Escola
                             </span>
                           </div>
                         )}
@@ -784,9 +793,9 @@ export const UsuariosPage: React.FC = () => {
 
                   <button
                     type="button"
-                    onClick={() => applyPreset('admin')}
+                    onClick={() => applyPreset('secretaria')}
                     className={`p-3 rounded-2xl border text-left text-xs font-semibold transition-all cursor-pointer relative ${
-                      selectedPreset === 'admin'
+                      selectedPreset === 'secretaria'
                         ? 'border-brand-500 bg-orange-50/90 shadow-md ring-2 ring-brand-500/20 text-brand-950 font-bold'
                         : 'border-slate-200 hover:border-brand-300 hover:bg-orange-50/30 text-slate-700'
                     }`}
@@ -795,14 +804,14 @@ export const UsuariosPage: React.FC = () => {
                       <span className="text-brand-600 font-extrabold text-sm flex items-center gap-1.5">
                         📋 Secretaria
                       </span>
-                      {selectedPreset === 'admin' && (
+                      {selectedPreset === 'secretaria' && (
                         <span className="px-1.5 py-0.5 rounded-full bg-brand-600 text-white text-[9px] font-black uppercase tracking-wider">
                           Ativo
                         </span>
                       )}
                     </div>
                     <div className="text-[11px] text-slate-500 font-normal leading-tight">
-                      Alunos, Pagamentos & Grade
+                      Alunos, Pagamentos & Eventos
                     </div>
                   </button>
 
@@ -850,25 +859,38 @@ export const UsuariosPage: React.FC = () => {
 
                 <div>
                   <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1">
-                    Tipo de Perfil Base
+                    Atribuir Perfil (Exclusivo Master)
                   </label>
                   <select
                     value={editRole}
                     onChange={(e) => {
                       const newRole = e.target.value as UserRole;
                       setEditRole(newRole);
-                      if (newRole === 'aluno') applyPreset('aluno');
+                      if (newRole === 'secretaria') applyPreset('secretaria');
+                      else if (newRole === 'aluno') applyPreset('aluno');
                       else if (newRole === 'professor') applyPreset('professor');
-                      else if (newRole === 'admin') applyPreset('admin');
                     }}
-                    className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-brand-500"
+                    className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs text-slate-800 font-bold focus:outline-none focus:ring-2 focus:ring-brand-500"
                   >
-                    <option value="aluno">Aluno</option>
-                    <option value="professor">Professor / Equipe</option>
-                    <option value="admin">Administrador / Coordenação</option>
+                    <option value="secretaria">📋 Secretaria (Alunos, Pagamentos & Eventos)</option>
+                    <option value="aluno">🎓 Aluno (Portal do Aluno)</option>
+                    <option value="professor">👨‍🏫 Professor (Aulas & Chamadas)</option>
                   </select>
                 </div>
               </div>
+
+              {/* Informação do Perfil de Secretaria */}
+              {editRole === 'secretaria' && (
+                <div className="rounded-2xl bg-purple-50 border border-purple-200 p-4 text-xs text-purple-800 flex items-start gap-3">
+                  <CheckCircle className="h-5 w-5 text-purple-600 shrink-0 mt-0.5" />
+                  <div>
+                    <span className="font-bold text-sm text-purple-900">Função de Secretaria / Administrativo:</span>
+                    <p className="text-xs text-purple-700 mt-1 leading-relaxed">
+                      Ao salvar este usuário como Secretaria, ele terá acesso direto aos módulos de <strong>Alunos</strong> (cadastros e matrículas), <strong>Pagamentos</strong> (mensalidades e baixas financeiras), <strong>Presença</strong>, <strong>Agendamento de Nivelamentos</strong>, <strong>Aulas</strong> e <strong>Eventos</strong>. A gestão de contas de usuários permanece restrita exclusivamente a você, Master.
+                    </p>
+                  </div>
+                </div>
+              )}
 
               {/* Informação de Sincronização Automática */}
               {editRole === 'aluno' && (

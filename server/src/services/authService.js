@@ -40,6 +40,23 @@ export function getDefaultPermissions(role) {
     };
   }
 
+  if (role === 'secretaria') {
+    return {
+      all: false,
+      dashboard: { view: true },
+      alunos: { view: true, create: true, edit: true, delete: false },
+      cronograma: { view: true, edit: false, import_excel: false },
+      presenca: { view: true, manage: true, checkin: true },
+      pagamentos: { view: true, manage: true, export: true },
+      nivelamento: { view: true, evaluate: false, schedule: true },
+      aulas: { view: true, manage: true },
+      eventos: { view: true, manage: true },
+      avisos: { view: true, manage: true },
+      equipe: { view: true, manage: false },
+      usuarios: { view: false, manage: false, approve: false }
+    };
+  }
+
   if (role === 'admin') {
     return {
       all: false,

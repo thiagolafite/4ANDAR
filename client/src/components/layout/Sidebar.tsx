@@ -46,8 +46,9 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
   if (!currentUser) return null;
 
   const isMaster = Boolean(currentUser.is_master || currentUser.role === 'master' || currentUser.tipo_usuario === 'AdminMaster');
-  const isAluno = currentUser.role === 'aluno' || (!isMaster && currentUser.role !== 'professor' && currentUser.tipo_usuario === 'Aluno');
+  const isAluno = currentUser.role === 'aluno' || (!isMaster && currentUser.role !== 'professor' && currentUser.role !== 'secretaria' && currentUser.tipo_usuario === 'Aluno');
   const isProfessor = currentUser.role === 'professor';
+  const isSecretaria = currentUser.role === 'secretaria';
 
   const isItemActive = (to: string) => {
     if (to.includes('?')) {

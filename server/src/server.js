@@ -179,7 +179,7 @@ app.post('/api/auth/login', async (req, res) => {
         telefone: user.telefone,
         cargo_pretendido: user.cargo_pretendido,
         role: user.role,
-        tipo_usuario: Boolean(user.is_master) ? 'AdminMaster' : (user.role === 'professor' || user.role === 'admin' ? 'Equipe' : 'Aluno'),
+        tipo_usuario: Boolean(user.is_master) ? 'AdminMaster' : (user.role === 'professor' || user.role === 'admin' || user.role === 'secretaria' ? 'Equipe' : 'Aluno'),
         is_master: Boolean(user.is_master),
         status: user.status,
         permissoes: permissoesObj,
@@ -192,7 +192,7 @@ app.post('/api/auth/login', async (req, res) => {
   }
 });
 
-// 0.2 Cadastro de Novo Usuário (Entra como 'pendente' para aprovação do Master)
+// 0.2 Cadastro de Novo Usuário (Entra como 'pendente' para aprovação e atribuição do Master)
 app.post('/api/auth/register', async (req, res) => {
   try {
     const { nome, email, senha, telefone, cargo_pretendido } = req.body;
@@ -218,8 +218,9 @@ app.post('/api/auth/register', async (req, res) => {
 
     const id = `usr_${Date.now()}`;
     const senhaHash = hashPassword(senha);
-    const role = (cargo_pretendido || 'aluno').toLowerCase().includes('prof') ? 'professor' : 'aluno';
-    const initialPerms = JSON.stringify(getDefaultPermissions(role));
+    const role = 'pendente';
+    const cargo = cargo_pretendido || 'Pendente (Aguardando Classificação do Master)';
+    const initialPerms = JSON.stringify(getDefaultPermissions('aluno'));
     const dataCadastro = new Date().toISOString().substring(0, 10);
 
     await turso.execute({
@@ -231,7 +232,7 @@ app.post('/api/auth/register', async (req, res) => {
         cleanEmail,
         senhaHash,
         telefone || null,
-        cargo_pretendido || 'Aluno',
+        cargo,
         role,
         'pendente', // Sempre entra como pendente para aprovação do Master Thiago Lafite
         0,
@@ -242,13 +243,13 @@ app.post('/api/auth/register', async (req, res) => {
     });
 
     res.status(201).json({
-      message: 'Cadastro recebido com sucesso! Aguarde a aprovação do Administrador Master (Thiago Lafite) para acessar o sistema.',
+      message: 'Cadastro recebido com sucesso! Aguarde a aprovação do Administrador Master (Thiago Lafite) para classificar sua conta e liberar o acesso.',
       status: 'pendente',
       user: {
         id,
         nome,
         email: cleanEmail,
-        cargo_pretendido,
+        cargo_pretendido: cargo,
         status: 'pendente'
       }
     });
@@ -280,7 +281,7 @@ app.get('/api/auth/me', authenticateToken, async (req, res) => {
     res.json({
       user: {
         ...user,
-        tipo_usuario: Boolean(user.is_master) ? 'AdminMaster' : (user.role === 'professor' || user.role === 'admin' ? 'Equipe' : 'Aluno'),
+        tipo_usuario: Boolean(user.is_master) ? 'AdminMaster' : (user.role === 'professor' || user.role === 'admin' || user.role === 'secretaria' ? 'Equipe' : 'Aluno'),
         is_master: Boolean(user.is_master),
         permissoes: permissoesObj
       }
@@ -521,14 +522,14 @@ app.put('/api/usuarios/:id/status', async (req, res) => {
     if (status === 'aprovado') {
       const finalRole = role || targetCheck.rows[0].role;
       const finalCargo = cargo_pretendido || targetCheck.rows[0].cargo_pretendido || '';
-      if (finalRole === 'aluno' || /alun/i.test(finalCargo)) {
+      if (finalRole === 'aluno' || (/alun/i.test(finalCargo) && finalRole !== 'secretaria')) {
         await syncAlunosFromUsuarios();
         const aRes = await turso.execute({
           sql: 'SELECT id FROM alunos WHERE user_id = ? OR email = ? LIMIT 1',
           args: [id, targetCheck.rows[0].email]
         });
         if (aRes.rows.length > 0) alunoId = aRes.rows[0].id;
-      } else if (finalRole === 'professor' || /prof/i.test(finalCargo)) {
+      } else if (finalRole === 'professor' || (/prof/i.test(finalCargo) && finalRole !== 'secretaria')) {
         await syncEquipeFromUsuarios();
         const eRes = await turso.execute({
           sql: 'SELECT id FROM equipe WHERE user_id = ? OR email = ? LIMIT 1',
@@ -600,14 +601,14 @@ app.put('/api/usuarios/:id/permissoes', async (req, res) => {
     // Sincroniza se o papel for aluno ou professor
     let alunoId = null;
     let equipeId = null;
-    if (role === 'aluno' || (cargo_pretendido && /alun/i.test(cargo_pretendido))) {
+    if (role === 'aluno' || (/alun/i.test(cargo_pretendido) && role !== 'secretaria')) {
       await syncAlunosFromUsuarios();
       const aRes = await turso.execute({
         sql: 'SELECT id FROM alunos WHERE user_id = ? OR email = (SELECT email FROM usuarios WHERE id = ?) LIMIT 1',
         args: [id, id]
       });
       if (aRes.rows.length > 0) alunoId = aRes.rows[0].id;
-    } else if (role === 'professor' || (cargo_pretendido && /prof/i.test(cargo_pretendido))) {
+    } else if (role === 'professor' || (/prof/i.test(cargo_pretendido) && role !== 'secretaria')) {
       await syncEquipeFromUsuarios();
       const eRes = await turso.execute({
         sql: 'SELECT id FROM equipe WHERE user_id = ? OR email = (SELECT email FROM usuarios WHERE id = ?) LIMIT 1',
