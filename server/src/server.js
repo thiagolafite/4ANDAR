@@ -741,6 +741,37 @@ app.delete('/api/usuarios/:id', async (req, res) => {
   }
 });
 
+// 0.7.1 Excluir Usuário por E-mail (Purga segura)
+app.delete('/api/usuarios/by-email/:email', async (req, res) => {
+  try {
+    const email = (req.params.email || '').toLowerCase().trim();
+    if (!email) {
+      return res.status(400).json({ error: 'E-mail não informado' });
+    }
+
+    if (email === 'thiago.lafite@4andar.com.br') {
+      return res.status(400).json({ error: 'O Administrador Master não pode ser excluído.' });
+    }
+
+    await turso.execute({
+      sql: 'DELETE FROM usuarios WHERE LOWER(email) = ?',
+      args: [email]
+    });
+    await turso.execute({
+      sql: 'DELETE FROM alunos WHERE LOWER(email) = ?',
+      args: [email]
+    });
+    await turso.execute({
+      sql: 'DELETE FROM equipe WHERE LOWER(email) = ?',
+      args: [email]
+    });
+
+    res.json({ message: 'Registros associados ao e-mail removidos com sucesso!', email });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // ==========================================
 // 1. HEALTH & METADATA
 // ==========================================

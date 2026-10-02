@@ -166,7 +166,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const loadInitial = <T,>(key: string, fallback: T): T => {
     try {
       const saved = localStorage.getItem(`4andar_${key}`);
-      return saved ? JSON.parse(saved) : fallback;
+      if (!saved) return fallback;
+      const parsed = JSON.parse(saved);
+      if (Array.isArray(parsed)) {
+        return parsed.filter((item: any) => {
+          if (!item || typeof item !== 'object') return true;
+          const email = (item.email || '').toString().toLowerCase();
+          return !email.includes('lucianajdferreira');
+        }) as unknown as T;
+      }
+      return parsed;
     } catch {
       return fallback;
     }
@@ -382,6 +391,24 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       }
       localStorage.setItem('4andar_clean_auth_v5', 'true');
     }
+
+    // Purga imediata de qualquer resquício local do e-mail especificado para remoção
+    const cleanStorage = (key: string) => {
+      try {
+        const raw = localStorage.getItem(key);
+        if (raw && raw.toLowerCase().includes('lucianajdferreira')) {
+          const parsed = JSON.parse(raw);
+          if (Array.isArray(parsed)) {
+            const filtered = parsed.filter((item: any) => !item?.email?.toLowerCase().includes('lucianajdferreira'));
+            localStorage.setItem(key, JSON.stringify(filtered));
+          }
+        }
+      } catch {}
+    };
+    cleanStorage('4andar_usuariosList');
+    cleanStorage('4andar_alunos');
+    cleanStorage('4andar_equipe');
+    cleanStorage('4andar_currentUser');
   }, []);
 
   // Sync to local storage apenas se estiver autenticado
