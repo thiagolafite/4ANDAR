@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useApp } from '../context/AppContext';
-import { Lock, Mail, Eye, EyeOff, ShieldCheck, Clock, AlertCircle, ArrowRight, Sparkles, Moon, Sun } from 'lucide-react';
+import { Lock, Mail, Eye, EyeOff, ShieldCheck, Clock, AlertCircle, ArrowRight, Moon, Sun } from 'lucide-react';
 
 export const LoginPage: React.FC = () => {
   const navigate = useNavigate();
@@ -39,33 +39,13 @@ export const LoginPage: React.FC = () => {
       if (res && res.success) {
         navigate('/');
       } else if (res && res.status === 'pendente') {
-        setPendingNotice(res.error || 'Seu cadastro está aguardando aprovação do Administrador Master (Thiago Lafite).');
+        setPendingNotice(res.error || 'Seu cadastro está aguardando aprovação do Administrador Master.');
       } else {
         setErrorMsg(res?.error || 'Credenciais inválidas. Verifique seu login e senha.');
       }
     } catch (err: any) {
       setLoading(false);
       setErrorMsg(err?.message || 'Erro inesperado ao realizar login.');
-    }
-  };
-
-  const handleQuickMasterLogin = async () => {
-    setIdentifier('thiagolafite');
-    setSenha('admin123');
-    setErrorMsg(null);
-    setPendingNotice(null);
-    setLoading(true);
-    try {
-      const res = await login('thiagolafite', 'admin123');
-      setLoading(false);
-      if (res && res.success) {
-        navigate('/');
-      } else {
-        setErrorMsg(res?.error || 'Erro ao entrar como Administrador Master.');
-      }
-    } catch (err: any) {
-      setLoading(false);
-      setErrorMsg(err?.message || 'Erro inesperado ao entrar como Master.');
     }
   };
 
@@ -149,7 +129,7 @@ export const LoginPage: React.FC = () => {
                   type="text"
                   value={identifier}
                   onChange={(e) => setIdentifier(e.target.value)}
-                  placeholder="thiagolafite ou seu@email.com"
+                  placeholder="seu@email.com ou usuário"
                   className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-200 bg-slate-50/50 text-sm text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-brand-500 focus:bg-white transition-all font-medium"
                   required
                 />
@@ -203,20 +183,8 @@ export const LoginPage: React.FC = () => {
             </button>
           </form>
 
-          {/* Master Admin Fast Fill Preset */}
-          <div className="mt-6 pt-5 border-t border-slate-100">
-            <button
-              type="button"
-              onClick={handleQuickMasterLogin}
-              className="w-full py-2.5 px-3 rounded-xl bg-amber-50 hover:bg-amber-100 border border-amber-200/80 text-amber-900 text-xs font-semibold flex items-center justify-center gap-2 transition-colors cursor-pointer group"
-            >
-              <Sparkles className="h-4 w-4 text-amber-600 group-hover:scale-110 transition-transform" />
-              <span>Entrar como Administrador Master (Thiago Lafite)</span>
-            </button>
-          </div>
-
           {/* Link to Register */}
-          <div className="mt-5 text-center">
+          <div className="mt-6 pt-5 border-t border-slate-100 dark:border-slate-800 text-center">
             <p className="text-xs text-slate-500">
               Ainda não tem cadastro?{' '}
               <Link
