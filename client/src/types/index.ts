@@ -41,6 +41,7 @@ export interface User {
   id: string;
   nome: string;
   email: string;
+  username?: string;
   telefone?: string;
   cargo_pretendido?: string;
   tipo_usuario: TipoUsuario;

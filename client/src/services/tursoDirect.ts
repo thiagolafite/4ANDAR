@@ -98,21 +98,34 @@ export async function hashPasswordClient(password: string): Promise<string> {
 export async function directTursoRegisterUser(userData: {
   nome: string;
   email: string;
+  username?: string;
   senha: string;
   telefone?: string;
   cargo_pretendido?: string;
 }): Promise<{ success: boolean; message?: string; error?: string; status?: string }> {
   try {
     const cleanEmail = userData.email.trim().toLowerCase();
+    const cleanUsername = (userData.username || cleanEmail.split('@')[0])
+      .trim()
+      .toLowerCase()
+      .replace(/[^a-z0-9._-]/g, '');
 
-    // 1. Verifica duplicidade
+    if (cleanUsername.length < 3) {
+      return { success: false, error: 'O nome de usuário deve ter no mínimo 3 caracteres (letras, números, ponto ou traço).' };
+    }
+
+    // 1. Verifica duplicidade por e-mail ou username
     const existing = await executeDirectTurso(
-      'SELECT id FROM usuarios WHERE LOWER(email) = ?',
-      [cleanEmail]
+      'SELECT id, email, username FROM usuarios WHERE LOWER(email) = ? OR (username IS NOT NULL AND LOWER(username) = ?)',
+      [cleanEmail, cleanUsername]
     );
 
     if (existing && existing.length > 0) {
-      return { success: false, error: 'Este e-mail já está cadastrado no sistema.' };
+      const isEmailDupe = existing.some((r: any) => r.email && r.email.toLowerCase() === cleanEmail);
+      if (isEmailDupe) {
+        return { success: false, error: 'Este e-mail já está cadastrado no sistema.' };
+      }
+      return { success: false, error: 'Este nome de usuário já está em uso. Por favor, escolha outro.' };
     }
 
     // 2. Insere novo usuário com status pendente
@@ -123,12 +136,13 @@ export async function directTursoRegisterUser(userData: {
     const defaultPerms = JSON.stringify({ alunos: { view: false } });
 
     await executeDirectTurso(
-      `INSERT INTO usuarios (id, nome, email, senha_hash, telefone, cargo_pretendido, role, status, is_master, permissoes, data_cadastro, avatar_url)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO usuarios (id, nome, email, username, senha_hash, telefone, cargo_pretendido, role, status, is_master, permissoes, data_cadastro, avatar_url)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         id,
         userData.nome.trim(),
         cleanEmail,
+        cleanUsername,
         senhaHash,
         userData.telefone || null,
         cargo,

@@ -120,24 +120,25 @@ app.post('/api/auth/login', async (req, res) => {
 
     const cleanLogin = login.trim().toLowerCase();
     
-    // Busca usuário pelo e-mail ou se for master permite 'thiagolafite' ou 'admin@4andar.com.br'
+    // Busca usuário pelo e-mail, username ou se for master permite 'thiagolafite' ou 'admin@4andar.com.br'
     let query;
     let args;
     if (cleanLogin === 'thiagolafite' || cleanLogin === 'admin@4andar.com.br' || cleanLogin === 'thiago.lafite@4andar.com.br') {
       query = `SELECT * FROM usuarios 
                WHERE id = 'usr_master_thiago' 
                   OR LOWER(email) = 'thiago.lafite@4andar.com.br' 
+                  OR LOWER(username) = 'thiagolafite'
                   OR is_master = 1 
                ORDER BY CASE WHEN id = 'usr_master_thiago' THEN 1 WHEN LOWER(email) = 'thiago.lafite@4andar.com.br' THEN 2 ELSE 3 END 
                LIMIT 1`;
       args = [];
     } else {
       query = `SELECT * FROM usuarios 
-               WHERE (LOWER(TRIM(email)) = ? OR LOWER(TRIM(nome)) = ? OR LOWER(nome) LIKE ?) 
+               WHERE (LOWER(TRIM(username)) = ? OR LOWER(TRIM(email)) = ? OR LOWER(TRIM(nome)) = ? OR LOWER(nome) LIKE ?) 
                  AND id != 'usr_master_thiago' 
-               ORDER BY CASE WHEN LOWER(TRIM(email)) = ? THEN 1 WHEN LOWER(TRIM(nome)) = ? THEN 2 ELSE 3 END 
+               ORDER BY CASE WHEN LOWER(TRIM(username)) = ? THEN 1 WHEN LOWER(TRIM(email)) = ? THEN 2 WHEN LOWER(TRIM(nome)) = ? THEN 3 ELSE 4 END 
                LIMIT 1`;
-      args = [cleanLogin, cleanLogin, `%${cleanLogin}%`, cleanLogin, cleanLogin];
+      args = [cleanLogin, cleanLogin, cleanLogin, `%${cleanLogin}%`, cleanLogin, cleanLogin, cleanLogin];
     }
 
     const result = await turso.execute({ sql: query, args });
@@ -200,6 +201,7 @@ app.post('/api/auth/login', async (req, res) => {
         id: user.id,
         nome: user.nome,
         email: user.email,
+        username: user.username,
         telefone: user.telefone,
         cargo_pretendido: user.cargo_pretendido,
         role: user.role,
@@ -219,7 +221,7 @@ app.post('/api/auth/login', async (req, res) => {
 // 0.2 Cadastro de Novo Usuário (Entra como 'pendente' para aprovação e atribuição do Master)
 app.post('/api/auth/register', async (req, res) => {
   try {
-    const { nome, email, senha, telefone, cargo_pretendido } = req.body;
+    const { nome, email, username, senha, telefone, cargo_pretendido } = req.body;
     if (!nome || !email || !senha) {
       return res.status(400).json({ error: 'Preencha nome, e-mail e senha' });
     }
@@ -229,15 +231,27 @@ app.post('/api/auth/register', async (req, res) => {
     }
 
     const cleanEmail = email.trim().toLowerCase();
+    const cleanUsername = (username || cleanEmail.split('@')[0])
+      .trim()
+      .toLowerCase()
+      .replace(/[^a-z0-9._-]/g, '');
 
-    // Verifica se já existe
+    if (cleanUsername.length < 3) {
+      return res.status(400).json({ error: 'O nome de usuário deve ter no mínimo 3 caracteres (letras, números, ponto ou traço)' });
+    }
+
+    // Verifica se já existe por e-mail ou username
     const exists = await turso.execute({
-      sql: 'SELECT id FROM usuarios WHERE LOWER(email) = ?',
-      args: [cleanEmail]
+      sql: 'SELECT id, email, username FROM usuarios WHERE LOWER(email) = ? OR (username IS NOT NULL AND LOWER(username) = ?)',
+      args: [cleanEmail, cleanUsername]
     });
 
     if (exists.rows.length > 0) {
-      return res.status(409).json({ error: 'Este e-mail já está cadastrado no sistema.' });
+      const isEmailDupe = exists.rows.some(r => r.email && r.email.toLowerCase() === cleanEmail);
+      if (isEmailDupe) {
+        return res.status(409).json({ error: 'Este e-mail já está cadastrado no sistema.' });
+      }
+      return res.status(409).json({ error: 'Este nome de usuário já está em uso. Por favor, escolha outro.' });
     }
 
     const id = `usr_${Date.now()}`;
@@ -248,12 +262,13 @@ app.post('/api/auth/register', async (req, res) => {
     const dataCadastro = new Date().toISOString().substring(0, 10);
 
     await turso.execute({
-      sql: `INSERT INTO usuarios (id, nome, email, senha_hash, telefone, cargo_pretendido, role, status, is_master, permissoes, data_cadastro, avatar_url)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      sql: `INSERT INTO usuarios (id, nome, email, username, senha_hash, telefone, cargo_pretendido, role, status, is_master, permissoes, data_cadastro, avatar_url)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       args: [
         id,
         nome.trim(),
         cleanEmail,
+        cleanUsername,
         senhaHash,
         telefone || null,
         cargo,
@@ -273,6 +288,7 @@ app.post('/api/auth/register', async (req, res) => {
         id,
         nome,
         email: cleanEmail,
+        username: cleanUsername,
         cargo_pretendido: cargo,
         status: 'pendente'
       }
@@ -286,7 +302,7 @@ app.post('/api/auth/register', async (req, res) => {
 app.get('/api/auth/me', authenticateToken, async (req, res) => {
   try {
     const result = await turso.execute({
-      sql: 'SELECT id, nome, email, telefone, cargo_pretendido, role, status, is_master, permissoes, avatar_url, data_cadastro, data_aprovacao, ultimo_acesso, aluno_id, equipe_id FROM usuarios WHERE id = ?',
+      sql: 'SELECT id, nome, email, username, telefone, cargo_pretendido, role, status, is_master, permissoes, avatar_url, data_cadastro, data_aprovacao, ultimo_acesso, aluno_id, equipe_id FROM usuarios WHERE id = ?',
       args: [req.user.userId]
     });
 
@@ -319,7 +335,7 @@ app.get('/api/auth/me', authenticateToken, async (req, res) => {
 app.get('/api/usuarios', async (req, res) => {
   try {
     const { status, role } = req.query;
-    let sql = 'SELECT id, nome, email, telefone, cargo_pretendido, role, status, is_master, permissoes, motivo_recusa, aprovado_por, data_cadastro, data_aprovacao, ultimo_acesso, avatar_url, aluno_id, equipe_id FROM usuarios WHERE 1=1';
+    let sql = 'SELECT id, nome, email, username, telefone, cargo_pretendido, role, status, is_master, permissoes, motivo_recusa, aprovado_por, data_cadastro, data_aprovacao, ultimo_acesso, avatar_url, aluno_id, equipe_id FROM usuarios WHERE 1=1';
     const args = [];
 
     if (status) {

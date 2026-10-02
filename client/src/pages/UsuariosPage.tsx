@@ -22,7 +22,8 @@ import {
   FileSpreadsheet,
   Upload,
   Camera,
-  RotateCw
+  RotateCw,
+  AtSign
 } from 'lucide-react';
 import { UserAvatar } from '../components/common/UserAvatar';
 
@@ -82,6 +83,7 @@ export const UsuariosPage: React.FC = () => {
     return list.filter(
       (u) =>
         u.nome.toLowerCase().includes(term) ||
+        (u.username && u.username.toLowerCase().includes(term)) ||
         u.email.toLowerCase().includes(term) ||
         (u.telefone && u.telefone.includes(term)) ||
         (u.cargo_pretendido && u.cargo_pretendido.toLowerCase().includes(term))
@@ -468,6 +470,15 @@ export const UsuariosPage: React.FC = () => {
                     </div>
 
                     <div className="space-y-1.5 text-xs text-slate-600 bg-white/70 rounded-xl p-3 border border-amber-100">
+                      {user.username && (
+                        <div className="flex items-center gap-1.5">
+                          <AtSign className="h-3.5 w-3.5 text-brand-600 shrink-0" />
+                          <span className="font-bold text-brand-700 bg-brand-50 px-1.5 py-0.5 rounded border border-brand-200">
+                            @{user.username}
+                          </span>
+                          <span className="text-[10px] text-slate-400 font-medium">(login)</span>
+                        </div>
+                      )}
                       <div className="flex items-center gap-2">
                         <Mail className="h-3.5 w-3.5 text-slate-400" />
                         <span className="font-medium text-slate-700">{user.email}</span>
@@ -545,7 +556,14 @@ export const UsuariosPage: React.FC = () => {
                                 </span>
                               )}
                             </div>
-                            <span className="text-[11px] text-slate-500">{user.email}</span>
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              <span className="text-[11px] text-slate-500">{user.email}</span>
+                              {user.username && (
+                                <span className="inline-flex items-center text-[10px] font-mono font-bold text-brand-700 bg-brand-50 px-1.5 py-0.5 rounded border border-brand-200">
+                                  @{user.username}
+                                </span>
+                              )}
+                            </div>
                           </div>
                         </div>
                       </td>
@@ -750,7 +768,7 @@ export const UsuariosPage: React.FC = () => {
                     {modalMode === 'approve' ? 'Aprovar Cadastro & Definir Permissões' : 'Editar Permissões de Acesso'}
                   </h3>
                   <p className="text-xs text-slate-500">
-                    Usuário: <strong>{selectedUser.nome}</strong> ({selectedUser.email})
+                    Usuário: <strong>{selectedUser.nome}</strong> {selectedUser.username && <span className="text-brand-600 font-bold font-mono">(@{selectedUser.username})</span>} • ({selectedUser.email})
                   </p>
                 </div>
               </div>

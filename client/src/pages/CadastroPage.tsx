@@ -1,13 +1,14 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useApp } from '../context/AppContext';
-import { User, Mail, Lock, Phone, CheckCircle2, AlertCircle, ArrowLeft, ShieldCheck, Eye, EyeOff, Moon, Sun } from 'lucide-react';
+import { User, Mail, Lock, Phone, CheckCircle2, AlertCircle, ArrowLeft, ShieldCheck, Eye, EyeOff, Moon, Sun, AtSign } from 'lucide-react';
 
 export const CadastroPage: React.FC = () => {
   const navigate = useNavigate();
   const { register, theme, toggleTheme } = useApp();
 
   const [nome, setNome] = useState('');
+  const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
   const [telefone, setTelefone] = useState('');
   const [senha, setSenha] = useState('');
@@ -21,8 +22,18 @@ export const CadastroPage: React.FC = () => {
     e.preventDefault();
     setErrorMsg(null);
 
-    if (!nome.trim() || !email.trim() || !senha) {
+    if (!nome.trim() || !email.trim() || !username.trim() || !senha) {
       setErrorMsg('Preencha todos os campos obrigatórios.');
+      return;
+    }
+
+    const cleanUsername = username
+      .trim()
+      .toLowerCase()
+      .replace(/[^a-z0-9._-]/g, '');
+
+    if (cleanUsername.length < 3) {
+      setErrorMsg('O Nome de Usuário deve ter no mínimo 3 caracteres (apenas letras, números, ponto ou traço).');
       return;
     }
 
@@ -40,6 +51,7 @@ export const CadastroPage: React.FC = () => {
     const res = await register({
       nome: nome.trim(),
       email: email.trim().toLowerCase(),
+      username: cleanUsername,
       telefone: telefone.trim(),
       cargo_pretendido: 'Aguardando Classificação do Master',
       senha
@@ -120,7 +132,7 @@ export const CadastroPage: React.FC = () => {
               </div>
 
               <p className="text-xs text-slate-500 mb-6">
-                Assim que seu cadastro for aprovado, basta entrar no sistema com seu e-mail e senha cadastrados.
+                Assim que seu cadastro for aprovado, basta entrar no sistema com seu usuário (<strong>@{username}</strong>) ou seu e-mail e senha cadastrados.
               </p>
 
               <button
@@ -159,6 +171,30 @@ export const CadastroPage: React.FC = () => {
                     required
                   />
                 </div>
+              </div>
+
+              {/* Nome de Usuário (para login) */}
+              <div>
+                <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1">
+                  Nome de Usuário (para login) *
+                </label>
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+                    <AtSign className="h-4 w-4" />
+                  </div>
+                  <input
+                    type="text"
+                    value={username}
+                    onChange={(e) => setUsername(e.target.value.toLowerCase().replace(/[^a-z0-9._-]/g, ''))}
+                    placeholder="Ex: joaosilva"
+                    autoComplete="username"
+                    className="w-full pl-10 pr-3 py-2 rounded-xl border border-slate-200 bg-slate-50/50 text-sm text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-brand-500 focus:bg-white"
+                    required
+                  />
+                </div>
+                <p className="text-[11px] text-slate-500 mt-1">
+                  💡 Este é o nome que você usará para entrar no sistema junto com sua senha (ou poderá usar seu e-mail). Apenas letras, números, ponto ou traço.
+                </p>
               </div>
 
               {/* E-mail */}

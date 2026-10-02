@@ -48,7 +48,7 @@ interface AppContextType {
   isAuthenticated: boolean;
   token: string | null;
   login: (login: string, senha: string) => Promise<{ success: boolean; error?: string; status?: string }>;
-  register: (data: { nome: string; email: string; senha: string; telefone?: string; cargo_pretendido?: string }) => Promise<{ success: boolean; error?: string; status?: string; message?: string }>;
+  register: (data: { nome: string; email: string; username?: string; senha: string; telefone?: string; cargo_pretendido?: string }) => Promise<{ success: boolean; error?: string; status?: string; message?: string }>;
   logout: () => void;
   hasPermission: (module: string, action?: string) => boolean;
 
@@ -490,7 +490,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     // Fallback direto e resiliente para o Turso Cloud caso a rota serverless falhe
     try {
       const directUsers = await executeDirectTurso(
-        `SELECT id, nome, email, telefone, cargo_pretendido, role, status, is_master, permissoes, motivo_recusa, aprovado_por, data_cadastro, data_aprovacao, ultimo_acesso, avatar_url, aluno_id, equipe_id
+        `SELECT id, nome, email, username, telefone, cargo_pretendido, role, status, is_master, permissoes, motivo_recusa, aprovado_por, data_cadastro, data_aprovacao, ultimo_acesso, avatar_url, aluno_id, equipe_id
          FROM usuarios
          ORDER BY CASE status WHEN 'pendente' THEN 1 ELSE 2 END, is_master DESC, data_cadastro DESC`
       );
@@ -679,17 +679,17 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       }
       throw new Error('Resposta não-JSON do servidor');
     } catch {
-      // Fallback resiliente: busca o usuário diretamente no Turso Cloud por E-mail ou Nome
+      // Fallback resiliente: busca o usuário diretamente no Turso Cloud por Username, E-mail ou Nome
       let matchedTurso: any = null;
       try {
         const query = isMasterLogin
-          ? `SELECT * FROM usuarios WHERE id = 'usr_master_thiago' OR LOWER(email) = 'thiago.lafite@4andar.com.br' OR is_master = 1 LIMIT 1`
+          ? `SELECT * FROM usuarios WHERE id = 'usr_master_thiago' OR LOWER(email) = 'thiago.lafite@4andar.com.br' OR LOWER(username) = 'thiagolafite' OR is_master = 1 LIMIT 1`
           : `SELECT * FROM usuarios 
-             WHERE (LOWER(TRIM(email)) = ? OR LOWER(TRIM(nome)) = ? OR LOWER(nome) LIKE ?) 
+             WHERE (LOWER(TRIM(username)) = ? OR LOWER(TRIM(email)) = ? OR LOWER(TRIM(nome)) = ? OR LOWER(nome) LIKE ?) 
                AND id != 'usr_master_thiago' 
-             ORDER BY CASE WHEN LOWER(TRIM(email)) = ? THEN 1 WHEN LOWER(TRIM(nome)) = ? THEN 2 ELSE 3 END 
+             ORDER BY CASE WHEN LOWER(TRIM(username)) = ? THEN 1 WHEN LOWER(TRIM(email)) = ? THEN 2 WHEN LOWER(TRIM(nome)) = ? THEN 3 ELSE 4 END 
              LIMIT 1`;
-        const args = isMasterLogin ? [] : [cleanLogin, cleanLogin, `%${cleanLogin}%`, cleanLogin, cleanLogin];
+        const args = isMasterLogin ? [] : [cleanLogin, cleanLogin, cleanLogin, `%${cleanLogin}%`, cleanLogin, cleanLogin, cleanLogin];
         const directRows = await executeDirectTurso(query, args);
         if (directRows && directRows.length > 0) {
           matchedTurso = directRows[0];
@@ -726,8 +726,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         matched = allKnownUsers.find((u) => {
           if (u.id === 'usr_master_thiago') return false;
           const uEmail = (u.email || '').trim().toLowerCase();
+          const uUsername = (u.username || '').trim().toLowerCase();
           const uNome = (u.nome || '').trim().toLowerCase();
-          return uEmail === cleanLogin || uNome === cleanLogin || uNome.includes(cleanLogin);
+          return (uUsername && uUsername === cleanLogin) || uEmail === cleanLogin || uNome === cleanLogin || uNome.includes(cleanLogin);
         });
       }
 
@@ -795,7 +796,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   };
 
-  const register = async (userData: { nome: string; email: string; senha: string; telefone?: string; cargo_pretendido?: string }) => {
+  const register = async (userData: { nome: string; email: string; username?: string; senha: string; telefone?: string; cargo_pretendido?: string }) => {
     // 1. Tenta envio primário via API Server
     try {
       const res = await fetch(`${API_URL}/auth/register`, {
