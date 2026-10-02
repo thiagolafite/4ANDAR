@@ -16,7 +16,9 @@ import {
   UserCheck,
   Shield,
   FileSpreadsheet,
-  X
+  X,
+  Moon,
+  Sun
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -38,7 +40,7 @@ interface NavCategory {
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
-  const { currentUser, hasPermission, pendingUsersCount } = useApp();
+  const { currentUser, hasPermission, pendingUsersCount, theme, toggleTheme } = useApp();
   const location = useLocation();
 
   if (!currentUser) return null;
@@ -158,7 +160,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
 
       {/* Sidebar Container */}
       <aside
-        className={`fixed top-0 bottom-0 left-0 z-40 w-64 border-r border-[#fae2c8] bg-[#ffffff] shadow-sm transition-transform duration-200 ease-in-out lg:static lg:translate-x-0 flex flex-col justify-between select-none ${
+        className={`fixed top-0 bottom-0 left-0 z-40 w-64 border-r border-[#fae2c8] dark:border-slate-800 bg-[#ffffff] dark:bg-slate-900 shadow-sm transition-transform duration-200 ease-in-out lg:static lg:translate-x-0 flex flex-col justify-between select-none ${
           isOpen ? 'translate-x-0' : '-translate-x-full'
         }`}
       >
@@ -167,7 +169,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
           <div className="flex items-center justify-end px-4 pt-3 lg:hidden">
             <button
               onClick={onClose}
-              className="rounded p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
+              className="rounded p-1 text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-600 dark:hover:text-slate-300"
               aria-label="Fechar menu"
             >
               <X className="h-5 w-5" />
@@ -176,7 +178,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
 
           {/* Top Logo Section (Circular Badge) */}
           <div className="flex flex-col items-center justify-center pt-5 pb-4 px-6">
-            <div className="h-20 w-20 rounded-full bg-white flex items-center justify-center p-1 shadow-xs border border-orange-100/90 hover:scale-105 transition-transform duration-200">
+            <div className="h-20 w-20 rounded-full bg-white dark:bg-slate-800 flex items-center justify-center p-1 shadow-xs border border-orange-100/90 dark:border-slate-700 hover:scale-105 transition-transform duration-200">
               <img
                 src="/logo-4andar.png"
                 alt="Forró 4º Andar"
@@ -186,7 +188,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
           </div>
 
           {/* Delicate Warm Divider Line */}
-          <div className="border-b border-[#f4dfc7] mx-4 mb-2" />
+          <div className="border-b border-[#f4dfc7] dark:border-slate-800 mx-4 mb-2" />
 
           {/* Navigation Categories */}
           <nav className="px-3 pb-4 space-y-3">
@@ -194,9 +196,9 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
               .filter((category) => category.items.length > 0)
               .map((category, catIdx) => (
                 <div key={category.title} className="space-y-1">
-                  {catIdx > 0 && <div className="border-t border-[#f4dfc7]/50 my-2 mx-1" />}
+                  {catIdx > 0 && <div className="border-t border-[#f4dfc7]/50 dark:border-slate-800/60 my-2 mx-1" />}
                   <div className="px-2.5 pt-1 pb-1">
-                    <span className="text-[10.5px] font-extrabold uppercase tracking-wider text-[#b85d19] font-sans">
+                    <span className="text-[10.5px] font-extrabold uppercase tracking-wider text-[#b85d19] dark:text-brand-400 font-sans">
                       {category.title}
                     </span>
                   </div>
@@ -211,15 +213,15 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
                           onClick={() => onClose()}
                           className={`group flex items-center gap-3 rounded-2xl px-3 py-2 text-[13.5px] transition-all ${
                             active
-                              ? 'bg-[#fde3c7] text-[#78350f] font-semibold shadow-xs'
-                              : 'text-[#334155] hover:bg-[#fff6ec] hover:text-[#9a3412] font-normal'
+                              ? 'bg-[#fde3c7] dark:bg-brand-950/70 text-[#78350f] dark:text-brand-200 font-semibold shadow-xs border border-transparent dark:border-brand-800/40'
+                              : 'text-[#334155] dark:text-slate-300 hover:bg-[#fff6ec] dark:hover:bg-slate-800/80 hover:text-[#9a3412] dark:hover:text-brand-400 font-normal'
                           }`}
                         >
                           <Icon
                             className={`h-[17px] w-[17px] shrink-0 transition-colors ${
                               active
-                                ? 'text-[#78350f]'
-                                : 'text-[#475569] group-hover:text-[#9a3412]'
+                                ? 'text-[#78350f] dark:text-brand-300'
+                                : 'text-[#475569] dark:text-slate-400 group-hover:text-[#9a3412] dark:group-hover:text-brand-400'
                             }`}
                           />
                           <span className="truncate flex-1">{item.label}</span>
@@ -237,13 +239,32 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
           </nav>
         </div>
 
-        {/* Subtle Bottom Footer */}
-        <div className="p-3 border-t border-[#f4dfc7]/80 bg-[#fffdfb]">
-          <div className="px-3 py-1.5 text-center">
-            <p className="text-[11px] font-semibold text-[#b85d19]">
+        {/* Bottom Footer with Dark Mode Switcher */}
+        <div className="p-3 border-t border-[#f4dfc7]/80 dark:border-slate-800 bg-[#fffdfb] dark:bg-slate-900/95 space-y-2">
+          {/* Theme Toggle Button */}
+          <button
+            onClick={toggleTheme}
+            className="w-full flex items-center justify-between px-3 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700/80 text-xs font-semibold text-slate-700 dark:text-slate-200 transition-all cursor-pointer border border-slate-200/60 dark:border-slate-700/60"
+            title={theme === 'dark' ? 'Mudar para Modo Claro (☀️)' : 'Mudar para Modo Noturno (🌙)'}
+          >
+            <span className="flex items-center gap-2">
+              {theme === 'dark' ? (
+                <Sun className="h-4 w-4 text-amber-400" />
+              ) : (
+                <Moon className="h-4 w-4 text-slate-600" />
+              )}
+              <span>{theme === 'dark' ? 'Modo Noturno' : 'Modo Claro'}</span>
+            </span>
+            <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-md bg-white dark:bg-slate-900 text-brand-600 dark:text-amber-400 border border-slate-200/60 dark:border-slate-800">
+              {theme === 'dark' ? '🌙 Noite' : '☀️ Dia'}
+            </span>
+          </button>
+
+          <div className="px-3 py-1 text-center">
+            <p className="text-[11px] font-semibold text-[#b85d19] dark:text-brand-400">
               Forró 4º Andar
             </p>
-            <p className="text-[10px] text-slate-400 mt-0.5">
+            <p className="text-[10px] text-slate-400 dark:text-slate-500 mt-0.5">
               Gestão Escolar de Dança
             </p>
           </div>

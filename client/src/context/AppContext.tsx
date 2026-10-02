@@ -152,6 +152,11 @@ interface AppContextType {
   toasts: ToastInfo[];
   showToast: (message: string, type?: 'success' | 'error' | 'info') => void;
   removeToast: (id: string) => void;
+
+  // Tema / Modo Noturno
+  theme: 'light' | 'dark';
+  toggleTheme: () => void;
+  setTheme: (theme: 'light' | 'dark') => void;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -288,6 +293,38 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [searchQuery, setSearchQuery] = useState('');
   const [searchModalOpen, setSearchModalOpen] = useState(false);
   const [selectedAlunoModal, setSelectedAlunoModal] = useState<Aluno | null>(null);
+
+  // Theme State (Modo Noturno / Claro)
+  const [theme, setThemeState] = useState<'light' | 'dark'>(() => {
+    try {
+      const saved = localStorage.getItem('4andar_theme');
+      if (saved === 'dark' || saved === 'light') return saved;
+      if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) return 'dark';
+    } catch {}
+    return 'light';
+  });
+
+  useEffect(() => {
+    if (theme === 'dark') {
+      document.documentElement.classList.add('dark');
+      localStorage.setItem('4andar_theme', 'dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+      localStorage.setItem('4andar_theme', 'light');
+    }
+  }, [theme]);
+
+  const toggleTheme = () => {
+    setThemeState((prev) => {
+      const next = prev === 'dark' ? 'light' : 'dark';
+      showToast(next === 'dark' ? 'Modo Noturno ativado 🌙' : 'Modo Claro ativado ☀️', 'info');
+      return next;
+    });
+  };
+
+  const setTheme = (newTheme: 'light' | 'dark') => {
+    setThemeState(newTheme);
+  };
 
   // Toasts
   const [toasts, setToasts] = useState<ToastInfo[]>([]);
@@ -1737,7 +1774,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         setSearchModalOpen,
         toasts,
         showToast,
-        removeToast
+        removeToast,
+        theme,
+        toggleTheme,
+        setTheme
       }}
     >
       {children}

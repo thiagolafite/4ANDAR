@@ -10,7 +10,7 @@ export const AppLayout: React.FC = () => {
   const [sidebarOpen, setSidebarOpen] = useState(true);
 
   return (
-    <div className="min-h-screen bg-[#faf7f2] flex antialiased">
+    <div className="min-h-screen bg-[#faf7f2] dark:bg-slate-950 text-slate-900 dark:text-slate-100 flex antialiased transition-colors duration-200">
       {/* Sidebar with full height and top circular logo */}
       <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
 

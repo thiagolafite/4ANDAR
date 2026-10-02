@@ -1,11 +1,11 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useApp } from '../context/AppContext';
-import { Lock, Mail, Eye, EyeOff, ShieldCheck, Clock, AlertCircle, ArrowRight, Sparkles } from 'lucide-react';
+import { Lock, Mail, Eye, EyeOff, ShieldCheck, Clock, AlertCircle, ArrowRight, Sparkles, Moon, Sun } from 'lucide-react';
 
 export const LoginPage: React.FC = () => {
   const navigate = useNavigate();
-  const { login, isAuthenticated, currentUser } = useApp();
+  const { login, isAuthenticated, currentUser, theme, toggleTheme } = useApp();
 
   // Se já estiver logado, redireciona diretamente para o sistema
   React.useEffect(() => {
@@ -70,11 +70,28 @@ export const LoginPage: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-radial from-[#fff8f0] via-[#fffdfa] to-[#fdeddc] flex items-center justify-center p-4 select-none">
+    <div className="min-h-screen bg-radial from-[#fff8f0] via-[#fffdfa] to-[#fdeddc] dark:from-slate-950 dark:via-slate-900 dark:to-slate-950 flex items-center justify-center p-4 select-none relative transition-colors duration-200">
+      {/* Floating Theme Toggle */}
+      <div className="absolute top-4 right-4 z-20">
+        <button
+          type="button"
+          onClick={toggleTheme}
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/80 dark:bg-slate-800/80 backdrop-blur-md border border-slate-200 dark:border-slate-700 text-xs font-semibold text-slate-700 dark:text-slate-200 shadow-xs hover:border-brand-400 transition-all cursor-pointer"
+          title={theme === 'dark' ? 'Mudar para Modo Claro (☀️)' : 'Mudar para Modo Noturno (🌙)'}
+        >
+          {theme === 'dark' ? (
+            <Sun className="h-4 w-4 text-amber-400" />
+          ) : (
+            <Moon className="h-4 w-4 text-slate-600" />
+          )}
+          <span>{theme === 'dark' ? 'Modo Claro' : 'Modo Noturno'}</span>
+        </button>
+      </div>
+
       <div className="w-full max-w-md">
         {/* Top Brand Header */}
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center h-24 w-24 rounded-full bg-white shadow-md border-2 border-orange-200/80 p-2 mb-4 hover:scale-105 transition-transform">
+          <div className="inline-flex items-center justify-center h-24 w-24 rounded-full bg-white dark:bg-slate-800 shadow-md border-2 border-orange-200/80 dark:border-slate-700 p-2 mb-4 hover:scale-105 transition-transform">
             <img
               src="/logo-4andar.png"
               alt="4ANDAR"

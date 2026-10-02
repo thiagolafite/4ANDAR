@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useApp } from '../../context/AppContext';
-import { Search, UserCheck, Shield, PanelLeft, Bell, Crown, LogOut, Camera } from 'lucide-react';
+import { Search, UserCheck, Shield, PanelLeft, Bell, Crown, LogOut, Camera, Moon, Sun } from 'lucide-react';
 import { UserAvatar } from '../common/UserAvatar';
 import { ProfilePhotoModal } from '../modals/ProfilePhotoModal';
 
@@ -20,7 +20,9 @@ export const Navbar: React.FC<NavbarProps> = ({ sidebarOpen, onToggleSidebar }) 
     presencas,
     pagamentos,
     pendingUsersCount,
-    logout
+    logout,
+    theme,
+    toggleTheme
   } = useApp();
 
   if (!currentUser) return null;
@@ -37,12 +39,12 @@ export const Navbar: React.FC<NavbarProps> = ({ sidebarOpen, onToggleSidebar }) 
     : 0;
 
   return (
-    <header className="sticky top-0 z-30 flex h-16 w-full items-center justify-between border-b border-[#fae2c8] bg-white/95 px-4 backdrop-blur-md md:px-6 shadow-2xs">
+    <header className="sticky top-0 z-30 flex h-16 w-full items-center justify-between border-b border-[#fae2c8] dark:border-slate-800 bg-white/95 dark:bg-slate-900/95 px-4 backdrop-blur-md md:px-6 shadow-2xs transition-colors">
       {/* Left: Sidebar Toggle Button */}
       <div className="flex items-center gap-3">
         <button
           onClick={onToggleSidebar}
-          className="flex items-center justify-center rounded-lg border border-slate-200 bg-white p-2 text-slate-700 hover:bg-orange-50 hover:border-orange-200 hover:text-brand-700 transition-colors shadow-2xs"
+          className="flex items-center justify-center rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-2 text-slate-700 dark:text-slate-200 hover:bg-orange-50 dark:hover:bg-slate-700 hover:border-orange-200 dark:hover:border-slate-600 hover:text-brand-700 dark:hover:text-amber-400 transition-colors shadow-2xs cursor-pointer"
           title={sidebarOpen ? 'Recolher Menu' : 'Expandir Menu'}
           aria-label="Alternar menu lateral"
         >
@@ -119,15 +121,29 @@ export const Navbar: React.FC<NavbarProps> = ({ sidebarOpen, onToggleSidebar }) 
           </div>
         )}
 
+        {/* Botão de Alternar Modo Noturno / Claro */}
+        <button
+          onClick={toggleTheme}
+          className="flex items-center justify-center rounded-xl p-2 text-slate-500 hover:text-brand-600 hover:bg-orange-50 dark:text-slate-300 dark:hover:text-amber-400 dark:hover:bg-slate-800 transition-all cursor-pointer border border-transparent hover:border-orange-200 dark:hover:border-slate-700 shadow-2xs"
+          title={theme === 'dark' ? 'Alternar para Modo Claro (☀️)' : 'Alternar para Modo Noturno (🌙)'}
+          aria-label="Alternar modo noturno"
+        >
+          {theme === 'dark' ? (
+            <Sun className="h-5 w-5 text-amber-400 transition-transform duration-300 hover:rotate-45" />
+          ) : (
+            <Moon className="h-5 w-5 text-slate-600 transition-transform duration-300 hover:-rotate-12" />
+          )}
+        </button>
+
         {/* Profile Switcher Simulator (Apenas Master Thiago Lafite para testes) */}
         {isMaster && (
-          <div className="flex items-center rounded-xl bg-orange-50/90 p-1 border border-orange-200/80 text-xs">
+          <div className="flex items-center rounded-xl bg-orange-50/90 dark:bg-slate-800/90 p-1 border border-orange-200/80 dark:border-slate-700 text-xs">
             <button
               onClick={() => switchUserRole('AdminMaster')}
               className={`flex items-center gap-1 rounded-lg px-2 py-1 font-medium transition-all ${
                 currentUser.is_master || currentUser.tipo_usuario === 'AdminMaster'
                   ? 'bg-amber-500 text-white shadow-xs font-bold'
-                  : 'text-amber-800 hover:bg-amber-100/70'
+                  : 'text-amber-800 dark:text-amber-300 hover:bg-amber-100/70 dark:hover:bg-slate-700'
               }`}
               title="Administrador Master (Thiago Lafite)"
             >
@@ -139,7 +155,7 @@ export const Navbar: React.FC<NavbarProps> = ({ sidebarOpen, onToggleSidebar }) 
               className={`flex items-center gap-1 rounded-lg px-2 py-1 font-medium transition-all ${
                 !currentUser.is_master && currentUser.role === 'professor'
                   ? 'bg-brand-600 text-white shadow-xs font-semibold'
-                  : 'text-slate-600 hover:text-brand-700 hover:bg-orange-100/70'
+                  : 'text-slate-600 dark:text-slate-300 hover:text-brand-700 dark:hover:text-brand-400 hover:bg-orange-100/70 dark:hover:bg-slate-700'
               }`}
               title="Simular Visão Professor"
             >
@@ -151,7 +167,7 @@ export const Navbar: React.FC<NavbarProps> = ({ sidebarOpen, onToggleSidebar }) 
               className={`flex items-center gap-1 rounded-lg px-2 py-1 font-medium transition-all ${
                 isAluno
                   ? 'bg-brand-600 text-white shadow-xs font-semibold'
-                  : 'text-slate-600 hover:text-brand-700 hover:bg-orange-100/70'
+                  : 'text-slate-600 dark:text-slate-300 hover:text-brand-700 dark:hover:text-brand-400 hover:bg-orange-100/70 dark:hover:bg-slate-700'
               }`}
               title="Simular Visão Aluno"
             >
@@ -162,7 +178,7 @@ export const Navbar: React.FC<NavbarProps> = ({ sidebarOpen, onToggleSidebar }) 
         )}
 
         {/* Active User Avatar & Profile Trigger */}
-        <div className="flex items-center gap-2 pl-2 border-l border-slate-200">
+        <div className="flex items-center gap-2 pl-2 border-l border-slate-200 dark:border-slate-800">
           <button
             type="button"
             onClick={() => setIsProfileModalOpen(true)}
