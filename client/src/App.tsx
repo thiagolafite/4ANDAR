@@ -117,8 +117,8 @@ export function App() {
             <Route path="meus-pagamentos" element={<RoleRoute requiredModule="pagamentos"><MeusPagamentosPage /></RoleRoute>} />
             <Route path="meuspagamentos" element={<RoleRoute requiredModule="pagamentos"><MeusPagamentosPage /></RoleRoute>} />
             <Route path="nivelamento" element={<RoleRoute requiredModule="nivelamento"><NivelamentoPage /></RoleRoute>} />
-            <Route path="agendamento-nivelamento" element={<RoleRoute allowAluno><AgendamentoNivelamentoPage /></RoleRoute>} />
-            <Route path="agendamentonivelamento" element={<RoleRoute allowAluno><AgendamentoNivelamentoPage /></RoleRoute>} />
+            <Route path="agendamento-nivelamento" element={<RoleRoute requiredModule="nivelamento"><AgendamentoNivelamentoPage /></RoleRoute>} />
+            <Route path="agendamentonivelamento" element={<RoleRoute requiredModule="nivelamento"><AgendamentoNivelamentoPage /></RoleRoute>} />
             <Route path="meus-nivelamentos" element={<RoleRoute allowAluno><MeusNivelamentosPage /></RoleRoute>} />
             <Route path="meusnivelamentos" element={<RoleRoute allowAluno><MeusNivelamentosPage /></RoleRoute>} />
             <Route path="aulas" element={<RoleRoute requiredModule="aulas"><AulasPage /></RoleRoute>} />

@@ -829,7 +829,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       if (module === 'aulas' && (action === 'view_own' || !action)) return true;
       if (module === 'proxima-aula') return true;
       if (module === 'presenca' && action === 'checkin') return true;
-      if (module === 'nivelamento' && (action === 'schedule' || action === 'view_own' || !action)) return true;
+      if (module === 'nivelamento') {
+        if (action === 'schedule') return false; // Aluno não pode agendar nivelamento (apenas Professor e Secretaria)
+        if (action === 'view_own' || !action) return true;
+        return false;
+      }
       if (module === 'dashboard') return true;
       return false;
     }
@@ -1633,7 +1637,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     };
   };
 
-  // Nivelamento
   const agendarNivelamento = (
     alunoId: string,
     nivelAlvo: NivelForro,
@@ -1647,6 +1650,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       sincronizarAgenda?: boolean;
     }
   ) => {
+    const isMaster = Boolean(currentUser?.is_master || currentUser?.role === 'master' || currentUser?.tipo_usuario === 'AdminMaster');
+    const isStaff = isMaster || currentUser?.role === 'professor' || currentUser?.role === 'secretaria' || currentUser?.role === 'admin';
+    const isAluno = currentUser?.role === 'aluno' || (!isStaff && currentUser?.tipo_usuario === 'Aluno');
+
+    if (isAluno && !isStaff) {
+      showToast('O agendamento de nivelamento é realizado exclusivamente por professores ou pela secretaria.', 'error');
+      return;
+    }
+
     const aluno =
       alunosCadastrados.find((a) => a.id === alunoId || a.aluno_id === alunoId || a.user_id === alunoId) ||
       alunos.find((a) => a.id === alunoId || a.user_id === alunoId);

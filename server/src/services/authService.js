@@ -116,7 +116,7 @@ export function getDefaultPermissions(role) {
     cronograma: { view: false, edit: false, import_excel: false },
     presenca: { view: false, manage: false, checkin: true },
     pagamentos: { view: false, manage: false, export: false },
-    nivelamento: { view: false, evaluate: false, schedule: true, view_own: true },
+    nivelamento: { view: false, evaluate: false, schedule: false, view_own: true },
     aulas: { view: false, manage: false, view_own: true },
     eventos: { view: true, manage: false },
     avisos: { view: false, manage: false },

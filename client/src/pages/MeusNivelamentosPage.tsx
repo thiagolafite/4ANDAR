@@ -59,6 +59,9 @@ export const MeusNivelamentosPage: React.FC = () => {
 
   const proximoAgendado = minhasSessoes.find((s) => s.status === 'Agendado');
 
+  const isMaster = Boolean(currentUser.is_master || currentUser.role === 'master' || currentUser.tipo_usuario === 'AdminMaster');
+  const isStaff = isMaster || currentUser.role === 'professor' || currentUser.role === 'secretaria' || currentUser.role === 'admin';
+
   return (
     <div className="space-y-6 max-w-4xl mx-auto">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -72,13 +75,15 @@ export const MeusNivelamentosPage: React.FC = () => {
           </p>
         </div>
 
-        <button
-          onClick={() => navigate('/agendamento-nivelamento')}
-          className="flex items-center gap-1.5 rounded-xl bg-brand-600 hover:bg-brand-700 text-white font-bold px-4 py-2.5 text-xs shadow-md shadow-brand-500/20 transition-all self-start sm:self-auto"
-        >
-          <Award className="h-4 w-4" />
-          <span>+ Agendar Novo Nivelamento</span>
-        </button>
+        {isStaff && (
+          <button
+            onClick={() => navigate('/agendamento-nivelamento')}
+            className="flex items-center gap-1.5 rounded-xl bg-brand-600 hover:bg-brand-700 text-white font-bold px-4 py-2.5 text-xs shadow-md shadow-brand-500/20 transition-all self-start sm:self-auto"
+          >
+            <Award className="h-4 w-4" />
+            <span>+ Agendar Novo Nivelamento</span>
+          </button>
+        )}
       </div>
 
       {/* Current Level Status Banner */}

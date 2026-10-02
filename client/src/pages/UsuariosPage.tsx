@@ -123,7 +123,7 @@ export const UsuariosPage: React.FC = () => {
         cronograma: { view: false, edit: false, import_excel: false },
         presenca: { view: true, checkin: true, manage: false },
         pagamentos: { view: false, manage: false, export: false },
-        nivelamento: { view: true, evaluate: false, schedule: true, view_own: true },
+        nivelamento: { view: true, evaluate: false, schedule: false, view_own: true },
         aulas: { view: true, manage: false, view_own: true },
         eventos: { view: true, manage: false },
         avisos: { view: true, manage: false },

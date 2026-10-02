@@ -807,7 +807,7 @@ export const DashboardPage: React.FC = () => {
                       </span>
                     </div>
                     <p className="text-xs text-slate-600 leading-relaxed">
-                      Você pode agendar sua banca de avaliação técnica para a transição para{' '}
+                      Seu próximo nível será{' '}
                       <strong>
                         {alunoLogado.nivel_atual === 'B1'
                           ? 'B2 (Básico 2)'
@@ -815,7 +815,7 @@ export const DashboardPage: React.FC = () => {
                           ? 'I1 (Intermediário 1)'
                           : 'I2'}
                       </strong>
-                      . As bancas avaliam Aulão de ritmo e Dança a dois.
+                      . O agendamento da sua banca de avaliação técnica é realizado diretamente pelos seus professores ou pela secretaria da escola.
                     </p>
                   </div>
                 )}
@@ -831,10 +831,11 @@ export const DashboardPage: React.FC = () => {
                   </button>
                 ) : (
                   <button
-                    onClick={() => navigate('/agendamento-nivelamento')}
-                    className="w-full py-2.5 rounded-xl bg-purple-600 hover:bg-purple-700 text-white font-semibold text-xs transition-colors"
+                    onClick={() => navigate('/meus-nivelamentos')}
+                    className="w-full py-2.5 rounded-xl bg-purple-50 hover:bg-purple-100 text-purple-700 font-bold text-xs transition-colors flex items-center justify-center gap-1.5 border border-purple-200"
                   >
-                    Agendar Sessão de Avaliação
+                    <Award className="h-4 w-4" />
+                    <span>Ver Critérios & Histórico de Nivelamento</span>
                   </button>
                 )}
               </div>

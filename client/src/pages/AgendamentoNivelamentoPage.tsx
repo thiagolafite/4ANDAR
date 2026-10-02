@@ -17,30 +17,32 @@ export const AgendamentoNivelamentoPage: React.FC = () => {
   const { currentUser, alunos, alunosCadastrados, nivelamentoSessoes, agendarNivelamento, showToast } = useApp();
   const navigate = useNavigate();
 
-  const isEquipeOrMaster = Boolean(
-    currentUser.is_master ||
-    currentUser.role === 'master' ||
-    currentUser.role === 'admin' ||
-    currentUser.role === 'professor' ||
-    currentUser.tipo_usuario === 'AdminMaster' ||
-    currentUser.tipo_usuario === 'Equipe'
-  );
+  const isMaster = Boolean(currentUser?.is_master || currentUser?.role === 'master' || currentUser?.tipo_usuario === 'AdminMaster');
+  const isProfessor = currentUser?.role === 'professor';
+  const isSecretaria = currentUser?.role === 'secretaria';
+  const isAdmin = currentUser?.role === 'admin';
+  const canSchedule = isMaster || isProfessor || isSecretaria || isAdmin;
+
+  React.useEffect(() => {
+    if (!canSchedule) {
+      showToast('O agendamento de nivelamento é realizado exclusivamente por professores ou pela secretaria.', 'info');
+      navigate('/meus-nivelamentos', { replace: true });
+    }
+  }, [canSchedule, navigate, showToast]);
 
   const [selectedAlunoId, setSelectedAlunoId] = useState<string>(() => {
-    const defaultStudent =
-      alunosCadastrados.find((a) => a.id === currentUser.aluno_id || a.email === currentUser.email) ||
-      alunosCadastrados[0] ||
-      alunos[0];
-    return defaultStudent?.id || '';
+    return alunosCadastrados[0]?.id || alunos[0]?.id || '';
   });
 
   const targetAluno: any =
     alunosCadastrados.find((a) => a.id === selectedAlunoId || a.aluno_id === selectedAlunoId || a.user_id === selectedAlunoId) ||
-    alunos.find((a) => a.id === selectedAlunoId || a.id === currentUser.aluno_id || a.email === currentUser.email) || {
-      id: currentUser.aluno_id || currentUser.id || 'aluno_temp',
-      nome: currentUser.nome || 'Aluno',
-      email: currentUser.email || '',
-      telefone: currentUser.telefone || '',
+    alunos.find((a) => a.id === selectedAlunoId) ||
+    alunosCadastrados[0] ||
+    alunos[0] || {
+      id: 'aluno_temp',
+      nome: 'Aluno',
+      email: '',
+      telefone: '',
       nivel_atual: 'B1' as const,
       papel: 'Condutor' as const,
       status: 'ativo' as const,
@@ -49,7 +51,7 @@ export const AgendamentoNivelamentoPage: React.FC = () => {
       dia_vencimento: 10,
       data_inicio_nivel: '2026-09-01',
       frequencia_percentual: 100,
-      foto_url: currentUser.avatar_url || ''
+      foto_url: ''
     };
 
   const jaAgendado = nivelamentoSessoes.find(
@@ -81,10 +83,12 @@ export const AgendamentoNivelamentoPage: React.FC = () => {
     { label: 'Sábado, 24/10/2026 às 14:00 (Banca Geral)', value: '2026-10-24 14:00' }
   ];
 
+  if (!canSchedule) return null;
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     agendarNivelamento(targetAluno.id || targetAluno.aluno_id, nivelAlvo, papel, dataAgendada);
-    navigate('/meus-nivelamentos');
+    navigate('/nivelamento');
   };
 
   return (
@@ -99,8 +103,8 @@ export const AgendamentoNivelamentoPage: React.FC = () => {
         </p>
       </div>
 
-      {/* Alerta se o aluno já tiver agendamento */}
-      {!isEquipeOrMaster && jaAgendado && (
+      {/* Alerta se o aluno selecionado já tiver agendamento */}
+      {jaAgendado && (
         <div className="rounded-2xl border-2 border-brand-500 bg-amber-50 p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-md animate-in fade-in">
           <div className="flex items-center gap-3">
             <div className="h-10 w-10 rounded-xl bg-brand-600 text-white flex items-center justify-center shrink-0">
@@ -108,7 +112,7 @@ export const AgendamentoNivelamentoPage: React.FC = () => {
             </div>
             <div>
               <p className="text-xs font-bold text-amber-900 uppercase tracking-wider">
-                Você já tem um nivelamento agendado!
+                Aluno já possui agendamento ativo!
               </p>
               <p className="text-sm font-black text-slate-900">
                 Banca marcada para {jaAgendado.data_agendada} (Nível Alvo: {jaAgendado.nivel_alvo})
@@ -116,10 +120,11 @@ export const AgendamentoNivelamentoPage: React.FC = () => {
             </div>
           </div>
           <button
-            onClick={() => navigate('/meus-nivelamentos')}
+            type="button"
+            onClick={() => navigate('/nivelamento')}
             className="px-4 py-2 rounded-xl bg-brand-600 hover:bg-brand-700 text-white font-bold text-xs shadow-sm transition-all"
           >
-            Ver Meus Nivelamentos
+            Ver Nivelamentos
           </button>
         </div>
       )}
@@ -131,10 +136,10 @@ export const AgendamentoNivelamentoPage: React.FC = () => {
           Como funciona a avaliação técnica no 4ANDAR?
         </p>
         <p className="leading-relaxed">
-          1. <strong>Aulão (Aquecimento e Fundamentos):</strong> Você participa de uma dinâmica com todos os candidatos, demonstrando postura, ritmo constante no tempo 1, marcação e abraço confortável.
+          1. <strong>Aulão (Aquecimento e Fundamentos):</strong> O aluno participa de dinâmica demonstrando postura, ritmo constante no tempo 1, marcação e abraço confortável.
         </p>
         <p className="leading-relaxed">
-          2. <strong>Dança a Dois:</strong> Você dança com professores e instrutores no papel escolhido ({papel}), demonstrando clareza de sinalização, resposta, navegação no salão e escuta musical.
+          2. <strong>Dança a Dois:</strong> O aluno dança com professores e instrutores no papel escolhido ({papel}), demonstrando clareza de sinalização, resposta, navegação no salão e escuta musical.
         </p>
       </div>
 
@@ -143,32 +148,30 @@ export const AgendamentoNivelamentoPage: React.FC = () => {
         onSubmit={handleSubmit}
         className="rounded-3xl bg-white border border-slate-200 shadow-md p-6 md:p-8 space-y-6"
       >
-        {isEquipeOrMaster && (
-          <div className="p-4 bg-orange-50/70 border border-orange-200 rounded-2xl space-y-1.5">
-            <label className="block text-xs font-bold uppercase tracking-wider text-brand-900 flex items-center justify-between">
-              <span>Selecionar Aluno Cadastrado</span>
-              <span className="text-[10px] text-brand-600 font-semibold">Agendamento Administrativo</span>
-            </label>
-            <select
-              value={selectedAlunoId}
-              onChange={(e) => {
-                setSelectedAlunoId(e.target.value);
-                const a = alunosCadastrados.find((al) => al.id === e.target.value || al.aluno_id === e.target.value);
-                if (a) {
-                  setPapel(a.papel || 'Condutor');
-                  setNivelAlvo(proximoNivelMap[a.nivel_atual as NivelForro] || 'B2');
-                }
-              }}
-              className="w-full rounded-xl border border-orange-300 bg-white p-2.5 text-sm font-semibold text-slate-800 outline-none focus:border-brand-500"
-            >
-              {alunosCadastrados.map((a) => (
-                <option key={a.id} value={a.id}>
-                  {a.nome} ({a.email}) — Nível Atual: {a.nivel_atual} [{a.papel}]
-                </option>
-              ))}
-            </select>
-          </div>
-        )}
+        <div className="p-4 bg-orange-50/70 border border-orange-200 rounded-2xl space-y-1.5">
+          <label className="block text-xs font-bold uppercase tracking-wider text-brand-900 flex items-center justify-between">
+            <span>Selecionar Aluno Cadastrado</span>
+            <span className="text-[10px] text-brand-600 font-semibold">Agendamento por Professor / Secretaria</span>
+          </label>
+          <select
+            value={selectedAlunoId}
+            onChange={(e) => {
+              setSelectedAlunoId(e.target.value);
+              const a = alunosCadastrados.find((al) => al.id === e.target.value || al.aluno_id === e.target.value);
+              if (a) {
+                setPapel(a.papel || 'Condutor');
+                setNivelAlvo(proximoNivelMap[a.nivel_atual as NivelForro] || 'B2');
+              }
+            }}
+            className="w-full rounded-xl border border-orange-300 bg-white p-2.5 text-sm font-semibold text-slate-800 outline-none focus:border-brand-500"
+          >
+            {alunosCadastrados.map((a) => (
+              <option key={a.id} value={a.id}>
+                {a.nome} ({a.email}) — Nível Atual: {a.nivel_atual} [{a.papel}]
+              </option>
+            ))}
+          </select>
+        </div>
 
         <div className="flex items-center gap-4 pb-6 border-b border-slate-100">
           <UserAvatar

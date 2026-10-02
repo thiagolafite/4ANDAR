@@ -70,8 +70,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
         {
           title: 'Nivelamento Técnico',
           items: [
-            { label: 'Meu Nivelamento', to: '/meus-nivelamentos', icon: Crown },
-            { label: 'Agendar Nivelamento', to: '/agendamento-nivelamento', icon: ClipboardList }
+            { label: 'Meu Nivelamento', to: '/meus-nivelamentos', icon: Crown }
           ]
         },
         {
@@ -118,7 +117,12 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
               ? [{ label: 'Turmas & Salas', to: '/aulas', icon: Clock }]
               : []),
             ...(hasPermission('nivelamento')
-              ? [{ label: 'Nivelamento Técnico', to: '/nivelamento', icon: Crown }]
+              ? [
+                  { label: 'Nivelamento Técnico', to: '/nivelamento', icon: Crown },
+                  ...(isMaster || isProfessor || isSecretaria || hasPermission('nivelamento', 'schedule')
+                    ? [{ label: 'Agendar Nivelamento', to: '/agendamento-nivelamento', icon: ClipboardList }]
+                    : [])
+                ]
               : [])
           ]
         },

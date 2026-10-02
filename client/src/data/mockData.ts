@@ -563,8 +563,8 @@ export const mockAvisos: Aviso[] = [
     titulo: '📅 Sessão de Nivelamento do Mês de Outubro',
     conteudo: 'As inscrições para a banca de nivelamento de Outubro estão abertas. Alunos com pelo menos 3 meses no nível atual podem se inscrever.',
     data_publicacao: '2026-09-28',
-    link_url: '/agendamento-nivelamento',
-    link_texto: 'Agendar Nivelamento',
+    link_url: '/meus-nivelamentos',
+    link_texto: 'Ver Meus Nivelamentos',
     fixado: true,
     autor: 'Coordenação Pedagógica'
   },
