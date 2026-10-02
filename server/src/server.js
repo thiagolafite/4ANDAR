@@ -132,8 +132,12 @@ app.post('/api/auth/login', async (req, res) => {
                LIMIT 1`;
       args = [];
     } else {
-      query = 'SELECT * FROM usuarios WHERE (LOWER(email) = ? OR LOWER(nome) = ? OR LOWER(nome) LIKE ?) AND id != "usr_master_thiago" LIMIT 1';
-      args = [cleanLogin, cleanLogin, `%${cleanLogin}%`];
+      query = `SELECT * FROM usuarios 
+               WHERE (LOWER(TRIM(email)) = ? OR LOWER(TRIM(nome)) = ? OR LOWER(nome) LIKE ?) 
+                 AND id != 'usr_master_thiago' 
+               ORDER BY CASE WHEN LOWER(TRIM(email)) = ? THEN 1 WHEN LOWER(TRIM(nome)) = ? THEN 2 ELSE 3 END 
+               LIMIT 1`;
+      args = [cleanLogin, cleanLogin, `%${cleanLogin}%`, cleanLogin, cleanLogin];
     }
 
     const result = await turso.execute({ sql: query, args });

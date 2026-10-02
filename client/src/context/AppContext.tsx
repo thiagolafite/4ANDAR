@@ -640,11 +640,17 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   }, [alunos, usuariosList]);
 
   const login = async (loginId: string, senha: string) => {
+    const cleanLogin = (loginId || '').trim().toLowerCase();
+    const isMasterLogin =
+      cleanLogin === 'thiagolafite' ||
+      cleanLogin === 'thiago.lafite@4andar.com.br' ||
+      cleanLogin === 'admin@4andar.com.br';
+
     try {
       const res = await fetch(`${API_URL}/auth/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ login: loginId, senha })
+        body: JSON.stringify({ login: cleanLogin, senha })
       });
       const contentType = res.headers.get('content-type');
       if (contentType && contentType.includes('application/json')) {
@@ -655,7 +661,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         const isMaster =
           data.user.id === 'usr_master_thiago' ||
           data.user.email?.toLowerCase() === 'thiago.lafite@4andar.com.br' ||
-          (Boolean(data.user.is_master) && (cleanLogin === 'thiagolafite' || cleanLogin === 'thiago.lafite@4andar.com.br'));
+          (Boolean(data.user.is_master) && isMasterLogin);
         const mappedUser = {
           ...data.user,
           is_master: isMaster,
@@ -673,29 +679,56 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       }
       throw new Error('Resposta não-JSON do servidor');
     } catch {
-      const cleanLogin = loginId.trim().toLowerCase();
-      const isMasterLogin =
-        cleanLogin === 'thiagolafite' ||
-        cleanLogin === 'thiago.lafite@4andar.com.br' ||
-        cleanLogin === 'admin@4andar.com.br';
+      // Fallback resiliente: busca o usuário diretamente no Turso Cloud por E-mail ou Nome
+      let matchedTurso: any = null;
+      try {
+        const query = isMasterLogin
+          ? `SELECT * FROM usuarios WHERE id = 'usr_master_thiago' OR LOWER(email) = 'thiago.lafite@4andar.com.br' OR is_master = 1 LIMIT 1`
+          : `SELECT * FROM usuarios 
+             WHERE (LOWER(TRIM(email)) = ? OR LOWER(TRIM(nome)) = ? OR LOWER(nome) LIKE ?) 
+               AND id != 'usr_master_thiago' 
+             ORDER BY CASE WHEN LOWER(TRIM(email)) = ? THEN 1 WHEN LOWER(TRIM(nome)) = ? THEN 2 ELSE 3 END 
+             LIMIT 1`;
+        const args = isMasterLogin ? [] : [cleanLogin, cleanLogin, `%${cleanLogin}%`, cleanLogin, cleanLogin];
+        const directRows = await executeDirectTurso(query, args);
+        if (directRows && directRows.length > 0) {
+          matchedTurso = directRows[0];
+        }
+      } catch (err) {
+        console.warn('Falha no fallback direto do Turso no login:', err);
+      }
 
       const allKnownUsers = [...usuariosList, ...users];
       let matched: User | undefined;
 
-      if (isMasterLogin) {
+      if (matchedTurso) {
+        let perms = {};
+        try {
+          perms = typeof matchedTurso.permissoes === 'string' ? JSON.parse(matchedTurso.permissoes) : (matchedTurso.permissoes || {});
+        } catch {
+          perms = {};
+        }
+        const isMaster =
+          matchedTurso.id === 'usr_master_thiago' ||
+          (matchedTurso.email && matchedTurso.email.toLowerCase() === 'thiago.lafite@4andar.com.br');
+        matched = {
+          ...matchedTurso,
+          permissoes: perms,
+          is_master: isMaster,
+          tipo_usuario: isMaster ? 'AdminMaster' : (matchedTurso.role === 'professor' || matchedTurso.role === 'admin' || matchedTurso.role === 'secretaria' ? 'Equipe' : 'Aluno')
+        };
+      } else if (isMasterLogin) {
         matched =
           allKnownUsers.find(
-            (u) => u.id === 'usr_master_thiago' || (u.email && u.email.toLowerCase() === 'thiago.lafite@4andar.com.br')
+            (u) => u.id === 'usr_master_thiago' || (u.email && u.email.trim().toLowerCase() === 'thiago.lafite@4andar.com.br')
           ) || mockUsers[0];
       } else {
-        matched = allKnownUsers.find(
-          (u) =>
-            u.id !== 'usr_master_thiago' &&
-            u.email?.toLowerCase() !== 'thiago.lafite@4andar.com.br' &&
-            (u.email.toLowerCase() === cleanLogin ||
-              u.nome.toLowerCase() === cleanLogin ||
-              u.nome.toLowerCase().includes(cleanLogin))
-        );
+        matched = allKnownUsers.find((u) => {
+          if (u.id === 'usr_master_thiago') return false;
+          const uEmail = (u.email || '').trim().toLowerCase();
+          const uNome = (u.nome || '').trim().toLowerCase();
+          return uEmail === cleanLogin || uNome === cleanLogin || uNome.includes(cleanLogin);
+        });
       }
 
       if (isMasterLogin) {
