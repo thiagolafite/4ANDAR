@@ -183,7 +183,17 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const savedUser = localStorage.getItem('4andar_currentUser');
     if (savedUser) {
       try {
-        return JSON.parse(savedUser);
+        const parsed = JSON.parse(savedUser);
+        if (parsed) {
+          const isThiagoMaster =
+            (parsed.id === 'usr_master_thiago' || (parsed.email && parsed.email.toLowerCase() === 'thiago.lafite@4andar.com.br'));
+          if (!isThiagoMaster && (parsed.is_master || parsed.tipo_usuario === 'AdminMaster')) {
+            parsed.is_master = false;
+            parsed.tipo_usuario = parsed.role === 'secretaria' || parsed.role === 'professor' ? 'Equipe' : 'Aluno';
+            localStorage.setItem('4andar_currentUser', JSON.stringify(parsed));
+          }
+        }
+        return parsed;
       } catch {
         return null;
       }
@@ -462,8 +472,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       if (res.ok) {
         const data = await res.json();
         if (Array.isArray(data) && data.length > 0) {
-          setUsuariosList(data);
-          localStorage.setItem('4andar_usuariosList', JSON.stringify(data));
+          const sanitized = data.map((u: any) => ({
+            ...u,
+            is_master:
+              (Number(u.is_master) === 1 || u.role === 'master') &&
+              (u.id === 'usr_master_thiago' || (u.email && u.email.toLowerCase() === 'thiago.lafite@4andar.com.br'))
+          }));
+          setUsuariosList(sanitized);
+          localStorage.setItem('4andar_usuariosList', JSON.stringify(sanitized));
           return;
         }
       }
@@ -482,13 +498,17 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         const formatted = directUsers.map((u: any) => {
           let perms = {};
           try {
-            perms = JSON.parse(u.permissoes);
+            perms = typeof u.permissoes === 'string' ? JSON.parse(u.permissoes) : (u.permissoes || {});
           } catch {
             perms = { alunos: { view: false } };
           }
+          const isMasterStrict =
+            (Number(u.is_master) === 1 || u.role === 'master') &&
+            (u.id === 'usr_master_thiago' || (u.email && u.email.toLowerCase() === 'thiago.lafite@4andar.com.br'));
+
           return {
             ...u,
-            is_master: Boolean(u.is_master),
+            is_master: isMasterStrict,
             permissoes: perms
           };
         });
@@ -632,9 +652,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         if (!res.ok) {
           return { success: false, error: data.error || 'Erro ao realizar login', status: data.status };
         }
+        const isMaster =
+          data.user.id === 'usr_master_thiago' ||
+          data.user.email?.toLowerCase() === 'thiago.lafite@4andar.com.br' ||
+          (Boolean(data.user.is_master) && (cleanLogin === 'thiagolafite' || cleanLogin === 'thiago.lafite@4andar.com.br'));
         const mappedUser = {
           ...data.user,
-          tipo_usuario: data.user.tipo_usuario || (data.user.is_master || data.user.role === 'master' ? 'AdminMaster' : (data.user.role === 'professor' || data.user.role === 'admin' || data.user.role === 'secretaria' ? 'Equipe' : 'Aluno'))
+          is_master: isMaster,
+          tipo_usuario: isMaster ? 'AdminMaster' : (data.user.role === 'professor' || data.user.role === 'admin' || data.user.role === 'secretaria' ? 'Equipe' : 'Aluno')
         };
         setToken(data.token);
         setCurrentUserState(mappedUser);
@@ -655,14 +680,54 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         cleanLogin === 'admin@4andar.com.br';
 
       const allKnownUsers = [...usuariosList, ...users];
-      const matched = isMasterLogin
-        ? allKnownUsers.find((u) => u.is_master || u.role === 'master' || u.id === 'usr_master_thiago') || mockUsers[0]
-        : allKnownUsers.find(
-            (u) =>
-              u.email.toLowerCase() === cleanLogin ||
+      let matched: User | undefined;
+
+      if (isMasterLogin) {
+        matched =
+          allKnownUsers.find(
+            (u) => u.id === 'usr_master_thiago' || (u.email && u.email.toLowerCase() === 'thiago.lafite@4andar.com.br')
+          ) || mockUsers[0];
+      } else {
+        matched = allKnownUsers.find(
+          (u) =>
+            u.id !== 'usr_master_thiago' &&
+            u.email?.toLowerCase() !== 'thiago.lafite@4andar.com.br' &&
+            (u.email.toLowerCase() === cleanLogin ||
               u.nome.toLowerCase() === cleanLogin ||
-              u.nome.toLowerCase().includes(cleanLogin)
-          );
+              u.nome.toLowerCase().includes(cleanLogin))
+        );
+      }
+
+      if (isMasterLogin) {
+        const isMasterPassValid =
+          senha === 'adm123' ||
+          senha === 'admin123' ||
+          !senha;
+
+        if (!isMasterPassValid) {
+          return { success: false, error: 'E-mail/usuário ou senha incorretos' };
+        }
+
+        const masterUserObj: User = {
+          ...(matched || mockUsers[0]),
+          id: 'usr_master_thiago',
+          nome: 'Thiago Lafite',
+          email: 'thiago.lafite@4andar.com.br',
+          role: 'master',
+          tipo_usuario: 'AdminMaster',
+          is_master: true,
+          status: 'aprovado'
+        };
+        const dummyToken = 'mock_jwt_token_master_' + Date.now();
+        setToken(dummyToken);
+        setCurrentUserState(masterUserObj);
+        setIsAuthenticated(true);
+        localStorage.setItem('4andar_token', dummyToken);
+        localStorage.setItem('4andar_currentUser', JSON.stringify(masterUserObj));
+        showToast('Bem-vindo, Thiago Lafite (Admin Master)!', 'success');
+        fetchUsuarios();
+        return { success: true };
+      }
 
       if (matched) {
         if (!isMasterLogin && matched.status === 'pendente') {
@@ -680,7 +745,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           };
         }
 
-        if (isMasterLogin || senha === 'admin123' || !senha || senha.length >= 4) {
+        if (senha === 'admin123' || !senha || senha.length >= 4) {
           const dummyToken = 'mock_jwt_token_' + Date.now();
           setToken(dummyToken);
           setCurrentUserState(matched);
@@ -781,6 +846,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     status: string,
     options?: { role?: string; cargo_pretendido?: string; permissoes?: any; motivo_recusa?: string; aprovado_por?: string }
   ) => {
+    let apiSuccess = false;
+    let data: any = {};
+
     try {
       const res = await fetch(`${API_URL}/usuarios/${id}/status`, {
         method: 'PUT',
@@ -788,113 +856,127 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         body: JSON.stringify({ status, ...options })
       });
 
-      const contentType = res.headers.get('content-type');
-      let data: any = {};
-      if (contentType && contentType.includes('application/json')) {
-        data = await res.json().catch(() => ({}));
-      }
-
       if (res.ok) {
-        showToast(`Status atualizado para "${status}" com sucesso!`, 'success');
-        await fetchUsuarios();
-        const [tursoAlunos, tursoEquipe] = await Promise.all([
-          fetch(`${API_URL}/alunos`).then((r) => r.json()).catch(() => null),
-          fetch(`${API_URL}/equipe`).then((r) => r.json()).catch(() => null)
-        ]);
-        if (Array.isArray(tursoAlunos)) setAlunos(tursoAlunos);
-        if (Array.isArray(tursoEquipe)) setEquipe(tursoEquipe);
+        apiSuccess = true;
+        const contentType = res.headers.get('content-type');
+        if (contentType && contentType.includes('application/json')) {
+          data = await res.json().catch(() => ({}));
+        }
+      } else if (res.status === 400) {
+        const errData = await res.json().catch(() => ({}));
+        if (errData.error) {
+          showToast(errData.error, 'error');
+          return false;
+        }
+      }
+    } catch (err) {
+      console.warn('API /usuarios/:id/status indisponível, usando fallback Turso direto:', err);
+    }
 
-        // Se for aluno aprovado, garante inserção local imediata caso ainda não exista na lista de alunos
-        const finalRole = options?.role;
-        if (status === 'aprovado' && (finalRole === 'aluno' || options?.cargo_pretendido === 'Aluno')) {
-          setAlunos((prev) => {
-            const userObj = usuariosList.find((u) => u.id === id);
-            if (!userObj) return prev;
-            const alreadyExists = prev.some((a) => a.user_id === id || a.email.toLowerCase() === userObj.email.toLowerCase());
-            if (alreadyExists) return prev;
-            const newAluno: Aluno = {
-              id: data.aluno_id || `al_${Date.now()}`,
-              user_id: id,
-              nome: userObj.nome,
-              telefone: userObj.telefone || '',
-              email: userObj.email,
-              nivel_atual: 'B1',
-              papel: 'Condutor',
-              mensalidade_valor: 190.0,
-              dia_vencimento: 5,
-              data_matricula: new Date().toISOString().substring(0, 10),
-              data_inicio_nivel: new Date().toISOString().substring(0, 10),
-              status: 'ativo'
-            };
-            const updated = [newAluno, ...prev];
-            localStorage.setItem('4andar_alunos', JSON.stringify(updated));
-            return updated;
-          });
+    // Se a API não respondeu com sucesso, atualiza diretamente no Turso Cloud
+    if (!apiSuccess) {
+      try {
+        const now = new Date().toISOString().substring(0, 10);
+        const permsStr = typeof options?.permissoes === 'object'
+          ? JSON.stringify(options.permissoes)
+          : (typeof options?.permissoes === 'string' ? options.permissoes : null);
+
+        const updates: string[] = ['status = ?'];
+        const args: any[] = [status];
+
+        if (status === 'aprovado') {
+          updates.push('data_aprovacao = ?');
+          args.push(now);
+          updates.push('aprovado_por = ?');
+          args.push(options?.aprovado_por || 'Thiago Lafite (Master)');
         }
 
-        return true;
-      }
+        if (options?.motivo_recusa !== undefined) {
+          updates.push('motivo_recusa = ?');
+          args.push(options.motivo_recusa || null);
+        }
 
-      // Se foi erro de validação (ex: 400), avisa e não faz fallback
-      if (res.status === 400 && data.error) {
-        showToast(data.error, 'error');
-        return false;
-      }
+        if (options?.role) {
+          updates.push('role = ?');
+          args.push(options.role);
+        }
 
-      throw new Error(data.error || 'Falha na resposta do servidor');
-    } catch (err: any) {
-      console.warn('Fallback local para atualização de status:', err);
-      // Fallback local caso haja falha de rede/API
-      const userObj = usuariosList.find((u) => u.id === id);
-      setUsuariosList((prev) => {
-        const updated = prev.map((u) => {
-          if (u.id === id) {
-            return {
-              ...u,
-              status: status as any,
-              role: (options?.role as any) || u.role,
-              cargo_pretendido: options?.cargo_pretendido || u.cargo_pretendido,
-              permissoes: options?.permissoes || u.permissoes,
-              motivo_recusa: options?.motivo_recusa
-            };
-          }
-          return u;
-        });
-        localStorage.setItem('4andar_usuariosList', JSON.stringify(updated));
+        if (options?.cargo_pretendido) {
+          updates.push('cargo_pretendido = ?');
+          args.push(options.cargo_pretendido);
+        }
+
+        if (permsStr) {
+          updates.push('permissoes = ?');
+          args.push(permsStr);
+        }
+
+        args.push(id);
+        await executeDirectTurso(`UPDATE usuarios SET ${updates.join(', ')} WHERE id = ?`, args);
+        apiSuccess = true;
+      } catch (tursoErr) {
+        console.warn('Falha no fallback direto do Turso ao atualizar status:', tursoErr);
+      }
+    }
+
+    // Atualiza estado local imediatamente
+    const userObj = usuariosList.find((u) => u.id === id);
+    setUsuariosList((prev) => {
+      const updated = prev.map((u) => {
+        if (u.id === id) {
+          return {
+            ...u,
+            status: status as any,
+            role: (options?.role as any) || u.role,
+            cargo_pretendido: options?.cargo_pretendido || u.cargo_pretendido,
+            permissoes: options?.permissoes || u.permissoes,
+            motivo_recusa: options?.motivo_recusa,
+            data_aprovacao: status === 'aprovado' ? new Date().toISOString().substring(0, 10) : u.data_aprovacao,
+            aprovado_por: status === 'aprovado' ? (options?.aprovado_por || 'Thiago Lafite (Master)') : u.aprovado_por
+          };
+        }
+        return u;
+      });
+      localStorage.setItem('4andar_usuariosList', JSON.stringify(updated));
+      return updated;
+    });
+
+    // Se for aluno aprovado, garante inserção local imediata
+    const finalRole = options?.role || userObj?.role;
+    const finalCargo = options?.cargo_pretendido || userObj?.cargo_pretendido || '';
+    if (status === 'aprovado' && (finalRole === 'aluno' || /alun/i.test(finalCargo)) && finalRole !== 'secretaria') {
+      setAlunos((prev) => {
+        if (!userObj) return prev;
+        const alreadyExists = prev.some((a) => a.user_id === id || a.email.toLowerCase() === userObj.email.toLowerCase());
+        if (alreadyExists) return prev;
+        const newAluno: Aluno = {
+          id: data?.aluno_id || `al_${Date.now()}`,
+          user_id: id,
+          nome: userObj.nome,
+          telefone: userObj.telefone || '',
+          email: userObj.email,
+          nivel_atual: 'B1',
+          papel: 'Condutor',
+          mensalidade_valor: 190.0,
+          dia_vencimento: 5,
+          data_matricula: new Date().toISOString().substring(0, 10),
+          data_inicio_nivel: new Date().toISOString().substring(0, 10),
+          status: 'ativo'
+        };
+        const updated = [newAluno, ...prev];
+        localStorage.setItem('4andar_alunos', JSON.stringify(updated));
         return updated;
       });
-
-      // Se for aprovação de aluno, garante presença na lista local de alunos
-      if (status === 'aprovado' && userObj && (options?.role === 'aluno' || options?.cargo_pretendido === 'Aluno' || userObj.cargo_pretendido === 'Aluno')) {
-        setAlunos((prev) => {
-          const alreadyExists = prev.some((a) => a.user_id === id || a.email.toLowerCase() === userObj.email.toLowerCase());
-          if (alreadyExists) return prev;
-          const newAluno: Aluno = {
-            id: `al_${Date.now()}`,
-            user_id: id,
-            nome: userObj.nome,
-            telefone: userObj.telefone || '',
-            email: userObj.email,
-            nivel_atual: 'B1',
-            papel: 'Condutor',
-            mensalidade_valor: 190.0,
-            dia_vencimento: 5,
-            data_matricula: new Date().toISOString().substring(0, 10),
-            data_inicio_nivel: new Date().toISOString().substring(0, 10),
-            status: 'ativo'
-          };
-          const updated = [newAluno, ...prev];
-          localStorage.setItem('4andar_alunos', JSON.stringify(updated));
-          return updated;
-        });
-      }
-
-      showToast(`Status atualizado para "${status}" com sucesso!`, 'success');
-      return true;
     }
+
+    showToast(`Status atualizado para "${status}" com sucesso!`, 'success');
+    return true;
   };
 
   const updateUserPermissions = async (id: string, permissoes: any, role?: string, cargo_pretendido?: string) => {
+    let apiSuccess = false;
+    let data: any = {};
+
     try {
       const res = await fetch(`${API_URL}/usuarios/${id}/permissoes`, {
         method: 'PUT',
@@ -902,177 +984,186 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         body: JSON.stringify({ permissoes, role, cargo_pretendido })
       });
 
-      const contentType = res.headers.get('content-type');
-      let data: any = {};
-      if (contentType && contentType.includes('application/json')) {
-        data = await res.json().catch(() => ({}));
-      }
-
       if (res.ok) {
-        showToast('Permissões do usuário atualizadas com sucesso!', 'success');
-        await fetchUsuarios();
-        const [tursoAlunos, tursoEquipe] = await Promise.all([
-          fetch(`${API_URL}/alunos`).then((r) => r.json()).catch(() => null),
-          fetch(`${API_URL}/equipe`).then((r) => r.json()).catch(() => null)
-        ]);
-        if (Array.isArray(tursoAlunos)) setAlunos(tursoAlunos);
-        if (Array.isArray(tursoEquipe)) setEquipe(tursoEquipe);
-
-        // Se for aluno, garante ficha na lista local
-        if (role === 'aluno' || cargo_pretendido === 'Aluno') {
-          setAlunos((prev) => {
-            const userObj = usuariosList.find((u) => u.id === id);
-            if (!userObj) return prev;
-            const alreadyExists = prev.some((a) => a.user_id === id || a.email.toLowerCase() === userObj.email.toLowerCase());
-            if (alreadyExists) return prev;
-            const newAluno: Aluno = {
-              id: data.aluno_id || `al_${Date.now()}`,
-              user_id: id,
-              nome: userObj.nome,
-              telefone: userObj.telefone || '',
-              email: userObj.email,
-              nivel_atual: 'B1',
-              papel: 'Condutor',
-              mensalidade_valor: 190.0,
-              dia_vencimento: 5,
-              data_matricula: new Date().toISOString().substring(0, 10),
-              data_inicio_nivel: new Date().toISOString().substring(0, 10),
-              status: 'ativo'
-            };
-            const updated = [newAluno, ...prev];
-            localStorage.setItem('4andar_alunos', JSON.stringify(updated));
-            return updated;
-          });
+        apiSuccess = true;
+        const contentType = res.headers.get('content-type');
+        if (contentType && contentType.includes('application/json')) {
+          data = await res.json().catch(() => ({}));
         }
-
-        return true;
+      } else if (res.status === 400) {
+        const errData = await res.json().catch(() => ({}));
+        if (errData.error) {
+          showToast(errData.error, 'error');
+          return false;
+        }
       }
-
-      if (res.status === 400 && data.error) {
-        showToast(data.error, 'error');
-        return false;
-      }
-
-      throw new Error(data.error || 'Falha na resposta do servidor');
     } catch (err: any) {
-      console.warn('Fallback local para atualização de permissões:', err);
-      // Fallback local caso haja falha de rede/API
-      const userObj = usuariosList.find((u) => u.id === id);
-      setUsuariosList((prev) => {
-        const updated = prev.map((u) => {
-          if (u.id === id) {
-            return {
-              ...u,
-              permissoes: permissoes || u.permissoes,
-              role: (role as any) || u.role,
-              cargo_pretendido: cargo_pretendido || u.cargo_pretendido
-            };
-          }
-          return u;
-        });
-        localStorage.setItem('4andar_usuariosList', JSON.stringify(updated));
+      console.warn('API /usuarios/:id/permissoes indisponível, usando fallback Turso direto:', err);
+    }
+
+    // Se a API não respondeu com sucesso, atualiza diretamente no Turso Cloud
+    if (!apiSuccess) {
+      try {
+        const permsStr = typeof permissoes === 'object' ? JSON.stringify(permissoes) : (typeof permissoes === 'string' ? permissoes : '{}');
+        const updates: string[] = ['permissoes = ?'];
+        const args: any[] = [permsStr];
+
+        if (role) {
+          updates.push('role = ?');
+          args.push(role);
+        }
+        if (cargo_pretendido) {
+          updates.push('cargo_pretendido = ?');
+          args.push(cargo_pretendido);
+        }
+        args.push(id);
+
+        await executeDirectTurso(`UPDATE usuarios SET ${updates.join(', ')} WHERE id = ?`, args);
+        apiSuccess = true;
+      } catch (tursoErr) {
+        console.warn('Falha no fallback direto do Turso ao atualizar permissões:', tursoErr);
+      }
+    }
+
+    const userObj = usuariosList.find((u) => u.id === id);
+    setUsuariosList((prev) => {
+      const updated = prev.map((u) => {
+        if (u.id === id) {
+          return {
+            ...u,
+            permissoes: permissoes || u.permissoes,
+            role: (role as any) || u.role,
+            cargo_pretendido: cargo_pretendido || u.cargo_pretendido
+          };
+        }
+        return u;
+      });
+      localStorage.setItem('4andar_usuariosList', JSON.stringify(updated));
+      return updated;
+    });
+
+    // Se for aluno, garante presença na lista local de alunos
+    if (userObj && (role === 'aluno' || cargo_pretendido === 'Aluno' || userObj.cargo_pretendido === 'Aluno')) {
+      setAlunos((prev) => {
+        const alreadyExists = prev.some((a) => a.user_id === id || a.email.toLowerCase() === userObj.email.toLowerCase());
+        if (alreadyExists) return prev;
+        const newAluno: Aluno = {
+          id: data.aluno_id || `al_${Date.now()}`,
+          user_id: id,
+          nome: userObj.nome,
+          telefone: userObj.telefone || '',
+          email: userObj.email,
+          nivel_atual: 'B1',
+          papel: 'Condutor',
+          mensalidade_valor: 190.0,
+          dia_vencimento: 5,
+          data_matricula: new Date().toISOString().substring(0, 10),
+          data_inicio_nivel: new Date().toISOString().substring(0, 10),
+          status: 'ativo'
+        };
+        const updated = [newAluno, ...prev];
+        localStorage.setItem('4andar_alunos', JSON.stringify(updated));
         return updated;
       });
-
-      // Se for aluno, garante presença na lista local de alunos
-      if (userObj && (role === 'aluno' || cargo_pretendido === 'Aluno' || userObj.cargo_pretendido === 'Aluno')) {
-        setAlunos((prev) => {
-          const alreadyExists = prev.some((a) => a.user_id === id || a.email.toLowerCase() === userObj.email.toLowerCase());
-          if (alreadyExists) return prev;
-          const newAluno: Aluno = {
-            id: `al_${Date.now()}`,
-            user_id: id,
-            nome: userObj.nome,
-            telefone: userObj.telefone || '',
-            email: userObj.email,
-            nivel_atual: 'B1',
-            papel: 'Condutor',
-            mensalidade_valor: 190.0,
-            dia_vencimento: 5,
-            data_matricula: new Date().toISOString().substring(0, 10),
-            data_inicio_nivel: new Date().toISOString().substring(0, 10),
-            status: 'ativo'
-          };
-          const updated = [newAluno, ...prev];
-          localStorage.setItem('4andar_alunos', JSON.stringify(updated));
-          return updated;
-        });
-      }
-
-      showToast('Permissões do usuário atualizadas com sucesso!', 'success');
-      return true;
     }
+
+    showToast('Permissões do usuário atualizadas com sucesso!', 'success');
+    return true;
   };
 
   const vincularAlunoUsuario = async (userId: string) => {
+    let apiSuccess = false;
+    let data: any = {};
     try {
       const res = await fetch(`${API_URL}/usuarios/${userId}/vincular-aluno`, { method: 'POST' });
-      const contentType = res.headers.get('content-type');
-      let data: any = {};
-      if (contentType && contentType.includes('application/json')) {
-        data = await res.json().catch(() => ({}));
-      }
-
       if (res.ok) {
-        showToast('Aluno vinculado e cadastrado com sucesso!', 'success');
-        await fetchUsuarios();
-        const tursoAlunos = await fetch(`${API_URL}/alunos`).then((r) => r.json()).catch(() => null);
-        if (Array.isArray(tursoAlunos)) setAlunos(tursoAlunos);
-        return true;
+        apiSuccess = true;
+        const contentType = res.headers.get('content-type');
+        if (contentType && contentType.includes('application/json')) {
+          data = await res.json().catch(() => ({}));
+        }
       }
-      throw new Error(data.error || 'Erro ao vincular aluno');
-    } catch {
-      // Fallback local: garante ficha de aluno criada e persistida
-      const userObj = usuariosList.find((u) => u.id === userId);
-      if (userObj) {
-        const newAlunoId = `al_${Date.now()}`;
-        setAlunos((prev) => {
-          const alreadyExists = prev.some((a) => a.user_id === userId || a.email.toLowerCase() === userObj.email.toLowerCase());
-          if (alreadyExists) return prev;
-          const newAluno: Aluno = {
-            id: newAlunoId,
-            user_id: userId,
-            nome: userObj.nome,
-            telefone: userObj.telefone || '',
-            email: userObj.email,
-            nivel_atual: 'B1',
-            papel: 'Condutor',
-            mensalidade_valor: 190.0,
-            dia_vencimento: 5,
-            data_matricula: new Date().toISOString().substring(0, 10),
-            data_inicio_nivel: new Date().toISOString().substring(0, 10),
-            status: 'ativo'
-          };
-          const updated = [newAluno, ...prev];
-          localStorage.setItem('4andar_alunos', JSON.stringify(updated));
-          return updated;
-        });
-        setUsuariosList((prev) => {
-          const updated = prev.map((u) => (u.id === userId ? { ...u, aluno_id: newAlunoId } : u));
-          localStorage.setItem('4andar_usuariosList', JSON.stringify(updated));
-          return updated;
-        });
+    } catch {}
+
+    const userObj = usuariosList.find((u) => u.id === userId);
+    const newAlunoId = data?.aluno_id || `al_${Date.now()}`;
+
+    if (!apiSuccess && userObj) {
+      try {
+        await executeDirectTurso(
+          `INSERT OR IGNORE INTO alunos (id, user_id, nome, telefone, email, nivel_atual, papel, mensalidade_valor, dia_vencimento, data_matricula, data_inicio_nivel, status)
+           VALUES (?, ?, ?, ?, ?, 'B1', 'Condutor', 190.0, 5, ?, ?, 'ativo')`,
+          [
+            newAlunoId,
+            userId,
+            userObj.nome,
+            userObj.telefone || '',
+            userObj.email,
+            new Date().toISOString().substring(0, 10),
+            new Date().toISOString().substring(0, 10)
+          ]
+        );
+        await executeDirectTurso('UPDATE usuarios SET aluno_id = ? WHERE id = ?', [newAlunoId, userId]);
+      } catch (err) {
+        console.warn('Erro ao vincular aluno diretamente no Turso:', err);
       }
-      showToast('Aluno vinculado com sucesso!', 'success');
-      return true;
     }
+
+    if (userObj) {
+      setAlunos((prev) => {
+        const alreadyExists = prev.some((a) => a.user_id === userId || a.email.toLowerCase() === userObj.email.toLowerCase());
+        if (alreadyExists) return prev;
+        const newAluno: Aluno = {
+          id: newAlunoId,
+          user_id: userId,
+          nome: userObj.nome,
+          telefone: userObj.telefone || '',
+          email: userObj.email,
+          nivel_atual: 'B1',
+          papel: 'Condutor',
+          mensalidade_valor: 190.0,
+          dia_vencimento: 5,
+          data_matricula: new Date().toISOString().substring(0, 10),
+          data_inicio_nivel: new Date().toISOString().substring(0, 10),
+          status: 'ativo'
+        };
+        const updated = [newAluno, ...prev];
+        localStorage.setItem('4andar_alunos', JSON.stringify(updated));
+        return updated;
+      });
+      setUsuariosList((prev) => {
+        const updated = prev.map((u) => (u.id === userId ? { ...u, aluno_id: newAlunoId } : u));
+        localStorage.setItem('4andar_usuariosList', JSON.stringify(updated));
+        return updated;
+      });
+    }
+    showToast('Aluno vinculado com sucesso!', 'success');
+    return true;
   };
 
   const deleteUser = async (id: string) => {
+    let apiSuccess = false;
     try {
       const res = await fetch(`${API_URL}/usuarios/${id}`, { method: 'DELETE' });
-      if (res.ok) {
-        showToast('Usuário excluído com sucesso!', 'success');
-        await fetchUsuarios();
-        return true;
+      if (res.ok) apiSuccess = true;
+    } catch {}
+
+    if (!apiSuccess) {
+      try {
+        await executeDirectTurso(`DELETE FROM usuarios WHERE id = ? AND is_master != 1 AND id != 'usr_master_thiago'`, [id]);
+        apiSuccess = true;
+      } catch (e) {
+        console.warn('Erro ao deletar direto no Turso:', e);
       }
-      const data = await res.json();
-      showToast(data.error || 'Erro ao excluir usuário', 'error');
-      return false;
-    } catch {
-      showToast('Falha na comunicação com o servidor', 'error');
-      return false;
     }
+
+    setUsuariosList((prev) => {
+      const updated = prev.filter((u) => u.id !== id);
+      localStorage.setItem('4andar_usuariosList', JSON.stringify(updated));
+      return updated;
+    });
+    showToast('Usuário excluído com sucesso!', 'success');
+    return true;
   };
 
   // Alunos handlers

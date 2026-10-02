@@ -124,10 +124,15 @@ app.post('/api/auth/login', async (req, res) => {
     let query;
     let args;
     if (cleanLogin === 'thiagolafite' || cleanLogin === 'admin@4andar.com.br' || cleanLogin === 'thiago.lafite@4andar.com.br') {
-      query = 'SELECT * FROM usuarios WHERE is_master = 1 ORDER BY is_master DESC LIMIT 1';
+      query = `SELECT * FROM usuarios 
+               WHERE id = 'usr_master_thiago' 
+                  OR LOWER(email) = 'thiago.lafite@4andar.com.br' 
+                  OR is_master = 1 
+               ORDER BY CASE WHEN id = 'usr_master_thiago' THEN 1 WHEN LOWER(email) = 'thiago.lafite@4andar.com.br' THEN 2 ELSE 3 END 
+               LIMIT 1`;
       args = [];
     } else {
-      query = 'SELECT * FROM usuarios WHERE LOWER(email) = ? OR LOWER(nome) = ? OR LOWER(nome) LIKE ? LIMIT 1';
+      query = 'SELECT * FROM usuarios WHERE (LOWER(email) = ? OR LOWER(nome) = ? OR LOWER(nome) LIKE ?) AND id != "usr_master_thiago" LIMIT 1';
       args = [cleanLogin, cleanLogin, `%${cleanLogin}%`];
     }
 
@@ -137,10 +142,12 @@ app.post('/api/auth/login', async (req, res) => {
     }
 
     const user = result.rows[0];
-    const isMaster = user.is_master === 1 || user.role === 'master' || cleanLogin === 'thiagolafite';
+    const isMaster = user.id === 'usr_master_thiago' || (user.email && user.email.toLowerCase() === 'thiago.lafite@4andar.com.br') || (Number(user.is_master) === 1 && (user.role === 'master' || cleanLogin === 'thiagolafite'));
 
-    // Validação da senha
-    const isPasswordValid = verifyPassword(senha, user.senha_hash) || (isMaster && (senha === 'admin123' || !senha));
+    // Validação da senha (permite hash gravado, admin123 ou adm123 para o master)
+    const isPasswordValid =
+      verifyPassword(senha, user.senha_hash) ||
+      (isMaster && (senha === 'admin123' || senha === 'adm123' || !senha));
     if (!isPasswordValid) {
       return res.status(401).json({ error: 'E-mail/usuário ou senha incorretos' });
     }
@@ -192,8 +199,8 @@ app.post('/api/auth/login', async (req, res) => {
         telefone: user.telefone,
         cargo_pretendido: user.cargo_pretendido,
         role: user.role,
-        tipo_usuario: Boolean(user.is_master) ? 'AdminMaster' : (user.role === 'professor' || user.role === 'admin' || user.role === 'secretaria' ? 'Equipe' : 'Aluno'),
-        is_master: Boolean(user.is_master),
+        tipo_usuario: isMaster ? 'AdminMaster' : (user.role === 'professor' || user.role === 'admin' || user.role === 'secretaria' ? 'Equipe' : 'Aluno'),
+        is_master: isMaster,
         status: user.status,
         permissoes: permissoesObj,
         avatar_url: user.avatar_url,
@@ -331,9 +338,12 @@ app.get('/api/usuarios', async (req, res) => {
       } catch {
         permissoesObj = getDefaultPermissions(u.role);
       }
+      const isMasterStrict =
+        (Number(u.is_master) === 1 || u.role === 'master') &&
+        (u.id === 'usr_master_thiago' || (u.email && u.email.toLowerCase() === 'thiago.lafite@4andar.com.br'));
       return {
         ...u,
-        is_master: Boolean(u.is_master),
+        is_master: isMasterStrict,
         permissoes: permissoesObj
       };
     });
