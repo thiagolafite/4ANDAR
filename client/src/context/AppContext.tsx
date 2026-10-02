@@ -317,6 +317,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   useEffect(() => {
     syncWithDatabase();
+    const interval = setInterval(() => {
+      syncWithDatabase();
+    }, 10000);
+    return () => clearInterval(interval);
   }, []);
 
   // Search & Modal State
@@ -694,51 +698,32 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(userData)
       });
-      const contentType = res.headers.get('content-type');
-      if (contentType && contentType.includes('application/json')) {
-        const data = await res.json();
-        if (!res.ok) {
-          return { success: false, error: data.error || 'Erro ao realizar cadastro' };
+
+      let data: any = null;
+      const contentType = res.headers.get('content-type') || '';
+      if (contentType.includes('application/json')) {
+        data = await res.json();
+      } else {
+        const text = await res.text();
+        try {
+          data = JSON.parse(text);
+        } catch {
+          data = { error: text || 'Erro desconhecido do servidor' };
         }
-        fetchUsuarios();
-        syncWithDatabase();
-        return { success: true, message: data.message, status: data.status };
-      }
-      throw new Error('Resposta inválida do servidor');
-    } catch {
-      // Fallback resiliente offline / falha de conexão
-      const cleanEmail = userData.email.trim().toLowerCase();
-      const allKnownUsers = [...usuariosList, ...users];
-      const existing = allKnownUsers.find((u) => u.email.toLowerCase() === cleanEmail);
-      if (existing) {
-        return { success: false, error: 'Este e-mail já está cadastrado no sistema.' };
       }
 
-      const role: UserRole = 'pendente';
-      const novoUsuario: User = {
-        id: 'usr_' + Date.now(),
-        nome: userData.nome.trim(),
-        email: cleanEmail,
-        telefone: userData.telefone || '',
-        role: 'pendente',
-        tipo_usuario: 'Aluno',
-        status: 'pendente',
-        is_master: false,
-        permissoes: { alunos: { view: false } },
-        cargo_pretendido: userData.cargo_pretendido || 'Pendente (Aguardando Classificação do Master)',
-        data_cadastro: new Date().toISOString()
-      };
+      if (!res.ok) {
+        return { success: false, error: data?.error || 'Erro ao realizar cadastro.' };
+      }
 
-      setUsuariosList((prev) => {
-        const updated = [novoUsuario, ...prev.filter((u) => u.id !== novoUsuario.id && u.email.toLowerCase() !== cleanEmail)];
-        localStorage.setItem('4andar_usuariosList', JSON.stringify(updated));
-        return updated;
-      });
-
+      await fetchUsuarios();
+      await syncWithDatabase();
+      return { success: true, message: data.message, status: data.status };
+    } catch (err: any) {
+      console.error('Erro de conexão ao realizar cadastro:', err);
       return {
-        success: true,
-        message: 'Cadastro recebido com sucesso! Aguarde a aprovação do Administrador Master para acessar.',
-        status: 'pendente'
+        success: false,
+        error: 'Não foi possível conectar ao servidor para registrar o cadastro. Verifique sua conexão e tente novamente.'
       };
     }
   };

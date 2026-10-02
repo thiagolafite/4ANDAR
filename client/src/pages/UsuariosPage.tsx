@@ -21,7 +21,8 @@ import {
   X,
   FileSpreadsheet,
   Upload,
-  Camera
+  Camera,
+  RotateCw
 } from 'lucide-react';
 import { UserAvatar } from '../components/common/UserAvatar';
 
@@ -51,9 +52,23 @@ export const UsuariosPage: React.FC = () => {
   const [rejectModalUser, setRejectModalUser] = useState<User | null>(null);
   const [motivoRecusa, setMotivoRecusa] = useState('');
   const [processing, setProcessing] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+
+  const handleRefresh = async () => {
+    setIsRefreshing(true);
+    try {
+      await fetchUsuarios();
+    } finally {
+      setTimeout(() => setIsRefreshing(false), 500);
+    }
+  };
 
   useEffect(() => {
     fetchUsuarios();
+    const interval = setInterval(() => {
+      fetchUsuarios();
+    }, 4000);
+    return () => clearInterval(interval);
   }, []);
 
   const pendentes = usuariosList.filter((u) => u.status === 'pendente');
@@ -387,16 +402,28 @@ export const UsuariosPage: React.FC = () => {
             </button>
           </div>
 
-          {/* Search Bar */}
-          <div className="relative w-full sm:w-72">
-            <Search className="h-4 w-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
-            <input
-              type="text"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              placeholder="Buscar por nome, e-mail ou cargo..."
-              className="w-full pl-9 pr-4 py-2 text-xs rounded-xl border border-slate-200 bg-slate-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-brand-500"
-            />
+          {/* Search Bar & Refresh Button */}
+          <div className="flex items-center gap-2 w-full sm:w-auto">
+            <div className="relative flex-1 sm:w-72">
+              <Search className="h-4 w-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+              <input
+                type="text"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                placeholder="Buscar por nome, e-mail ou cargo..."
+                className="w-full pl-9 pr-4 py-2 text-xs rounded-xl border border-slate-200 bg-slate-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-brand-500"
+              />
+            </div>
+            <button
+              type="button"
+              onClick={handleRefresh}
+              disabled={isRefreshing}
+              title="Atualizar lista de cadastros agora"
+              className="px-3 py-2 rounded-xl border border-slate-200 bg-slate-50 hover:bg-slate-100 active:scale-95 text-slate-700 text-xs font-bold transition-all flex items-center gap-1.5 shrink-0 shadow-2xs cursor-pointer"
+            >
+              <RotateCw className={`h-3.5 w-3.5 ${isRefreshing ? 'animate-spin text-brand-600' : 'text-slate-500'}`} />
+              <span className="hidden sm:inline">Atualizar</span>
+            </button>
           </div>
         </div>
 

@@ -19,6 +19,15 @@ const app = express();
 const PORT = process.env.PORT || 3001;
 
 app.use(cors());
+
+// Se o ambiente Vercel Serverless já tiver parseado o body JSON, sinaliza para evitar travamento da stream
+app.use((req, res, next) => {
+  if (req.body && typeof req.body === 'object' && Object.keys(req.body).length > 0) {
+    req._body = true;
+  }
+  next();
+});
+
 app.use(express.json());
 
 let isTursoReady = false;
@@ -41,15 +50,19 @@ const ensureTursoReady = async () => {
 
 // Compatibilidade de roteamento para Vercel Serverless (garante que /api/ rotas batam perfeitamente)
 app.use(async (req, res, next) => {
-  if (req.query && req.query.route) {
+  if (req.originalUrl && req.originalUrl.startsWith('/api') && req.url !== req.originalUrl) {
+    req.url = req.originalUrl;
+  } else if (req.query && req.query.route) {
     const routeParts = Array.isArray(req.query.route) ? req.query.route.join('/') : req.query.route;
     req.url = '/api/' + routeParts;
   } else if (req.url === '/api' && req.originalUrl && req.originalUrl !== '/api') {
     req.url = req.originalUrl;
   }
+
   if (!req.url.startsWith('/api') && req.url !== '/' && !req.url.startsWith('/index.html')) {
     req.url = '/api' + req.url;
   }
+
   if (req.url.startsWith('/api')) {
     await ensureTursoReady();
   }

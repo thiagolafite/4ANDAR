@@ -18,7 +18,8 @@ import {
   Megaphone,
   UserCheck,
   FileSpreadsheet,
-  BookOpen
+  BookOpen,
+  Shield
 } from 'lucide-react';
 
 import { UserAvatar } from '../components/common/UserAvatar';
@@ -26,6 +27,7 @@ import { UserAvatar } from '../components/common/UserAvatar';
 export const DashboardPage: React.FC = () => {
   const {
     currentUser,
+    pendingUsersCount,
     minhasTurmas,
     alunos,
     alunosCadastrados,
@@ -142,6 +144,38 @@ export const DashboardPage: React.FC = () => {
       {/* ======================================================== */}
       {isEquipe && (
         <>
+          {/* Banner de Novos Usuários Pendentes de Aprovação */}
+          {(isMaster || currentUser.role === 'admin') && pendingUsersCount > 0 && (
+            <div
+              onClick={() => navigate('/usuarios')}
+              className="cursor-pointer rounded-2xl bg-gradient-to-r from-amber-500/15 via-orange-500/10 to-amber-500/15 border-2 border-amber-500/50 hover:border-amber-500 p-4.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-sm hover:shadow-md transition-all group"
+            >
+              <div className="flex items-center gap-3.5">
+                <div className="h-11 w-11 rounded-2xl bg-amber-500 text-white flex items-center justify-center shrink-0 shadow-md shadow-amber-500/30 group-hover:scale-105 transition-transform">
+                  <Shield className="h-6 w-6" />
+                </div>
+                <div>
+                  <h4 className="text-sm font-extrabold text-slate-800 dark:text-slate-100 flex items-center gap-2">
+                    <span>{pendingUsersCount} novo(s) cadastro(s) aguardando sua aprovação!</span>
+                    <span className="px-2 py-0.5 rounded-full bg-amber-500 text-white text-[10px] font-black uppercase tracking-wider animate-pulse">
+                      Pendente
+                    </span>
+                  </h4>
+                  <p className="text-xs text-slate-600 dark:text-slate-300 mt-0.5 font-medium">
+                    Clique aqui para abrir a Gestão de Usuários, classificar a função (Secretaria, Aluno ou Professor) e liberar o acesso.
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                className="px-4 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-white text-xs font-bold transition-all shadow-md shadow-amber-500/20 shrink-0 cursor-pointer self-start sm:self-auto flex items-center gap-1.5"
+              >
+                <span>Aprovar Cadastros</span>
+                <ArrowRight className="h-3.5 w-3.5" />
+              </button>
+            </div>
+          )}
+
           {/* Key Metrics Grid */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             <div
