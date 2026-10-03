@@ -13,10 +13,12 @@ import {
   AlertTriangle,
   CalendarClock,
   CheckCircle2,
-  XCircle
+  XCircle,
+  BookOpen,
+  ArrowRight
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
-import { Aluno, StatusPresenca } from '../../types';
+import { Aluno, Aula, Cronograma, StatusPresenca } from '../../types';
 import { UserAvatar } from '../common/UserAvatar';
 
 interface RegistrarPresencaModalProps {
@@ -24,6 +26,83 @@ interface RegistrarPresencaModalProps {
   onClose: () => void;
   defaultAulaId?: string;
   defaultData?: string;
+}
+
+/**
+ * Função inteligente que analisa o horário atual do sistema, o dia da semana e o
+ * cronograma importado para encontrar a turma exata correspondente ao nível do aluno.
+ */
+function findBestAulaForAluno(
+  aluno: Aluno,
+  aulasList: Aula[],
+  targetDate: string,
+  cronosList: Cronograma[]
+): { aula: Aula; motivo: string } | null {
+  if (!aulasList || aulasList.length === 0) return null;
+
+  const now = new Date();
+  const currentHour = now.getHours();
+  const currentMinutes = now.getHours() * 60 + now.getMinutes();
+
+  // Determina turno atual com base no relógio do sistema
+  // Manhã: antes das 13h | Tarde: entre 13h e 18h | Noite: após as 18h
+  const turnoAtual: 'Manhã' | 'Tarde' | 'Noite' =
+    currentHour < 13 ? 'Manhã' : currentHour < 18 ? 'Tarde' : 'Noite';
+
+  // 1. Prioridade máxima: Turma do nível do aluno no turno atual (ex: B1 Manhã se for de manhã)
+  const aulasDoNivel = aulasList.filter((a) => a.nivel === aluno.nivel_atual);
+
+  if (aulasDoNivel.length > 0) {
+    // 1.1 Turma do mesmo nível no turno atual
+    const aulaMesmoTurno = aulasDoNivel.find((a) => a.turno === turnoAtual);
+    if (aulaMesmoTurno) {
+      return {
+        aula: aulaMesmoTurno,
+        motivo: `detectada automaticamente pelo nível (${aluno.nivel_atual}) no turno atual da ${turnoAtual}`
+      };
+    }
+
+    // 1.2 Turma do mesmo nível mais próxima do horário atual
+    let melhorAula = aulasDoNivel[0];
+    let menorDiff = Infinity;
+    for (const a of aulasDoNivel) {
+      if (a.horario_inicio) {
+        const [h, m] = a.horario_inicio.split(':').map(Number);
+        const aulaMin = h * 60 + (m || 0);
+        const diff = Math.abs(currentMinutes - aulaMin);
+        if (diff < menorDiff) {
+          menorDiff = diff;
+          melhorAula = a;
+        }
+      }
+    }
+    return {
+      aula: melhorAula,
+      motivo: `detectada pelo nível (${aluno.nivel_atual}) mais próximo do horário`
+    };
+  }
+
+  // 2. Se não houver turma específica para o nível, verifica se há cronograma cadastrado para a data
+  const cronosDoDia = cronosList.filter((c) => c.data_aula === targetDate);
+  if (cronosDoDia.length > 0) {
+    const aulaComCrono = aulasList.find(
+      (a) => a.turno === turnoAtual && cronosDoDia.some((c) => c.aula_id === a.id)
+    );
+    if (aulaComCrono) {
+      return {
+        aula: aulaComCrono,
+        motivo: `detectada pelo cronograma semanal ativo para hoje (${turnoAtual})`
+      };
+    }
+  }
+
+  // 3. Fallback: primeira turma do turno atual
+  const aulaTurno = aulasList.find((a) => a.turno === turnoAtual);
+  if (aulaTurno) {
+    return { aula: aulaTurno, motivo: `detectada pelo turno atual da ${turnoAtual}` };
+  }
+
+  return { aula: aulasList[0], motivo: 'primeira turma cadastrada' };
 }
 
 export const RegistrarPresencaModal: React.FC<RegistrarPresencaModalProps> = ({
@@ -38,6 +117,7 @@ export const RegistrarPresencaModal: React.FC<RegistrarPresencaModalProps> = ({
     alunosCadastrados,
     usuariosList,
     aulas,
+    cronogramas,
     presencas,
     registrarPresencaManual,
     showToast
@@ -48,6 +128,7 @@ export const RegistrarPresencaModal: React.FC<RegistrarPresencaModalProps> = ({
   const [selectedData, setSelectedData] = useState<string>(defaultData || hojeStr);
   const [searchTerm, setSearchTerm] = useState<string>('');
   const [selectedAluno, setSelectedAluno] = useState<Aluno | null>(null);
+  const [autoDetectReason, setAutoDetectReason] = useState<string | null>(null);
   const [statusPresenca, setStatusPresenca] = useState<StatusPresenca>('confirmada');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -64,13 +145,14 @@ export const RegistrarPresencaModal: React.FC<RegistrarPresencaModalProps> = ({
 
       setSearchTerm('');
       setSelectedAluno(null);
+      setAutoDetectReason(null);
 
       // Auto-foco no campo de busca ao abrir
       setTimeout(() => {
         searchInputRef.current?.focus();
       }, 100);
     }
-  }, [isOpen, defaultAulaId, defaultData, aulas]);
+  }, [isOpen, defaultAulaId, defaultData, aulas, hojeStr]);
 
   // Lista unificada de alunos (alunos cadastrados + usuários aprovados como alunos)
   const todosAlunos = useMemo(() => {
@@ -109,7 +191,7 @@ export const RegistrarPresencaModal: React.FC<RegistrarPresencaModalProps> = ({
   // Filtra alunos em tempo real conforme o usuário digita o nome
   const filteredAlunos = useMemo(() => {
     if (!searchTerm.trim()) {
-      return todosAlunos.slice(0, 8); // exibe os primeiros se não digitou nada
+      return todosAlunos.slice(0, 8);
     }
 
     const q = searchTerm.toLowerCase().trim();
@@ -121,23 +203,27 @@ export const RegistrarPresencaModal: React.FC<RegistrarPresencaModalProps> = ({
     });
   }, [todosAlunos, searchTerm]);
 
-  // Verifica status atual do aluno na turma/data selecionada
-  const getPresencaAtual = (alunoId: string) => {
-    return presencas.find(
-      (p) =>
-        (p.aluno_id === alunoId) &&
-        p.aula_id === selectedAulaId &&
-        (p.data_aula === selectedData || p.data_presenca === selectedData)
-    );
-  };
-
+  // Seleciona o aluno e detecta automaticamente a turma com base no cronograma e horário
   const handleSelectAluno = (aluno: Aluno) => {
     setSelectedAluno(aluno);
-    // Se a turma do aluno for compatível com a aula selecionada, mantém, caso contrário sugere a turma do nível dele
-    const aulaDoNivel = aulas.find((a) => a.nivel === aluno.nivel_atual);
-    if (aulaDoNivel && selectedAulaId !== aulaDoNivel.id) {
-      // Opcional: mantém a aula atual se já foi escolhida
+
+    // Sistema inteligente: detecta a turma com base no horário atual e no cronograma
+    const match = findBestAulaForAluno(aluno, aulas, selectedData, cronogramas);
+    if (match) {
+      setSelectedAulaId(match.aula.id);
+      setAutoDetectReason(match.motivo);
     }
+  };
+
+  // Verifica status de presença do aluno na turma/data selecionada
+  const getPresencaAtual = (alunoId: string, aulaId?: string) => {
+    const targetAulaId = aulaId || selectedAulaId;
+    return presencas.find(
+      (p) =>
+        p.aluno_id === alunoId &&
+        p.aula_id === targetAulaId &&
+        (p.data_aula === selectedData || p.data_presenca === selectedData)
+    );
   };
 
   const handleConfirmarPresenca = async () => {
@@ -157,6 +243,7 @@ export const RegistrarPresencaModal: React.FC<RegistrarPresencaModalProps> = ({
 
       // Reseta a seleção e limpa o campo de busca para o próximo aluno
       setSelectedAluno(null);
+      setAutoDetectReason(null);
       setSearchTerm('');
       setTimeout(() => {
         searchInputRef.current?.focus();
@@ -169,6 +256,19 @@ export const RegistrarPresencaModal: React.FC<RegistrarPresencaModalProps> = ({
   };
 
   const selectedAula = aulas.find((a) => a.id === selectedAulaId);
+
+  // Tema planejado do cronograma para esta aula e data
+  const temaCronograma = useMemo(() => {
+    if (!selectedAulaId || !selectedData) return null;
+    const crono = cronogramas.find(
+      (c) => c.aula_id === selectedAulaId && c.data_aula === selectedData
+    );
+    return crono?.tema_aula || null;
+  }, [cronogramas, selectedAulaId, selectedData]);
+
+  const presencaAtualDoSelecionado = selectedAluno
+    ? getPresencaAtual(selectedAluno.id, selectedAulaId)
+    : null;
 
   if (!isOpen) return null;
 
@@ -186,7 +286,7 @@ export const RegistrarPresencaModal: React.FC<RegistrarPresencaModalProps> = ({
                 Registrar Presença de Aluno
               </h3>
               <p className="text-xs text-slate-500">
-                Digite o nome para localizar a ficha do aluno e confirmar a chamada na hora.
+                Digite o nome para localizar a ficha do aluno. A turma é reconhecida automaticamente pelo horário e cronograma.
               </p>
             </div>
           </div>
@@ -201,25 +301,8 @@ export const RegistrarPresencaModal: React.FC<RegistrarPresencaModalProps> = ({
 
         {/* Modal Body */}
         <div className="flex-1 overflow-y-auto p-6 space-y-5">
-          {/* Controls: Turma & Data */}
+          {/* Controls: Data da Aula e Turma Geral */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-3.5 bg-slate-50 rounded-2xl border border-slate-200/80">
-            <div>
-              <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-1">
-                Turma da Aula *
-              </label>
-              <select
-                value={selectedAulaId}
-                onChange={(e) => setSelectedAulaId(e.target.value)}
-                className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs font-semibold text-slate-800 outline-none focus:border-brand-500"
-              >
-                {aulas.map((aula) => (
-                  <option key={aula.id} value={aula.id}>
-                    [{aula.nivel}] {aula.nome} — {aula.dia_semana} ({aula.horario_inicio})
-                  </option>
-                ))}
-              </select>
-            </div>
-
             <div>
               <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-1">
                 Data da Aula *
@@ -228,8 +311,28 @@ export const RegistrarPresencaModal: React.FC<RegistrarPresencaModalProps> = ({
                 type="date"
                 value={selectedData}
                 onChange={(e) => setSelectedData(e.target.value)}
-                className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs font-semibold text-slate-800 outline-none focus:border-brand-500"
+                className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs font-semibold text-slate-800 outline-none focus:border-brand-500 shadow-xs"
               />
+            </div>
+
+            <div>
+              <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-1">
+                Turma Ativa da Sessão
+              </label>
+              <select
+                value={selectedAulaId}
+                onChange={(e) => {
+                  setSelectedAulaId(e.target.value);
+                  setAutoDetectReason(null);
+                }}
+                className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs font-semibold text-slate-800 outline-none focus:border-brand-500 shadow-xs"
+              >
+                {aulas.map((aula) => (
+                  <option key={aula.id} value={aula.id}>
+                    [{aula.nivel}] {aula.nome} — {aula.turno} ({aula.horario_inicio} às {aula.horario_fim})
+                  </option>
+                ))}
+              </select>
             </div>
           </div>
 
@@ -246,7 +349,7 @@ export const RegistrarPresencaModal: React.FC<RegistrarPresencaModalProps> = ({
                 value={searchTerm}
                 onChange={(e) => {
                   setSearchTerm(e.target.value);
-                  if (selectedAluno) setSelectedAluno(null); // reseta seleção ao digitar nova busca
+                  if (selectedAluno) setSelectedAluno(null);
                 }}
                 placeholder="Comece a digitar o nome do aluno (ex: Adriana, Lucas, Bia)..."
                 className="w-full rounded-2xl border-2 border-slate-200 bg-white pl-10 pr-10 py-3 text-sm font-medium text-slate-900 placeholder:text-slate-400 outline-none focus:border-brand-500 shadow-xs transition-all"
@@ -257,6 +360,7 @@ export const RegistrarPresencaModal: React.FC<RegistrarPresencaModalProps> = ({
                   onClick={() => {
                     setSearchTerm('');
                     setSelectedAluno(null);
+                    setAutoDetectReason(null);
                     searchInputRef.current?.focus();
                   }}
                   className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-1"
@@ -279,7 +383,7 @@ export const RegistrarPresencaModal: React.FC<RegistrarPresencaModalProps> = ({
               )}
             </div>
 
-            <div className="grid grid-cols-1 gap-2.5 max-h-60 overflow-y-auto pr-1">
+            <div className="grid grid-cols-1 gap-2.5 max-h-52 overflow-y-auto pr-1">
               {filteredAlunos.length === 0 ? (
                 <div className="p-8 text-center bg-slate-50 rounded-2xl border border-slate-100 text-slate-400 text-xs">
                   Nenhum aluno encontrado com o termo "{searchTerm}".
@@ -382,27 +486,110 @@ export const RegistrarPresencaModal: React.FC<RegistrarPresencaModalProps> = ({
             </div>
           </div>
 
-          {/* Selected Student Confirmation Box */}
+          {/* Selected Student Confirmation Box & Smart Turma Selector */}
           {selectedAluno && (
-            <div className="rounded-2xl bg-gradient-to-r from-emerald-50 to-brand-50/40 p-4 border border-emerald-200/80 space-y-3 animate-in zoom-in-95">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-bold text-emerald-900 uppercase tracking-wider flex items-center gap-1.5">
-                  <CheckCircle2 className="h-4 w-4 text-emerald-600" />
-                  Pronto para registrar presença
-                </span>
-                <span className="text-xs text-slate-600 font-semibold">
-                  {selectedAula?.nome} • {selectedData}
-                </span>
+            <div className="rounded-3xl bg-gradient-to-br from-emerald-50/90 via-white to-brand-50/50 p-5 border-2 border-brand-400 shadow-md space-y-4 animate-in zoom-in-95">
+              {/* Header do Aluno Selecionado */}
+              <div className="flex items-start justify-between gap-3 pb-3 border-b border-slate-100">
+                <div className="flex items-center gap-3">
+                  <UserAvatar
+                    name={selectedAluno.nome}
+                    fotoUrl={selectedAluno.foto_url}
+                    size="lg"
+                    className="ring-2 ring-brand-500 shadow-sm"
+                  />
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <h4 className="font-black text-base text-slate-900">
+                        {selectedAluno.nome}
+                      </h4>
+                      <span className="px-2 py-0.5 rounded text-xs font-black bg-brand-100 text-brand-800">
+                        Nível {selectedAluno.nivel_atual}
+                      </span>
+                    </div>
+                    <p className="text-xs text-slate-500 mt-0.5">
+                      {selectedAluno.papel} • {selectedAluno.tipo_frequencia || 'Mensalista'}
+                      {selectedAluno.telefone ? ` • ${selectedAluno.telefone}` : ''}
+                    </p>
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSelectedAluno(null);
+                    setAutoDetectReason(null);
+                  }}
+                  className="text-slate-400 hover:text-slate-600 p-1"
+                >
+                  <X className="h-4 w-4" />
+                </button>
               </div>
 
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-2 border-t border-emerald-200/60">
-                {/* Status Toggle */}
+              {/* Banner de Detecção Automática Inteligente */}
+              {autoDetectReason && (
+                <div className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-brand-50 border border-brand-200/80 text-brand-900 text-xs font-medium">
+                  <Sparkles className="h-4 w-4 text-brand-600 shrink-0" />
+                  <div className="flex-1">
+                    <span>Turma sugerida: <strong>{selectedAula?.nome}</strong> ({autoDetectReason})</span>
+                  </div>
+                </div>
+              )}
+
+              {/* Seletor da Turma que o aluno vai frequentar */}
+              <div className="space-y-1.5">
+                <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center justify-between">
+                  <span>Confirmar Turma do Aluno:</span>
+                  <span className="text-[11px] font-normal text-slate-400">
+                    Você pode alterar a turma livremente se ele fizer outra aula
+                  </span>
+                </label>
+                <select
+                  value={selectedAulaId}
+                  onChange={(e) => {
+                    setSelectedAulaId(e.target.value);
+                    setAutoDetectReason(null);
+                  }}
+                  className="w-full rounded-2xl border-2 border-brand-200 bg-white p-3 text-sm font-bold text-slate-900 outline-none focus:border-brand-500 shadow-xs"
+                >
+                  {aulas.map((aula) => {
+                    const isNivelAluno = aula.nivel === selectedAluno.nivel_atual;
+                    return (
+                      <option key={aula.id} value={aula.id}>
+                        [{aula.nivel}] {aula.nome} — {aula.turno} ({aula.horario_inicio} às {aula.horario_fim})
+                        {isNivelAluno ? ' ★ (Turma do Nível do Aluno)' : ''}
+                      </option>
+                    );
+                  })}
+                </select>
+
+                {/* Tema do Cronograma da Turma */}
+                {temaCronograma && (
+                  <p className="text-xs text-slate-600 flex items-center gap-1.5 pt-1">
+                    <BookOpen className="h-3.5 w-3.5 text-brand-600 shrink-0" />
+                    <span>Tema do planejamento de hoje: <strong>{temaCronograma}</strong></span>
+                  </p>
+                )}
+              </div>
+
+              {/* Alerta se o aluno já tiver presença nesta turma hoje */}
+              {presencaAtualDoSelecionado && (
+                <div className="flex items-center gap-2 p-3 rounded-2xl bg-amber-50 border border-amber-200 text-amber-900 text-xs font-medium">
+                  <AlertTriangle className="h-4 w-4 text-amber-600 shrink-0" />
+                  <span>
+                    Atenção: Este aluno já possui registro <strong>{presencaAtualDoSelecionado.status.toUpperCase()}</strong> nesta turma em {selectedData}. Você pode atualizar a chamada abaixo.
+                  </span>
+                </div>
+              )}
+
+              {/* Ações: Situação e Botão de Confirmação */}
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-3 border-t border-slate-100">
                 <div className="flex items-center gap-2">
                   <span className="text-xs font-bold text-slate-700">Situação:</span>
                   <button
                     type="button"
                     onClick={() => setStatusPresenca('confirmada')}
-                    className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
+                    className={`px-3 py-2 rounded-xl text-xs font-bold transition-all ${
                       statusPresenca === 'confirmada'
                         ? 'bg-emerald-600 text-white shadow-xs'
                         : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50'
@@ -413,7 +600,7 @@ export const RegistrarPresencaModal: React.FC<RegistrarPresencaModalProps> = ({
                   <button
                     type="button"
                     onClick={() => setStatusPresenca('ausente')}
-                    className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
+                    className={`px-3 py-2 rounded-xl text-xs font-bold transition-all ${
                       statusPresenca === 'ausente'
                         ? 'bg-rose-600 text-white shadow-xs'
                         : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50'
@@ -423,16 +610,17 @@ export const RegistrarPresencaModal: React.FC<RegistrarPresencaModalProps> = ({
                   </button>
                 </div>
 
-                {/* Confirm Button */}
                 <button
                   type="button"
                   onClick={handleConfirmarPresenca}
                   disabled={isSubmitting}
-                  className="flex items-center justify-center gap-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white font-black px-5 py-2.5 text-xs shadow-md shadow-emerald-600/20 transition-all"
+                  className="flex items-center justify-center gap-2 rounded-2xl bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white font-black px-6 py-3 text-xs shadow-md shadow-emerald-600/20 transition-all cursor-pointer"
                 >
                   <Check className="h-4 w-4" />
                   <span>
-                    {statusPresenca === 'confirmada' ? 'Confirmar Presença' : 'Registrar Falta'}
+                    {statusPresenca === 'confirmada'
+                      ? `Confirmar Presença na ${selectedAula?.nome || 'Turma'}`
+                      : `Registrar Falta na ${selectedAula?.nome || 'Turma'}`}
                   </span>
                 </button>
               </div>
@@ -451,7 +639,7 @@ export const RegistrarPresencaModal: React.FC<RegistrarPresencaModalProps> = ({
           </button>
 
           <span className="text-[11px] text-slate-400">
-            Dica: Ao confirmar, a busca é limpa automaticamente para você chamar o próximo aluno.
+            Dica: Ao confirmar, o campo de busca é limpo e focado para você chamar o próximo aluno na fila.
           </span>
         </div>
       </div>
