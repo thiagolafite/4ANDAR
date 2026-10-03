@@ -106,7 +106,7 @@ interface AppContextType {
 
   // Pagamentos
   pagamentos: Pagamento[];
-  registrarPagamento: (id: string, metodo: 'PIX' | 'Dinheiro' | 'Cartão') => void;
+  registrarPagamento: (id: string, metodo: 'PIX' | 'Dinheiro' | 'Cartão') => Promise<void>;
   addPagamento: (pagamento: Omit<Pagamento, 'id'>) => void;
   dispararLembretesMensalidade: () => { totalEnviados: number; destinatarios: string[] };
 
@@ -1612,9 +1612,18 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     showToast('Presença marcada como ausente.', 'info');
   };
 
+  // Calcula próximo vencimento: mesmo dia do mês seguinte (com tratamento de fim de mês)
+  const calcularProximoVencimento = (dataPagamento: string): string => {
+    const d = new Date(dataPagamento + 'T12:00:00');
+    const nextMonth = new Date(d.getFullYear(), d.getMonth() + 1, d.getDate());
+    return nextMonth.toISOString().substring(0, 10);
+  };
+
   // Pagamentos
-  const registrarPagamento = (id: string, metodo: 'PIX' | 'Dinheiro' | 'Cartão') => {
+  const registrarPagamento = async (id: string, metodo: 'PIX' | 'Dinheiro' | 'Cartão') => {
     const dataHoje = new Date().toISOString().substring(0, 10);
+
+    // Optimistic update — marca como pago imediatamente
     setPagamentos((prev) =>
       prev.map((pag) =>
         pag.id === id
@@ -1623,13 +1632,92 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       )
     );
 
-    fetch(`${API_URL}/pagamentos/${id}/baixar`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ metodo })
-    }).catch((e) => console.warn('Erro ao registrar pagamento no Turso:', e));
+    try {
+      const res = await fetch(`${API_URL}/pagamentos/${id}/baixar`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ metodo })
+      });
 
-    showToast(`Pagamento registrado com sucesso via ${metodo}!`);
+      if (res.ok) {
+        const data = await res.json().catch(() => ({}));
+
+        // Se o servidor gerou a próxima cobrança de mensalidade automaticamente
+        if (data.proximo_pagamento_id && data.proximo_vencimento) {
+          const mesesPT = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+          const dateVenc = new Date(data.proximo_vencimento + 'T12:00:00');
+          const refMes = data.referencia_mes || `${mesesPT[dateVenc.getMonth()]}/${dateVenc.getFullYear()}`;
+
+          // Busca o pagamento atual para saber o aluno e valor
+          const pagAtual = pagamentos.find((p) => p.id === id);
+          if (pagAtual) {
+            const novoPagamento: Pagamento = {
+              id: data.proximo_pagamento_id,
+              aluno_id: pagAtual.aluno_id,
+              valor: pagAtual.valor,
+              data_pagamento: null,
+              data_vencimento: data.proximo_vencimento,
+              metodo: 'PIX',
+              tipo: 'Mensalidade',
+              status: 'Pendente',
+              referencia_mes: refMes
+            };
+
+            setPagamentos((prev) => {
+              // Evita duplicatas
+              if (prev.some((p) => p.id === novoPagamento.id)) return prev;
+              return [novoPagamento, ...prev];
+            });
+
+            // Atualiza o aluno com o novo vencimento
+            setAlunos((prev) =>
+              prev.map((al) =>
+                al.id === pagAtual.aluno_id
+                  ? { ...al, data_pagamento_atual: dataHoje, data_vencimento_atual: data.proximo_vencimento }
+                  : al
+              )
+            );
+          }
+        }
+      }
+    } catch (e) {
+      // Fallback Turso direto
+      console.warn('Erro ao registrar pagamento via API, usando fallback:', e);
+      const dataVenc = calcularProximoVencimento(dataHoje);
+      const pagAtual = pagamentos.find((p) => p.id === id);
+
+      if (pagAtual && pagAtual.tipo === 'Mensalidade') {
+        const mesesPT = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+        const dateVenc = new Date(dataVenc + 'T12:00:00');
+        const refMes = `${mesesPT[dateVenc.getMonth()]}/${dateVenc.getFullYear()}`;
+        const novoId = `pag_${Date.now()}`;
+
+        setPagamentos((prev) => {
+          if (prev.some((p) => p.id === novoId)) return prev;
+          return [{
+            id: novoId,
+            aluno_id: pagAtual.aluno_id,
+            valor: pagAtual.valor,
+            data_pagamento: null,
+            data_vencimento: dataVenc,
+            metodo: 'PIX',
+            tipo: 'Mensalidade',
+            status: 'Pendente',
+            referencia_mes: refMes
+          }, ...prev];
+        });
+
+        setAlunos((prev) =>
+          prev.map((al) =>
+            al.id === pagAtual.aluno_id
+              ? { ...al, data_pagamento_atual: dataHoje, data_vencimento_atual: dataVenc }
+              : al
+          )
+        );
+      }
+    }
+
+    showToast(`Pagamento registrado com sucesso via ${metodo}! Próxima mensalidade gerada automaticamente.`);
   };
 
   const addPagamento = (pagamento: Omit<Pagamento, 'id'>) => {

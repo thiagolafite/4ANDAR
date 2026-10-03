@@ -111,7 +111,11 @@ export const MeusPagamentosPage: React.FC = () => {
           <div>
             <h3 className="text-lg font-bold">Parabéns! Nenhuma fatura pendente</h3>
             <p className="text-xs text-emerald-700 mt-1">
-              Suas mensalidades estão em dia. Seu próximo vencimento regular é todo dia {alunoLogado.dia_vencimento}.
+              Suas mensalidades estão em dia.{' '}
+              {(alunoLogado as any).data_vencimento_atual
+                ? <>Seu próximo vencimento é <strong>{new Date((alunoLogado as any).data_vencimento_atual + 'T12:00:00').toLocaleDateString('pt-BR')}</strong>.</>
+                : <>Seu dia de vencimento regular é todo dia {alunoLogado.dia_vencimento}.</>
+              }
             </p>
           </div>
         </div>

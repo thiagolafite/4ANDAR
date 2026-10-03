@@ -60,7 +60,6 @@ export const PagamentosPage: React.FC = () => {
     );
   });
 
-  // Financial metrics
   const totalRecebido = pagamentos
     .filter((p) => p.status === 'Pago')
     .reduce((sum, p) => sum + p.valor, 0);
@@ -72,6 +71,16 @@ export const PagamentosPage: React.FC = () => {
   const totalAtrasado = pagamentos
     .filter((p) => p.status === 'Atrasado')
     .reduce((sum, p) => sum + p.valor, 0);
+
+  // Próximos a vencer (próximos 7 dias, ainda Pendente)
+  const hoje = new Date();
+  const proxSemana = new Date(hoje);
+  proxSemana.setDate(hoje.getDate() + 7);
+  const proximosAVencer = pagamentos.filter((p) => {
+    if (p.status === 'Pago') return false;
+    const v = new Date(p.data_vencimento + 'T12:00:00');
+    return v >= hoje && v <= proxSemana;
+  });
 
   const handleCriarCobranca = (e: React.FormEvent) => {
     e.preventDefault();
@@ -115,11 +124,11 @@ export const PagamentosPage: React.FC = () => {
       </div>
 
       {/* Financial Metrics Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
         <div className="rounded-2xl bg-white p-5 border border-slate-100 shadow-sm">
           <div className="flex items-center justify-between">
             <span className="text-xs font-bold uppercase tracking-wider text-slate-400">
-              Total Recebido no Mês
+              Total Recebido
             </span>
             <div className="h-8 w-8 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center font-bold">
               ✓
@@ -153,7 +162,7 @@ export const PagamentosPage: React.FC = () => {
         <div className="rounded-2xl bg-white p-5 border border-slate-100 shadow-sm">
           <div className="flex items-center justify-between">
             <span className="text-xs font-bold uppercase tracking-wider text-slate-400">
-              Mensalidades Atrasadas
+              Em Atraso
             </span>
             <div className="h-8 w-8 rounded-lg bg-rose-50 text-rose-600 flex items-center justify-center font-bold">
               !
@@ -164,6 +173,23 @@ export const PagamentosPage: React.FC = () => {
           </p>
           <p className="text-xs text-rose-500 font-semibold mt-1">
             {pagamentos.filter((p) => p.status === 'Atrasado').length} aluno(s) em atraso
+          </p>
+        </div>
+
+        <div className="rounded-2xl bg-white p-5 border border-brand-100 shadow-sm border-2">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-bold uppercase tracking-wider text-slate-400">
+              Vencem em 7 dias
+            </span>
+            <div className="h-8 w-8 rounded-lg bg-brand-50 text-brand-600 flex items-center justify-center font-bold">
+              📅
+            </div>
+          </div>
+          <p className="text-2xl font-black text-brand-700 mt-2">
+            {proximosAVencer.length}
+          </p>
+          <p className="text-xs text-brand-600 font-semibold mt-1">
+            mensalidade(s) a cobrar
           </p>
         </div>
       </div>
@@ -253,8 +279,19 @@ export const PagamentosPage: React.FC = () => {
                         <span className="font-semibold text-slate-800 text-xs block">
                           {pag.referencia_mes}
                         </span>
-                        <span className="text-[11px] text-slate-400">
-                          {pag.tipo}
+                        <span className={`inline-block mt-0.5 px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                          pag.tipo === 'Mensalidade'
+                            ? 'bg-blue-100 text-blue-800'
+                            : pag.tipo === 'Aula Avulsa'
+                            ? 'bg-slate-100 text-slate-700'
+                            : pag.tipo === 'Experimental'
+                            ? 'bg-purple-100 text-purple-800'
+                            : 'bg-orange-100 text-orange-800'
+                        }`}>
+                          {pag.tipo === 'Mensalidade' ? '🗓️ Mensalidade'
+                            : pag.tipo === 'Aula Avulsa' ? '🎟️ Avulsa'
+                            : pag.tipo === 'Experimental' ? '🎁 Experimental'
+                            : `🎪 ${pag.tipo}`}
                         </span>
                       </td>
 
@@ -461,9 +498,10 @@ export const PagamentosPage: React.FC = () => {
                     }
                     className="w-full rounded-xl border border-slate-300 p-2 text-sm bg-white outline-none focus:border-brand-500"
                   >
-                    <option value="Mensalidade">Mensalidade</option>
-                    <option value="Aula Avulsa">Aula Avulsa</option>
-                    <option value="Evento">Evento</option>
+                    <option value="Mensalidade">🗓️ Mensalidade (gera próximo ciclo automático)</option>
+                    <option value="Aula Avulsa">🎟️ Aula Avulsa</option>
+                    <option value="Experimental">🎁 Aula Experimental (gratuita)</option>
+                    <option value="Evento">🎪 Evento</option>
                   </select>
                 </div>
               </div>

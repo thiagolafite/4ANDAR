@@ -834,7 +834,7 @@ app.get('/api/health', (req, res) => {
 app.get('/api/alunos', async (req, res) => {
   try {
     await syncAlunosFromUsuarios();
-    const result = await turso.execute('SELECT * FROM alunos ORDER BY nome ASC');
+    const result = await turso.execute('SELECT id, user_id, nome, telefone, email, nivel_atual, papel, mensalidade_valor, dia_vencimento, data_matricula, data_inicio_nivel, status, foto_url, observacoes, tipo_frequencia, data_pagamento_atual, data_vencimento_atual FROM alunos ORDER BY nome ASC');
     res.json(result.rows);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -847,7 +847,8 @@ app.post('/api/alunos', async (req, res) => {
       id: customId,
       user_id, nome, telefone, email, nivel_atual, papel,
       mensalidade_valor, dia_vencimento, data_matricula,
-      data_inicio_nivel, status, foto_url, observacoes
+      data_inicio_nivel, status, foto_url, observacoes,
+      tipo_frequencia, data_pagamento_atual, data_vencimento_atual
     } = req.body;
 
     const id = customId || `al_${Date.now()}`;
@@ -895,14 +896,15 @@ app.post('/api/alunos', async (req, res) => {
     }
 
     await turso.execute({
-      sql: `INSERT INTO alunos (id, user_id, nome, telefone, email, nivel_atual, papel, mensalidade_valor, dia_vencimento, data_matricula, data_inicio_nivel, status, foto_url, observacoes)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      sql: `INSERT INTO alunos (id, user_id, nome, telefone, email, nivel_atual, papel, mensalidade_valor, dia_vencimento, data_matricula, data_inicio_nivel, status, foto_url, observacoes, tipo_frequencia, data_pagamento_atual, data_vencimento_atual)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       args: [
         id, user_id || null, nome, telefone, email, nivel_atual || 'B1', papel || 'Condutor',
         mensalidade_valor || 190.0, dia_vencimento || 5,
         data_matricula || new Date().toISOString().substring(0, 10),
         data_inicio_nivel || new Date().toISOString().substring(0, 10),
-        status || 'ativo', foto_url || null, observacoes || null
+        status || 'ativo', foto_url || null, observacoes || null,
+        tipo_frequencia || 'mensalista', data_pagamento_atual || null, data_vencimento_atual || null
       ]
     });
 
@@ -925,7 +927,8 @@ app.put('/api/alunos/:id', async (req, res) => {
     const { id } = req.params;
     const {
       user_id, nome, telefone, email, nivel_atual, papel,
-      mensalidade_valor, dia_vencimento, status, observacoes, foto_url
+      mensalidade_valor, dia_vencimento, status, observacoes, foto_url,
+      tipo_frequencia, data_pagamento_atual, data_vencimento_atual
     } = req.body;
 
     await turso.execute({
@@ -940,9 +943,18 @@ app.put('/api/alunos/:id', async (req, res) => {
             dia_vencimento = COALESCE(?, dia_vencimento),
             status = COALESCE(?, status),
             foto_url = COALESCE(?, foto_url),
-            observacoes = COALESCE(?, observacoes)
+            observacoes = COALESCE(?, observacoes),
+            tipo_frequencia = COALESCE(?, tipo_frequencia),
+            data_pagamento_atual = COALESCE(?, data_pagamento_atual),
+            data_vencimento_atual = COALESCE(?, data_vencimento_atual)
             WHERE id = ?`,
-      args: [user_id || null, nome, telefone, email, nivel_atual, papel, mensalidade_valor, dia_vencimento, status, foto_url !== undefined ? foto_url : null, observacoes, id]
+      args: [
+        user_id || null, nome, telefone, email, nivel_atual, papel,
+        mensalidade_valor, dia_vencimento, status,
+        foto_url !== undefined ? foto_url : null, observacoes,
+        tipo_frequencia || null, data_pagamento_atual || null, data_vencimento_atual || null,
+        id
+      ]
     });
 
     if (user_id) {
@@ -1390,10 +1402,60 @@ app.put('/api/pagamentos/:id/baixar', async (req, res) => {
     const { id } = req.params;
     const { metodo } = req.body;
     const dataHoje = new Date().toISOString().substring(0, 10);
+
     await turso.execute({
       sql: "UPDATE pagamentos SET status = 'Pago', metodo = ?, data_pagamento = ? WHERE id = ?",
       args: [metodo || 'PIX', dataHoje, id]
     });
+
+    // Busca o pagamento para saber o tipo e o aluno
+    const pagResult = await turso.execute({ sql: 'SELECT * FROM pagamentos WHERE id = ?', args: [id] });
+    const pag = pagResult.rows[0];
+
+    // Se for Mensalidade, gera próximo ciclo e atualiza o aluno
+    if (pag && pag.tipo === 'Mensalidade') {
+      // Calcula próximo vencimento: mesmo dia do mês seguinte
+      function proximoVencimento(dataPagamento) {
+        const d = new Date(dataPagamento + 'T12:00:00');
+        const nextMonth = new Date(d.getFullYear(), d.getMonth() + 1, d.getDate());
+        return nextMonth.toISOString().substring(0, 10);
+      }
+
+      const dataVenc = proximoVencimento(dataHoje);
+
+      // Referência do mês seguinte (ex: Novembro/2026)
+      const mesesPT = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+      const dateVencObj = new Date(dataVenc + 'T12:00:00');
+      const refMes = `${mesesPT[dateVencObj.getMonth()]}/${dateVencObj.getFullYear()}`;
+
+      // Atualiza o aluno com data de pagamento e vencimento atuais
+      await turso.execute({
+        sql: 'UPDATE alunos SET data_pagamento_atual = ?, data_vencimento_atual = ? WHERE id = ?',
+        args: [dataHoje, dataVenc, pag.aluno_id]
+      });
+
+      // Gera a próxima cobrança de mensalidade automaticamente
+      const novoId = `pag_${Date.now()}`;
+      const alunoResult = await turso.execute({ sql: 'SELECT * FROM alunos WHERE id = ?', args: [pag.aluno_id] });
+      const aluno = alunoResult.rows[0];
+      const valor = aluno ? (Number(aluno.mensalidade_valor) || Number(pag.valor)) : Number(pag.valor);
+
+      await turso.execute({
+        sql: `INSERT OR IGNORE INTO pagamentos (id, aluno_id, valor, data_pagamento, data_vencimento, metodo, tipo, status, referencia_mes)
+              VALUES (?, ?, ?, NULL, ?, 'PIX', 'Mensalidade', 'Pendente', ?)`,
+        args: [novoId, pag.aluno_id, valor, dataVenc, refMes]
+      });
+
+      return res.json({
+        id,
+        status: 'Pago',
+        data_pagamento: dataHoje,
+        proximo_vencimento: dataVenc,
+        proximo_pagamento_id: novoId,
+        referencia_mes: refMes
+      });
+    }
+
     res.json({ id, status: 'Pago', data_pagamento: dataHoje });
   } catch (err) {
     res.status(500).json({ error: err.message });

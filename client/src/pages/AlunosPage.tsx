@@ -13,13 +13,16 @@ import {
   ArrowRight,
   X,
   Check,
-  Upload
+  Upload,
+  CalendarClock,
+  ShieldCheck,
+  AlertTriangle
 } from 'lucide-react';
 import { Aluno, NivelForro, PapelDanca } from '../types';
 import { UserAvatar } from '../components/common/UserAvatar';
 
 export const AlunosPage: React.FC = () => {
-  const { alunos, addAluno, setSelectedAlunoModal, usuariosList } = useApp();
+  const { alunos, addAluno, setSelectedAlunoModal, usuariosList, pagamentos } = useApp();
 
   const [searchTerm, setSearchTerm] = useState('');
   const [filterNivel, setFilterNivel] = useState<string>('todos');
@@ -141,6 +144,49 @@ export const AlunosPage: React.FC = () => {
       case 'I2':
         return 'bg-emerald-100 text-emerald-800 border-emerald-300';
     }
+  };
+
+  // Retorna o status financeiro do aluno com base nos pagamentos e no tipo_frequencia
+  const getStatusFinanceiro = (aluno: Aluno) => {
+    if (aluno.tipo_frequencia === 'experimental') {
+      return { label: 'Experimental', icon: <CalendarClock className="h-3 w-3" />, cls: 'bg-blue-100 text-blue-800' };
+    }
+    if (aluno.tipo_frequencia === 'avulso') {
+      return { label: 'Avulso', icon: <CalendarClock className="h-3 w-3" />, cls: 'bg-slate-100 text-slate-700' };
+    }
+
+    // Mensalista — verifica pagamentos
+    const hoje = new Date();
+    const dataVenc = aluno.data_vencimento_atual ? new Date(aluno.data_vencimento_atual + 'T12:00:00') : null;
+
+    if (!dataVenc) {
+      // Verifica em pagamentos se tem algum pendente
+      const pagPendente = pagamentos.find((p) =>
+        (p.aluno_id === aluno.id || p.aluno_id === aluno.user_id) && p.status !== 'Pago'
+      );
+      if (pagPendente) {
+        const venc = new Date(pagPendente.data_vencimento + 'T12:00:00');
+        if (venc < hoje) {
+          return { label: 'Atrasado', icon: <AlertTriangle className="h-3 w-3" />, cls: 'bg-rose-100 text-rose-800' };
+        }
+        const diff = Math.ceil((venc.getTime() - hoje.getTime()) / (1000 * 60 * 60 * 24));
+        if (diff <= 7) {
+          return { label: `Vence em ${diff}d`, icon: <CalendarClock className="h-3 w-3" />, cls: 'bg-amber-100 text-amber-800' };
+        }
+      }
+      return { label: 'Em dia', icon: <ShieldCheck className="h-3 w-3" />, cls: 'bg-emerald-100 text-emerald-800' };
+    }
+
+    if (dataVenc < hoje) {
+      return { label: 'Atrasado', icon: <AlertTriangle className="h-3 w-3" />, cls: 'bg-rose-100 text-rose-800' };
+    }
+
+    const diasRestantes = Math.ceil((dataVenc.getTime() - hoje.getTime()) / (1000 * 60 * 60 * 24));
+    if (diasRestantes <= 7) {
+      return { label: `Vence em ${diasRestantes}d`, icon: <CalendarClock className="h-3 w-3" />, cls: 'bg-amber-100 text-amber-800' };
+    }
+
+    return { label: 'Em dia', icon: <ShieldCheck className="h-3 w-3" />, cls: 'bg-emerald-100 text-emerald-800' };
   };
 
   return (
@@ -312,15 +358,35 @@ export const AlunosPage: React.FC = () => {
                   <span className="text-[10px] text-slate-400 block">Mensalidade</span>
                   <span className="font-bold text-slate-900">
                     R$ {aluno.mensalidade_valor.toFixed(2)}{' '}
-                    <span className="text-[10px] font-normal text-slate-400">
-                      (Venc. {aluno.dia_vencimento})
-                    </span>
+                    {aluno.tipo_frequencia === 'avulso' && (
+                      <span className="text-[10px] font-normal text-slate-400">(Avulso)</span>
+                    )}
+                    {aluno.tipo_frequencia === 'experimental' && (
+                      <span className="text-[10px] font-normal text-slate-400">(Experimental)</span>
+                    )}
+                    {(!aluno.tipo_frequencia || aluno.tipo_frequencia === 'mensalista') && aluno.data_vencimento_atual && (
+                      <span className="text-[10px] font-normal text-slate-400">
+                        (Venc. {new Date(aluno.data_vencimento_atual + 'T12:00:00').toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })})
+                      </span>
+                    )}
                   </span>
                 </div>
 
-                <span className="inline-flex items-center gap-1 font-semibold text-brand-600 group-hover:translate-x-0.5 transition-transform">
-                  Ver Ficha <ArrowRight className="h-3.5 w-3.5" />
-                </span>
+                <div className="flex items-center gap-2">
+                  {/* Badge de status financeiro */}
+                  {(() => {
+                    const sf = getStatusFinanceiro(aluno);
+                    return (
+                      <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold ${sf.cls}`}>
+                        {sf.icon}
+                        {sf.label}
+                      </span>
+                    );
+                  })()}
+                  <span className="inline-flex items-center gap-1 font-semibold text-brand-600 group-hover:translate-x-0.5 transition-transform">
+                    Ver Ficha <ArrowRight className="h-3.5 w-3.5" />
+                  </span>
+                </div>
               </div>
             </div>
           ))
@@ -476,6 +542,26 @@ export const AlunosPage: React.FC = () => {
                     }
                     className="w-full rounded-xl border border-slate-300 px-3.5 py-2 text-sm outline-none focus:border-brand-500"
                   />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
+                    Tipo de Frequência *
+                  </label>
+                  <select
+                    value={newStudent.tipo_frequencia || 'mensalista'}
+                    onChange={(e) =>
+                      setNewStudent({
+                        ...newStudent,
+                        tipo_frequencia: e.target.value as 'mensalista' | 'avulso' | 'experimental'
+                      })
+                    }
+                    className="w-full rounded-xl border border-slate-300 px-3.5 py-2 text-sm outline-none focus:border-brand-500 bg-white"
+                  >
+                    <option value="mensalista">🗓️ Mensalista (ciclo 30 dias)</option>
+                    <option value="avulso">🎟️ Avulso (paga por aula)</option>
+                    <option value="experimental">🎁 Experimental (1ª aula gratuita)</option>
+                  </select>
                 </div>
 
                 <div>

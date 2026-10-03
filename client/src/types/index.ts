@@ -74,6 +74,10 @@ export interface Aluno {
   status: 'ativo' | 'inativo' | 'trancado';
   foto_url?: string;
   observacoes?: string;
+  // Logística de pagamentos
+  tipo_frequencia?: 'mensalista' | 'avulso' | 'experimental';
+  data_pagamento_atual?: string | null; // data do último pagamento confirmado
+  data_vencimento_atual?: string | null; // data_pagamento + 30 dias (mesmo dia do mês seguinte)
 }
 
 export interface Equipe {
@@ -158,7 +162,7 @@ export interface Pagamento {
   data_pagamento: string | null;
   data_vencimento: string; // YYYY-MM-DD
   metodo: MetodoPagamento;
-  tipo: 'Mensalidade' | 'Aula Avulsa' | 'Evento';
+  tipo: 'Mensalidade' | 'Aula Avulsa' | 'Evento' | 'Experimental';
   status: StatusPagamento;
   referencia_mes: string;
   comprovante_url?: string;
