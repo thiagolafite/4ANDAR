@@ -30,7 +30,8 @@ import {
   mockAvisos
 } from '../data/mockData';
 import { ExcelParseResult } from '../utils/excelImport';
-import { directTursoRegisterUser, executeDirectTurso } from '../services/tursoDirect';
+import { directTursoRegisterUser, executeDirectTurso, executeBatchTurso } from '../services/tursoDirect';
+import { StatusPresenca } from '../types';
 
 interface ToastInfo {
   id: string;
@@ -71,6 +72,7 @@ interface AppContextType {
   addAluno: (aluno: Omit<Aluno, 'id'>) => Aluno;
   updateAluno: (id: string, updates: Partial<Aluno>) => void;
   deleteAluno: (id: string) => void;
+  importarAlunosBulk: (alunosList: Omit<Aluno, 'id'>[]) => Promise<{ count: number; inserted: number; updated: number }>;
   selectedAlunoModal: Aluno | null;
   setSelectedAlunoModal: (aluno: Aluno | null) => void;
 
@@ -103,6 +105,7 @@ interface AppContextType {
   solicitarPresenca: (alunoId: string, aulaId: string, dataAula: string) => void;
   confirmarPresenca: (presencaId: string) => void;
   marcarAusente: (presencaId: string) => void;
+  registrarPresencaManual: (alunoId: string, aulaId: string, dataAula: string, status?: StatusPresenca) => Promise<void>;
 
   // Pagamentos
   pagamentos: Pagamento[];
@@ -1258,6 +1261,98 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     showToast('Aluno removido com sucesso.', 'info');
   };
 
+  const importarAlunosBulk = async (
+    alunosList: Omit<Aluno, 'id'>[]
+  ): Promise<{ count: number; inserted: number; updated: number }> => {
+    if (!alunosList || alunosList.length === 0) {
+      return { count: 0, inserted: 0, updated: 0 };
+    }
+
+    let apiSuccess = false;
+    let result = { count: 0, inserted: 0, updated: 0 };
+
+    // 1. Tenta API backend
+    try {
+      const res = await fetch(`${API_URL}/alunos/bulk`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ alunos: alunosList })
+      });
+      if (res.ok) {
+        apiSuccess = true;
+        result = await res.json();
+      }
+    } catch (e) {
+      console.warn('Erro ao importar alunos via API, tentando fallback direto:', e);
+    }
+
+    // 2. Fallback direto Turso Cloud
+    if (!apiSuccess) {
+      try {
+        const batchStmts = alunosList.map((al) => {
+          const id = `al_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
+          return {
+            sql: `INSERT INTO alunos (id, nome, telefone, email, nivel_atual, papel, mensalidade_valor, dia_vencimento, data_matricula, data_inicio_nivel, status, tipo_frequencia)
+                  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'ativo', ?)`,
+            args: [
+              id,
+              al.nome.trim(),
+              al.telefone || '',
+              al.email || '',
+              al.nivel_atual || 'B1',
+              al.papel || 'Condutor',
+              Number(al.mensalidade_valor) || 190.0,
+              Number(al.dia_vencimento) || 5,
+              al.data_matricula || new Date().toISOString().substring(0, 10),
+              al.data_inicio_nivel || new Date().toISOString().substring(0, 10),
+              al.tipo_frequencia || 'mensalista'
+            ]
+          };
+        });
+
+        const CHUNK = 50;
+        for (let i = 0; i < batchStmts.length; i += CHUNK) {
+          await executeBatchTurso(batchStmts.slice(i, i + CHUNK));
+        }
+        apiSuccess = true;
+        result = { count: alunosList.length, inserted: alunosList.length, updated: 0 };
+      } catch (tursoErr) {
+        console.error('Erro no fallback Turso direto de alunos:', tursoErr);
+      }
+    }
+
+    // 3. Atualiza estado local de alunos
+    setAlunos((prev) => {
+      const updatedList = [...prev];
+      alunosList.forEach((novo) => {
+        const idx = updatedList.findIndex(
+          (a) =>
+            a.nome.trim().toLowerCase() === novo.nome.trim().toLowerCase() ||
+            (novo.email && a.email && a.email.trim().toLowerCase() === novo.email.trim().toLowerCase())
+        );
+        if (idx >= 0) {
+          updatedList[idx] = {
+            ...updatedList[idx],
+            ...novo
+          };
+        } else {
+          updatedList.push({
+            ...novo,
+            id: `al_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`
+          });
+        }
+      });
+      localStorage.setItem('4andar_alunos', JSON.stringify(updatedList));
+      return updatedList;
+    });
+
+    showToast(
+      `Importação concluída! ${result.inserted || alunosList.length} alunos processados com sucesso.`,
+      'success'
+    );
+    return result;
+  };
+
   // Equipe handlers
   const addEquipe = (membro: Omit<Equipe, 'id'>) => {
     const novo: Equipe = { ...membro, id: `eq_${Date.now()}` };
@@ -1610,6 +1705,83 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }).catch((e) => console.warn('Erro ao marcar ausente no Turso:', e));
 
     showToast('Presença marcada como ausente.', 'info');
+  };
+
+  const registrarPresencaManual = async (
+    alunoId: string,
+    aulaId: string,
+    dataAula: string,
+    status: StatusPresenca = 'confirmada'
+  ): Promise<void> => {
+    const confirmador = currentUser?.nome || 'Secretaria';
+    const agora = new Date().toISOString();
+    const dataHoraStr = agora.replace('T', ' ').substring(0, 16);
+
+    const existingIndex = presencas.findIndex(
+      (p) => p.aluno_id === alunoId && p.aula_id === aulaId && (p.data_aula === dataAula || p.data_presenca === dataAula)
+    );
+
+    let updatedPresencas: Presenca[];
+
+    if (existingIndex >= 0) {
+      const presId = presencas[existingIndex].id;
+      updatedPresencas = presencas.map((p, idx) =>
+        idx === existingIndex
+          ? { ...p, status, confirmado_por: confirmador, data_aula: dataAula }
+          : p
+      );
+      setPresencas(updatedPresencas);
+
+      if (status === 'confirmada') {
+        fetch(`${API_URL}/presencas/${presId}/confirmar`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ confirmado_por: confirmador })
+        }).catch(() => {});
+      } else if (status === 'ausente') {
+        fetch(`${API_URL}/presencas/${presId}/ausente`, {
+          method: 'PUT'
+        }).catch(() => {});
+      }
+    } else {
+      const nova: Presenca = {
+        id: `pre_${Date.now()}_${Math.random().toString(36).substring(2, 5)}`,
+        aluno_id: alunoId,
+        aula_id: aulaId,
+        data_aula: dataAula,
+        data_presenca: dataAula,
+        status,
+        data_solicitacao: dataHoraStr,
+        confirmado_por: confirmador
+      };
+      updatedPresencas = [nova, ...presencas];
+      setPresencas(updatedPresencas);
+
+      fetch(`${API_URL}/presencas`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id: nova.id,
+          aluno_id: alunoId,
+          aula_id: aulaId,
+          data_aula: dataAula,
+          data_presenca: dataAula,
+          status,
+          data_solicitacao: dataHoraStr,
+          confirmado_por: confirmador
+        })
+      }).catch((e) => console.warn('Erro ao salvar presença via API:', e));
+    }
+
+    localStorage.setItem('4andar_presencas', JSON.stringify(updatedPresencas));
+
+    const aluno = alunosCadastrados.find((a) => a.id === alunoId || a.aluno_id === alunoId) || alunos.find((a) => a.id === alunoId);
+    showToast(
+      status === 'confirmada'
+        ? `Presença confirmada para ${aluno?.nome || 'o aluno'}!`
+        : `Falta registrada para ${aluno?.nome || 'o aluno'}.`,
+      status === 'confirmada' ? 'success' : 'info'
+    );
   };
 
   // Calcula próximo vencimento: mesmo dia do mês seguinte (com tratamento de fim de mês)
@@ -2011,6 +2183,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         addAluno,
         updateAluno,
         deleteAluno,
+        importarAlunosBulk,
         selectedAlunoModal,
         setSelectedAlunoModal,
         equipe,
@@ -2031,6 +2204,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         solicitarPresenca,
         confirmarPresenca,
         marcarAusente,
+        registrarPresencaManual,
         pagamentos,
         registrarPagamento,
         addPagamento,

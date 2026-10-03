@@ -16,10 +16,12 @@ import {
   Upload,
   CalendarClock,
   ShieldCheck,
-  AlertTriangle
+  AlertTriangle,
+  FileSpreadsheet
 } from 'lucide-react';
 import { Aluno, NivelForro, PapelDanca } from '../types';
 import { UserAvatar } from '../components/common/UserAvatar';
+import { ImportarAlunosModal } from '../components/modals/ImportarAlunosModal';
 
 export const AlunosPage: React.FC = () => {
   const { alunos, addAluno, setSelectedAlunoModal, usuariosList, pagamentos } = useApp();
@@ -28,6 +30,7 @@ export const AlunosPage: React.FC = () => {
   const [filterNivel, setFilterNivel] = useState<string>('todos');
   const [filterPapel, setFilterPapel] = useState<string>('todos');
   const [isNewModalOpen, setIsNewModalOpen] = useState(false);
+  const [isImportModalOpen, setIsImportModalOpen] = useState(false);
   const [selectedUserId, setSelectedUserId] = useState<string>('');
 
   // New Student Form State
@@ -203,13 +206,24 @@ export const AlunosPage: React.FC = () => {
           </p>
         </div>
 
-        <button
-          onClick={() => setIsNewModalOpen(true)}
-          className="flex items-center gap-2 rounded-xl bg-brand-600 hover:bg-brand-700 text-white font-bold px-4 py-2.5 text-xs shadow-md shadow-brand-500/20 transition-all self-start sm:self-auto"
-        >
-          <UserPlus className="h-4 w-4" />
-          <span>+ Matricular Novo Aluno</span>
-        </button>
+        <div className="flex flex-wrap items-center gap-2.5 self-start sm:self-auto">
+          <button
+            onClick={() => setIsImportModalOpen(true)}
+            className="flex items-center gap-2 rounded-xl bg-emerald-50 border border-emerald-200 hover:bg-emerald-100 text-emerald-800 font-bold px-4 py-2.5 text-xs transition-colors shadow-xs"
+            title="Importar alunos a partir de planilha Excel (.xlsx, .xls) ou CSV"
+          >
+            <FileSpreadsheet className="h-4 w-4 text-emerald-600" />
+            <span>Importar Base de Alunos (Planilha)</span>
+          </button>
+
+          <button
+            onClick={() => setIsNewModalOpen(true)}
+            className="flex items-center gap-2 rounded-xl bg-brand-600 hover:bg-brand-700 text-white font-bold px-4 py-2.5 text-xs shadow-md shadow-brand-500/20 transition-all"
+          >
+            <UserPlus className="h-4 w-4" />
+            <span>+ Matricular Novo Aluno</span>
+          </button>
+        </div>
       </div>
 
       {/* Metrics by Level */}
@@ -682,6 +696,12 @@ export const AlunosPage: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* Modal Importar Alunos (Planilha) */}
+      <ImportarAlunosModal
+        isOpen={isImportModalOpen}
+        onClose={() => setIsImportModalOpen(false)}
+      />
     </div>
   );
 };

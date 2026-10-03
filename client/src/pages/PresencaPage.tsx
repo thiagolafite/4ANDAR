@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { useApp } from '../context/AppContext';
 import {
   CheckSquare,
@@ -16,8 +17,10 @@ import {
 } from 'lucide-react';
 import { Presenca, StatusPresenca } from '../types';
 import { UserAvatar } from '../components/common/UserAvatar';
+import { RegistrarPresencaModal } from '../components/modals/RegistrarPresencaModal';
 
 export const PresencaPage: React.FC = () => {
+  const [searchParams] = useSearchParams();
   const {
     currentUser,
     alunos,
@@ -33,6 +36,23 @@ export const PresencaPage: React.FC = () => {
   const [selectedAulaId, setSelectedAulaId] = useState<string>(aulas[0]?.id || '');
   const [selectedData, setSelectedData] = useState<string>('2026-09-29');
   const [alunoManualId, setAlunoManualId] = useState<string>('');
+  const [isRegistrarModalOpen, setIsRegistrarModalOpen] = useState(false);
+
+  useEffect(() => {
+    if (searchParams.get('registrar') === 'true' || searchParams.get('registrar') === '1') {
+      setIsRegistrarModalOpen(true);
+    }
+  }, [searchParams]);
+
+  const canRegisterPresenca =
+    Boolean(currentUser?.is_master) ||
+    currentUser?.role === 'master' ||
+    currentUser?.role === 'admin' ||
+    currentUser?.role === 'secretaria' ||
+    currentUser?.role === 'professor' ||
+    currentUser?.tipo_usuario === 'AdminMaster' ||
+    currentUser?.tipo_usuario === 'Secretaria' ||
+    currentUser?.tipo_usuario === 'Equipe';
 
   const selectedAula = aulas.find((a) => a.id === selectedAulaId);
 
@@ -119,13 +139,25 @@ export const PresencaPage: React.FC = () => {
           </p>
         </div>
 
-        <button
-          onClick={handleDownloadCSV}
-          className="flex items-center gap-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2.5 text-xs font-bold shadow-md shadow-emerald-600/20 transition-all self-start sm:self-auto"
-        >
-          <FileSpreadsheet className="h-4 w-4" />
-          <span>Baixar Lista em CSV ({confirmados.length})</span>
-        </button>
+        <div className="flex flex-wrap items-center gap-2.5 self-start sm:self-auto">
+          <button
+            onClick={handleDownloadCSV}
+            className="flex items-center gap-2 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 px-4 py-2.5 text-xs font-bold transition-all shadow-xs"
+          >
+            <FileSpreadsheet className="h-4 w-4 text-emerald-600" />
+            <span>Baixar Lista em CSV ({confirmados.length})</span>
+          </button>
+
+          {canRegisterPresenca && (
+            <button
+              onClick={() => setIsRegistrarModalOpen(true)}
+              className="flex items-center gap-2 rounded-xl bg-brand-600 hover:bg-brand-700 text-white px-4 py-2.5 text-xs font-bold shadow-md shadow-brand-500/20 transition-all"
+            >
+              <UserCheck className="h-4 w-4" />
+              <span>Registrar Presença</span>
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Selectors: Turma + Data */}
@@ -379,6 +411,14 @@ export const PresencaPage: React.FC = () => {
           </table>
         </div>
       </div>
+
+      {/* Modal de Registro de Presença com Busca Instantânea */}
+      <RegistrarPresencaModal
+        isOpen={isRegistrarModalOpen}
+        onClose={() => setIsRegistrarModalOpen(false)}
+        defaultAulaId={selectedAulaId}
+        defaultData={selectedData}
+      />
     </div>
   );
 };

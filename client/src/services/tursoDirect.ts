@@ -77,6 +77,38 @@ export async function executeDirectTurso(sql: string, args: any[] = []): Promise
 }
 
 /**
+ * Executa múltiplas instruções SQL em lote diretamente no Turso Cloud via Pipeline API
+ */
+export async function executeBatchTurso(statements: Array<{ sql: string; args?: any[] }>): Promise<void> {
+  try {
+    const requests = statements.map((st) => ({
+      type: 'execute',
+      stmt: {
+        sql: st.sql,
+        args: (st.args || []).map(toTursoArg)
+      }
+    }));
+    requests.push({ type: 'close' } as any);
+
+    const res = await fetch(TURSO_URL, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${TURSO_AUTH_TOKEN}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ requests })
+    });
+
+    if (!res.ok) {
+      throw new Error(`Turso HTTP batch error: ${res.status}`);
+    }
+  } catch (err) {
+    console.warn('Erro ao executar batch no Turso:', err);
+    throw err;
+  }
+}
+
+/**
  * Gera hash SHA-256 nativo do navegador para senhas cadastradas diretamente
  */
 export async function hashPasswordClient(password: string): Promise<string> {

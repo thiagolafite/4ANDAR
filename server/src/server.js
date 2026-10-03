@@ -922,6 +922,102 @@ app.post('/api/alunos', async (req, res) => {
   }
 });
 
+// Importação em massa de alunos via planilha (otimizado com batch atômico de alta performance)
+app.post('/api/alunos/bulk', async (req, res) => {
+  try {
+    const { alunos } = req.body;
+    if (!alunos || !Array.isArray(alunos) || alunos.length === 0) {
+      return res.status(400).json({ error: 'Nenhum aluno informado para importação.' });
+    }
+
+    const existingResult = await turso.execute('SELECT id, nome, email, telefone FROM alunos');
+    const existingMap = new Map();
+    for (const ea of existingResult.rows) {
+      if (ea.nome) existingMap.set(ea.nome.trim().toLowerCase(), ea);
+      if (ea.email) existingMap.set(ea.email.trim().toLowerCase(), ea);
+    }
+
+    let inserted = 0;
+    let updated = 0;
+    const batchStmts = [];
+
+    for (const al of alunos) {
+      const nomeClean = (al.nome || '').trim();
+      if (!nomeClean) continue;
+
+      const emailClean = (al.email || '').trim().toLowerCase();
+      const existing = existingMap.get(nomeClean.toLowerCase()) || (emailClean ? existingMap.get(emailClean) : null);
+
+      if (existing) {
+        batchStmts.push({
+          sql: `UPDATE alunos SET
+                telefone = CASE WHEN ? != '' THEN ? ELSE telefone END,
+                email = CASE WHEN ? != '' THEN ? ELSE email END,
+                nivel_atual = COALESCE(?, nivel_atual),
+                papel = COALESCE(?, papel),
+                tipo_frequencia = COALESCE(?, tipo_frequencia),
+                mensalidade_valor = COALESCE(?, mensalidade_valor),
+                dia_vencimento = COALESCE(?, dia_vencimento),
+                status = COALESCE(?, status)
+                WHERE id = ?`,
+          args: [
+            al.telefone || '', al.telefone || '',
+            al.email || '', al.email || '',
+            al.nivel_atual || null,
+            al.papel || null,
+            al.tipo_frequencia || null,
+            al.mensalidade_valor != null ? Number(al.mensalidade_valor) : null,
+            al.dia_vencimento != null ? Number(al.dia_vencimento) : null,
+            al.status || null,
+            existing.id
+          ]
+        });
+        updated++;
+      } else {
+        const id = al.id || `al_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
+        batchStmts.push({
+          sql: `INSERT INTO alunos (id, user_id, nome, telefone, email, nivel_atual, papel, mensalidade_valor, dia_vencimento, data_matricula, data_inicio_nivel, status, foto_url, observacoes, tipo_frequencia, data_pagamento_atual, data_vencimento_atual)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          args: [
+            id,
+            al.user_id || null,
+            nomeClean,
+            al.telefone || '',
+            al.email || '',
+            al.nivel_atual || 'B1',
+            al.papel || 'Condutor',
+            Number(al.mensalidade_valor) || 190.0,
+            Number(al.dia_vencimento) || 5,
+            al.data_matricula || new Date().toISOString().substring(0, 10),
+            al.data_inicio_nivel || new Date().toISOString().substring(0, 10),
+            al.status || 'ativo',
+            al.foto_url || null,
+            al.observacoes || null,
+            al.tipo_frequencia || 'mensalista',
+            al.data_pagamento_atual || null,
+            al.data_vencimento_atual || null
+          ]
+        });
+        existingMap.set(nomeClean.toLowerCase(), { id });
+        if (emailClean) existingMap.set(emailClean, { id });
+        inserted++;
+      }
+    }
+
+    // Executa em lotes de 100 via turso.batch
+    const CHUNK_SIZE = 100;
+    for (let i = 0; i < batchStmts.length; i += CHUNK_SIZE) {
+      const chunk = batchStmts.slice(i, i + CHUNK_SIZE);
+      await turso.batch(chunk);
+    }
+
+    res.json({ success: true, count: batchStmts.length, inserted, updated });
+  } catch (err) {
+    console.error('Erro ao importar alunos em lote:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 app.put('/api/alunos/:id', async (req, res) => {
   try {
     const { id } = req.params;
