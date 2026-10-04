@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useApp } from '../context/AppContext';
 import {
   Users,
@@ -17,7 +17,11 @@ import {
   CalendarClock,
   ShieldCheck,
   AlertTriangle,
-  FileSpreadsheet
+  FileSpreadsheet,
+  LayoutGrid,
+  List,
+  AlignJustify,
+  RotateCcw
 } from 'lucide-react';
 import { Aluno, NivelForro, PapelDanca } from '../types';
 import { UserAvatar } from '../components/common/UserAvatar';
@@ -29,6 +33,18 @@ export const AlunosPage: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterNivel, setFilterNivel] = useState<string>('todos');
   const [filterPapel, setFilterPapel] = useState<string>('todos');
+  const [filterTipo, setFilterTipo] = useState<string>('todos');
+  const [filterStatusFinanc, setFilterStatusFinanc] = useState<string>('todos');
+  const [sortBy, setSortBy] = useState<string>('nome_asc');
+  const [viewMode, setViewMode] = useState<'grade' | 'lista' | 'compacto'>(() => {
+    return (localStorage.getItem('4andar_alunos_view_mode') as any) || 'grade';
+  });
+
+  const handleSetViewMode = (mode: 'grade' | 'lista' | 'compacto') => {
+    setViewMode(mode);
+    localStorage.setItem('4andar_alunos_view_mode', mode);
+  };
+
   const [isNewModalOpen, setIsNewModalOpen] = useState(false);
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
   const [selectedUserId, setSelectedUserId] = useState<string>('');
@@ -103,18 +119,104 @@ export const AlunosPage: React.FC = () => {
     return list;
   }, [alunos, usuariosList]);
 
-  const filteredAlunos = todosAlunos.filter((aluno) => {
-    if (filterNivel !== 'todos' && aluno.nivel_atual !== filterNivel) return false;
-    if (filterPapel !== 'todos' && aluno.papel !== filterPapel) return false;
-    if (!searchTerm.trim()) return true;
+  const filteredAndSortedAlunos = useMemo(() => {
+    const cleanStr = (s?: string) =>
+      (s || '')
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .trim()
+        .toLowerCase();
 
-    const q = searchTerm.toLowerCase();
-    return (
-      aluno.nome.toLowerCase().includes(q) ||
-      aluno.telefone.includes(q) ||
-      aluno.email.toLowerCase().includes(q)
-    );
-  });
+    const q = cleanStr(searchTerm);
+    const qDigits = searchTerm.replace(/\D/g, '');
+
+    const filtered = todosAlunos.filter((aluno) => {
+      // 1. Filtro por Nível
+      if (filterNivel !== 'todos' && aluno.nivel_atual !== filterNivel) return false;
+
+      // 2. Filtro por Papel
+      if (filterPapel !== 'todos' && aluno.papel !== filterPapel) return false;
+
+      // 3. Filtro por Tipo de Frequência
+      if (filterTipo !== 'todos') {
+        const alunoTipo = aluno.tipo_frequencia || 'mensalista';
+        if (alunoTipo !== filterTipo) return false;
+      }
+
+      // 4. Filtro por Situação Financeira
+      if (filterStatusFinanc !== 'todos') {
+        const sf = getStatusFinanceiro(aluno);
+        if (sf.key !== filterStatusFinanc) return false;
+      }
+
+      // 5. Busca textual
+      if (q) {
+        const nomeClean = cleanStr(aluno.nome);
+        const emailClean = cleanStr(aluno.email);
+        const nomeMatch = nomeClean.includes(q);
+        const emailMatch = emailClean.includes(q);
+
+        let telMatch = false;
+        if (qDigits.length > 0 && aluno.telefone) {
+          const telDigits = aluno.telefone.replace(/\D/g, '');
+          telMatch = telDigits.includes(qDigits);
+        }
+
+        if (!nomeMatch && !emailMatch && !telMatch) return false;
+      }
+
+      return true;
+    });
+
+    // Ordenação
+    return filtered.sort((a, b) => {
+      if (sortBy === 'nome_asc') {
+        return a.nome.localeCompare(b.nome);
+      }
+      if (sortBy === 'nome_desc') {
+        return b.nome.localeCompare(a.nome);
+      }
+      if (sortBy === 'nivel') {
+        const niveisOrder: Record<string, number> = { B1: 1, B2: 2, I1: 3, I2: 4 };
+        return (niveisOrder[a.nivel_atual] || 0) - (niveisOrder[b.nivel_atual] || 0);
+      }
+      if (sortBy === 'data_matricula') {
+        const dA = new Date(a.data_matricula || 0).getTime();
+        const dB = new Date(b.data_matricula || 0).getTime();
+        return dB - dA;
+      }
+      if (sortBy === 'status_financ') {
+        const sfOrder: Record<string, number> = {
+          atrasado: 1,
+          a_vencer: 2,
+          em_dia: 3,
+          avulso: 4,
+          experimental: 5
+        };
+        const sfA = getStatusFinanceiro(a).key;
+        const sfB = getStatusFinanceiro(b).key;
+        return (sfOrder[sfA] || 99) - (sfOrder[sfB] || 99);
+      }
+      return 0;
+    });
+  }, [todosAlunos, filterNivel, filterPapel, filterTipo, filterStatusFinanc, searchTerm, sortBy, pagamentos]);
+
+  const hasActiveFilters =
+    searchTerm.trim() !== '' ||
+    filterNivel !== 'todos' ||
+    filterPapel !== 'todos' ||
+    filterTipo !== 'todos' ||
+    filterStatusFinanc !== 'todos' ||
+    sortBy !== 'nome_asc';
+
+  const clearAllFilters = () => {
+    setSearchTerm('');
+    setFilterNivel('todos');
+    setFilterPapel('todos');
+    setFilterTipo('todos');
+    setFilterStatusFinanc('todos');
+    setSortBy('nome_asc');
+  };
 
   const handleCreateSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -152,10 +254,10 @@ export const AlunosPage: React.FC = () => {
   // Retorna o status financeiro do aluno com base nos pagamentos e no tipo_frequencia
   const getStatusFinanceiro = (aluno: Aluno) => {
     if (aluno.tipo_frequencia === 'experimental') {
-      return { label: 'Experimental', icon: <CalendarClock className="h-3 w-3" />, cls: 'bg-blue-100 text-blue-800' };
+      return { key: 'experimental', label: 'Experimental', icon: <CalendarClock className="h-3 w-3" />, cls: 'bg-blue-100 text-blue-800' };
     }
     if (aluno.tipo_frequencia === 'avulso') {
-      return { label: 'Avulso', icon: <CalendarClock className="h-3 w-3" />, cls: 'bg-slate-100 text-slate-700' };
+      return { key: 'avulso', label: 'Avulso', icon: <CalendarClock className="h-3 w-3" />, cls: 'bg-slate-100 text-slate-700' };
     }
 
     // Mensalista — verifica pagamentos
@@ -170,26 +272,26 @@ export const AlunosPage: React.FC = () => {
       if (pagPendente) {
         const venc = new Date(pagPendente.data_vencimento + 'T12:00:00');
         if (venc < hoje) {
-          return { label: 'Atrasado', icon: <AlertTriangle className="h-3 w-3" />, cls: 'bg-rose-100 text-rose-800' };
+          return { key: 'atrasado', label: 'Atrasado', icon: <AlertTriangle className="h-3 w-3" />, cls: 'bg-rose-100 text-rose-800' };
         }
         const diff = Math.ceil((venc.getTime() - hoje.getTime()) / (1000 * 60 * 60 * 24));
         if (diff <= 7) {
-          return { label: `Vence em ${diff}d`, icon: <CalendarClock className="h-3 w-3" />, cls: 'bg-amber-100 text-amber-800' };
+          return { key: 'a_vencer', label: `Vence em ${diff}d`, icon: <CalendarClock className="h-3 w-3" />, cls: 'bg-amber-100 text-amber-800' };
         }
       }
-      return { label: 'Em dia', icon: <ShieldCheck className="h-3 w-3" />, cls: 'bg-emerald-100 text-emerald-800' };
+      return { key: 'em_dia', label: 'Em dia', icon: <ShieldCheck className="h-3 w-3" />, cls: 'bg-emerald-100 text-emerald-800' };
     }
 
     if (dataVenc < hoje) {
-      return { label: 'Atrasado', icon: <AlertTriangle className="h-3 w-3" />, cls: 'bg-rose-100 text-rose-800' };
+      return { key: 'atrasado', label: 'Atrasado', icon: <AlertTriangle className="h-3 w-3" />, cls: 'bg-rose-100 text-rose-800' };
     }
 
     const diasRestantes = Math.ceil((dataVenc.getTime() - hoje.getTime()) / (1000 * 60 * 60 * 24));
     if (diasRestantes <= 7) {
-      return { label: `Vence em ${diasRestantes}d`, icon: <CalendarClock className="h-3 w-3" />, cls: 'bg-amber-100 text-amber-800' };
+      return { key: 'a_vencer', label: `Vence em ${diasRestantes}d`, icon: <CalendarClock className="h-3 w-3" />, cls: 'bg-amber-100 text-amber-800' };
     }
 
-    return { label: 'Em dia', icon: <ShieldCheck className="h-3 w-3" />, cls: 'bg-emerald-100 text-emerald-800' };
+    return { key: 'em_dia', label: 'Em dia', icon: <ShieldCheck className="h-3 w-3" />, cls: 'bg-emerald-100 text-emerald-800' };
   };
 
   return (
@@ -268,22 +370,79 @@ export const AlunosPage: React.FC = () => {
         </div>
       </div>
 
-      {/* Filter and Search Bar */}
-      <div className="rounded-2xl bg-white p-4 border border-slate-100 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
-        {/* Search */}
-        <div className="relative flex-1">
-          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-          <input
-            type="text"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            placeholder="Filtrar por nome, telefone ou email..."
-            className="w-full rounded-xl border border-slate-200 bg-slate-50/70 pl-10 pr-4 py-2 text-sm text-slate-800 placeholder:text-slate-400 outline-none focus:border-brand-500 focus:bg-white transition-all"
-          />
+      {/* Filter and Search Bar with View Mode Toggle */}
+      <div className="rounded-2xl bg-white p-4 border border-slate-100 shadow-sm space-y-3">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
+          {/* Search */}
+          <div className="relative flex-1">
+            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+            <input
+              type="text"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              placeholder="Buscar por nome, telefone ou email..."
+              className="w-full rounded-xl border border-slate-200 bg-slate-50/70 pl-10 pr-9 py-2 text-sm text-slate-800 placeholder:text-slate-400 outline-none focus:border-brand-500 focus:bg-white transition-all"
+            />
+            {searchTerm && (
+              <button
+                type="button"
+                onClick={() => setSearchTerm('')}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-1"
+              >
+                <X className="h-3.5 w-3.5" />
+              </button>
+            )}
+          </div>
+
+          {/* View Mode Toggle: Grade | Lista | Compacto */}
+          <div className="flex items-center gap-1 p-1 bg-slate-100 rounded-2xl border border-slate-200/80 shrink-0 self-start md:self-auto">
+            <button
+              type="button"
+              onClick={() => handleSetViewMode('grade')}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
+                viewMode === 'grade'
+                  ? 'bg-white text-brand-600 shadow-xs'
+                  : 'text-slate-600 hover:text-slate-900'
+              }`}
+              title="Exibição em Grade de Cartões"
+            >
+              <LayoutGrid className="h-3.5 w-3.5" />
+              <span>Grade</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => handleSetViewMode('lista')}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
+                viewMode === 'lista'
+                  ? 'bg-white text-brand-600 shadow-xs'
+                  : 'text-slate-600 hover:text-slate-900'
+              }`}
+              title="Exibição em Tabela Detalhada"
+            >
+              <List className="h-3.5 w-3.5" />
+              <span>Lista / Tabela</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => handleSetViewMode('compacto')}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
+                viewMode === 'compacto'
+                  ? 'bg-white text-brand-600 shadow-xs'
+                  : 'text-slate-600 hover:text-slate-900'
+              }`}
+              title="Exibição em Linhas Compactas"
+            >
+              <AlignJustify className="h-3.5 w-3.5" />
+              <span>Compacto</span>
+            </button>
+          </div>
         </div>
 
-        {/* Dropdowns */}
-        <div className="flex flex-wrap items-center gap-2">
+        {/* Dropdowns Row */}
+        <div className="flex flex-wrap items-center gap-2 pt-1 border-t border-slate-100/80">
+          {/* Nível */}
           <select
             value={filterNivel}
             onChange={(e) => setFilterNivel(e.target.value)}
@@ -296,6 +455,7 @@ export const AlunosPage: React.FC = () => {
             <option value="I2">Intermediário 2 (I2)</option>
           </select>
 
+          {/* Papel */}
           <select
             value={filterPapel}
             onChange={(e) => setFilterPapel(e.target.value)}
@@ -306,17 +466,81 @@ export const AlunosPage: React.FC = () => {
             <option value="Conduzido">Conduzidos</option>
             <option value="Ambos">Ambos</option>
           </select>
+
+          {/* Frequência */}
+          <select
+            value={filterTipo}
+            onChange={(e) => setFilterTipo(e.target.value)}
+            className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-medium text-slate-700 outline-none focus:border-brand-500"
+          >
+            <option value="todos">Todas as Frequências</option>
+            <option value="mensalista">🗓️ Mensalistas</option>
+            <option value="experimental">🎁 Experimentais</option>
+            <option value="avulso">🎟️ Avulsos</option>
+          </select>
+
+          {/* Situação Financeira */}
+          <select
+            value={filterStatusFinanc}
+            onChange={(e) => setFilterStatusFinanc(e.target.value)}
+            className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-medium text-slate-700 outline-none focus:border-brand-500"
+          >
+            <option value="todos">Todas as Situações</option>
+            <option value="em_dia">🟢 Em dia</option>
+            <option value="a_vencer">🟡 A vencer (≤ 7 dias)</option>
+            <option value="atrasado">🔴 Em atraso</option>
+          </select>
+
+          {/* Ordenação */}
+          <div className="flex items-center gap-1.5 ml-auto">
+            <span className="text-[11px] font-bold text-slate-400 uppercase hidden sm:inline">Ordenar:</span>
+            <select
+              value={sortBy}
+              onChange={(e) => setSortBy(e.target.value)}
+              className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-medium text-slate-700 outline-none focus:border-brand-500"
+            >
+              <option value="nome_asc">Nome (A → Z)</option>
+              <option value="nome_desc">Nome (Z → A)</option>
+              <option value="nivel">Nível (B1 → I2)</option>
+              <option value="data_matricula">Matrícula (Mais Recentes)</option>
+              <option value="status_financ">Situação (Atrasados Primeiro)</option>
+            </select>
+          </div>
+
+          {/* Limpar Filtros */}
+          {hasActiveFilters && (
+            <button
+              type="button"
+              onClick={clearAllFilters}
+              className="flex items-center gap-1 px-3 py-2 rounded-xl text-xs font-bold text-rose-600 hover:bg-rose-50 border border-rose-200 transition-colors"
+              title="Limpar todos os filtros"
+            >
+              <RotateCcw className="h-3 w-3" />
+              <span>Limpar</span>
+            </button>
+          )}
+        </div>
+
+        {/* Counter footer */}
+        <div className="flex items-center justify-between text-xs text-slate-500 px-1 pt-0.5">
+          <span>
+            Exibindo <strong>{filteredAndSortedAlunos.length}</strong> de {todosAlunos.length} alunos
+          </span>
+          <span className="text-[11px] text-slate-400">
+            Visualização: <strong>{viewMode === 'grade' ? 'Grade de Cartões' : viewMode === 'lista' ? 'Tabela Completa' : 'Linhas Compactas'}</strong>
+          </span>
         </div>
       </div>
 
-      {/* Students Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {filteredAlunos.length === 0 ? (
-          <div className="col-span-full rounded-2xl bg-white p-12 text-center text-slate-400 border border-slate-100">
-            Nenhum aluno encontrado com os filtros selecionados.
-          </div>
-        ) : (
-          filteredAlunos.map((aluno) => (
+      {/* Content Rendering: Empty State / Grade / Lista / Compacto */}
+      {filteredAndSortedAlunos.length === 0 ? (
+        <div className="rounded-2xl bg-white p-12 text-center text-slate-400 border border-slate-100">
+          Nenhum aluno encontrado com os filtros selecionados.
+        </div>
+      ) : viewMode === 'grade' ? (
+        /* Modo 1: Grade de Cartões */
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {filteredAndSortedAlunos.map((aluno) => (
             <div
               key={aluno.id}
               onClick={() => setSelectedAlunoModal(aluno)}
@@ -358,11 +582,11 @@ export const AlunosPage: React.FC = () => {
                 <div className="mt-4 space-y-1.5 text-xs text-slate-500 pt-3 border-t border-slate-100">
                   <p className="flex items-center gap-2">
                     <Phone className="h-3.5 w-3.5 text-slate-400" />
-                    <span>{aluno.telefone}</span>
+                    <span>{aluno.telefone || <span className="text-slate-300 italic">Não informado</span>}</span>
                   </p>
                   <p className="flex items-center gap-2">
                     <Mail className="h-3.5 w-3.5 text-slate-400" />
-                    <span className="truncate">{aluno.email}</span>
+                    <span className="truncate">{aluno.email || <span className="text-slate-300 italic">Não informado</span>}</span>
                   </p>
                 </div>
               </div>
@@ -387,7 +611,6 @@ export const AlunosPage: React.FC = () => {
                 </div>
 
                 <div className="flex items-center gap-2">
-                  {/* Badge de status financeiro */}
                   {(() => {
                     const sf = getStatusFinanceiro(aluno);
                     return (
@@ -403,9 +626,183 @@ export const AlunosPage: React.FC = () => {
                 </div>
               </div>
             </div>
-          ))
-        )}
-      </div>
+          ))}
+        </div>
+      ) : viewMode === 'lista' ? (
+        /* Modo 2: Tabela Detalhada */
+        <div className="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-xs">
+              <thead className="bg-slate-50 border-b border-slate-200 text-[10px] uppercase font-bold text-slate-400 tracking-wider">
+                <tr>
+                  <th className="p-3.5">Aluno</th>
+                  <th className="p-3.5">Nível</th>
+                  <th className="p-3.5">Papel</th>
+                  <th className="p-3.5">Contato</th>
+                  <th className="p-3.5">Frequência</th>
+                  <th className="p-3.5">Mensalidade</th>
+                  <th className="p-3.5">Situação</th>
+                  <th className="p-3.5 text-right">Ação</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {filteredAndSortedAlunos.map((aluno) => {
+                  const sf = getStatusFinanceiro(aluno);
+                  return (
+                    <tr
+                      key={aluno.id}
+                      onClick={() => setSelectedAlunoModal(aluno)}
+                      className="hover:bg-slate-50/80 transition-colors cursor-pointer group"
+                    >
+                      <td className="p-3.5">
+                        <div className="flex items-center gap-3">
+                          <UserAvatar
+                            name={aluno.nome}
+                            fotoUrl={aluno.foto_url}
+                            size="md"
+                            className="ring-2 ring-slate-100 group-hover:ring-brand-500 transition-all"
+                          />
+                          <div>
+                            <p className="font-bold text-sm text-slate-900 group-hover:text-brand-600 transition-colors">
+                              {aluno.nome}
+                            </p>
+                            {Boolean(aluno.user_id || usuariosList.some((u) => u.email.toLowerCase() === aluno.email.toLowerCase())) && (
+                              <span className="inline-block mt-0.5 px-1.5 py-0.2 rounded text-[9px] font-bold bg-emerald-100 text-emerald-800">
+                                Conta Vinculada
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      </td>
+                      <td className="p-3.5">
+                        <span className={`px-2 py-0.5 rounded text-[10px] font-black border ${getNivelBadge(aluno.nivel_atual)}`}>
+                          {aluno.nivel_atual}
+                        </span>
+                      </td>
+                      <td className="p-3.5 text-slate-600 font-medium">
+                        {aluno.papel}
+                      </td>
+                      <td className="p-3.5">
+                        <div className="space-y-0.5 text-slate-600">
+                          {aluno.telefone ? (
+                            <p className="flex items-center gap-1 font-mono text-[11px]">
+                              <Phone className="h-3 w-3 text-slate-400" />
+                              {aluno.telefone}
+                            </p>
+                          ) : (
+                            <span className="text-slate-300 italic text-[11px]">Sem telefone</span>
+                          )}
+                          {aluno.email && (
+                            <p className="flex items-center gap-1 text-[11px] text-slate-400 truncate max-w-[180px]">
+                              <Mail className="h-3 w-3 text-slate-400 shrink-0" />
+                              <span className="truncate">{aluno.email}</span>
+                            </p>
+                          )}
+                        </div>
+                      </td>
+                      <td className="p-3.5">
+                        <span
+                          className={`inline-block px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                            aluno.tipo_frequencia === 'mensalista' || !aluno.tipo_frequencia
+                              ? 'bg-blue-100 text-blue-800'
+                              : aluno.tipo_frequencia === 'experimental'
+                              ? 'bg-purple-100 text-purple-800'
+                              : 'bg-slate-100 text-slate-700'
+                          }`}
+                        >
+                          {aluno.tipo_frequencia === 'experimental'
+                            ? '🎁 Experimental'
+                            : aluno.tipo_frequencia === 'avulso'
+                            ? '🎟️ Avulso'
+                            : '🗓️ Mensalista'}
+                        </span>
+                      </td>
+                      <td className="p-3.5">
+                        <p className="font-bold text-slate-900">
+                          R$ {aluno.mensalidade_valor.toFixed(2)}
+                        </p>
+                        <p className="text-[10px] text-slate-400">
+                          {aluno.data_vencimento_atual
+                            ? `Venc. ${new Date(aluno.data_vencimento_atual + 'T12:00:00').toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })}`
+                            : `Dia ${aluno.dia_vencimento}`}
+                        </p>
+                      </td>
+                      <td className="p-3.5">
+                        <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold ${sf.cls}`}>
+                          {sf.icon}
+                          {sf.label}
+                        </span>
+                      </td>
+                      <td className="p-3.5 text-right">
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setSelectedAlunoModal(aluno);
+                          }}
+                          className="inline-flex items-center gap-1 text-xs font-bold text-brand-600 hover:text-brand-700 group-hover:translate-x-0.5 transition-transform"
+                        >
+                          Ver Ficha <ArrowRight className="h-3.5 w-3.5" />
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      ) : (
+        /* Modo 3: Linhas Compactas */
+        <div className="rounded-2xl border border-slate-200 bg-white shadow-sm divide-y divide-slate-100 overflow-hidden">
+          {filteredAndSortedAlunos.map((aluno) => {
+            const sf = getStatusFinanceiro(aluno);
+            return (
+              <div
+                key={aluno.id}
+                onClick={() => setSelectedAlunoModal(aluno)}
+                className="p-3 sm:px-5 flex items-center justify-between gap-3 hover:bg-slate-50/80 transition-colors cursor-pointer group"
+              >
+                <div className="flex items-center gap-3 min-w-0">
+                  <UserAvatar
+                    name={aluno.nome}
+                    fotoUrl={aluno.foto_url}
+                    size="md"
+                    className="ring-2 ring-slate-100 group-hover:ring-brand-500 transition-all shrink-0"
+                  />
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2">
+                      <h4 className="font-bold text-sm text-slate-900 group-hover:text-brand-600 transition-colors truncate">
+                        {aluno.nome}
+                      </h4>
+                      <span className={`px-1.5 py-0.2 rounded text-[10px] font-black border shrink-0 ${getNivelBadge(aluno.nivel_atual)}`}>
+                        {aluno.nivel_atual}
+                      </span>
+                    </div>
+                    <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 mt-0.5 text-xs text-slate-400">
+                      <span>{aluno.papel}</span>
+                      {aluno.telefone && (
+                        <span className="font-mono text-[11px] text-slate-500">{aluno.telefone}</span>
+                      )}
+                      <span>• R$ {aluno.mensalidade_valor.toFixed(2)}</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2.5 shrink-0">
+                  <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold ${sf.cls}`}>
+                    {sf.icon}
+                    {sf.label}
+                  </span>
+                  <span className="hidden sm:inline-flex items-center gap-1 text-xs font-semibold text-brand-600 group-hover:translate-x-0.5 transition-transform">
+                    Ver Ficha <ArrowRight className="h-3.5 w-3.5" />
+                  </span>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
 
       {/* Modal Novo Aluno (Requirement: Matrícula com nível, mensalidade e vencimento) */}
       {isNewModalOpen && (
