@@ -191,15 +191,35 @@ export const RegistrarPresencaModal: React.FC<RegistrarPresencaModalProps> = ({
   // Filtra alunos em tempo real conforme o usuário digita o nome
   const filteredAlunos = useMemo(() => {
     if (!searchTerm.trim()) {
-      return todosAlunos.slice(0, 8);
+      return todosAlunos.slice(0, 10);
     }
 
-    const q = searchTerm.toLowerCase().trim();
+    // Normaliza texto removendo acentos e espaços extras
+    const cleanStr = (s?: string) =>
+      (s || '')
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .trim()
+        .toLowerCase();
+
+    const q = cleanStr(searchTerm);
+    const qDigits = searchTerm.replace(/\D/g, ''); // apenas números se o usuário digitou algum
+
     return todosAlunos.filter((aluno) => {
-      const nomeMatch = aluno.nome.toLowerCase().includes(q);
-      const telMatch = aluno.telefone && aluno.telefone.replace(/\D/g, '').includes(q.replace(/\D/g, ''));
-      const emailMatch = aluno.email && aluno.email.toLowerCase().includes(q);
-      return nomeMatch || telMatch || emailMatch;
+      const nomeClean = cleanStr(aluno.nome);
+      const emailClean = cleanStr(aluno.email);
+
+      const nomeMatch = nomeClean.includes(q);
+      const emailMatch = emailClean.includes(q);
+
+      // Busca por telefone SOMENTE se a pesquisa contiver dígitos numéricos
+      let telMatch = false;
+      if (qDigits.length > 0 && aluno.telefone) {
+        const telDigits = aluno.telefone.replace(/\D/g, '');
+        telMatch = telDigits.includes(qDigits);
+      }
+
+      return nomeMatch || emailMatch || telMatch;
     });
   }, [todosAlunos, searchTerm]);
 
@@ -351,7 +371,13 @@ export const RegistrarPresencaModal: React.FC<RegistrarPresencaModalProps> = ({
                   setSearchTerm(e.target.value);
                   if (selectedAluno) setSelectedAluno(null);
                 }}
-                placeholder="Comece a digitar o nome do aluno (ex: Adriana, Lucas, Bia)..."
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && filteredAlunos.length > 0) {
+                    e.preventDefault();
+                    handleSelectAluno(filteredAlunos[0]);
+                  }
+                }}
+                placeholder="Comece a digitar o nome do aluno (ex: Adriana, Lucas, Thaise)..."
                 className="w-full rounded-2xl border-2 border-slate-200 bg-white pl-10 pr-10 py-3 text-sm font-medium text-slate-900 placeholder:text-slate-400 outline-none focus:border-brand-500 shadow-xs transition-all"
               />
               {searchTerm && (
@@ -370,20 +396,24 @@ export const RegistrarPresencaModal: React.FC<RegistrarPresencaModalProps> = ({
               )}
             </div>
             <p className="text-[11px] text-slate-400 italic">
-              Conforme você digita, os cadastros dos alunos aparecem abaixo em tempo real.
+              Conforme você digita, os cadastros dos alunos aparecem abaixo em tempo real. Pressione Enter para selecionar o primeiro.
             </p>
           </div>
 
           {/* Search Results / Student Cards */}
           <div className="space-y-2">
             <div className="flex items-center justify-between text-xs text-slate-500 font-semibold px-1">
-              <span>Alunos Encontrados ({filteredAlunos.length})</span>
+              <span>
+                {searchTerm.trim()
+                  ? `Alunos Encontrados com "${searchTerm}" (${filteredAlunos.length})`
+                  : `Alunos Cadastrados (${todosAlunos.length})`}
+              </span>
               {selectedAluno && (
                 <span className="text-brand-600 font-bold">1 aluno selecionado</span>
               )}
             </div>
 
-            <div className="grid grid-cols-1 gap-2.5 max-h-52 overflow-y-auto pr-1">
+            <div className="grid grid-cols-1 gap-2.5 max-h-64 overflow-y-auto pr-1">
               {filteredAlunos.length === 0 ? (
                 <div className="p-8 text-center bg-slate-50 rounded-2xl border border-slate-100 text-slate-400 text-xs">
                   Nenhum aluno encontrado com o termo "{searchTerm}".
