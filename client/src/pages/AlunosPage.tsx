@@ -311,18 +311,19 @@ export const AlunosPage: React.FC = () => {
         <div className="flex flex-wrap items-center gap-2.5 self-start sm:self-auto">
           <button
             onClick={() => setIsImportModalOpen(true)}
-            className="flex items-center gap-2 rounded-xl bg-emerald-50 border border-emerald-200 hover:bg-emerald-100 text-emerald-800 font-bold px-4 py-2.5 text-xs transition-colors shadow-xs"
-            title="Importar alunos a partir de planilha Excel (.xlsx, .xls) ou CSV"
+            className="flex items-center gap-2 rounded-xl bg-emerald-50 border-2 border-emerald-300/80 hover:bg-emerald-100/80 text-emerald-800 font-black px-4 py-2.5 text-xs transition-all shadow-xs hover:scale-[1.02] active:scale-[0.98] cursor-pointer"
+            title="Importar alunos em lote a partir de planilha Excel (.xlsx, .xls) ou CSV"
           >
-            <FileSpreadsheet className="h-4 w-4 text-emerald-600" />
-            <span>Importar Base de Alunos (Planilha)</span>
+            <FileSpreadsheet className="h-4 w-4 text-emerald-600 stroke-[2.5]" />
+            <span>📥 Importar Planilha de Alunos</span>
           </button>
 
           <button
             onClick={() => setIsNewModalOpen(true)}
-            className="flex items-center gap-2 rounded-xl bg-brand-600 hover:bg-brand-700 text-white font-bold px-4 py-2.5 text-xs shadow-md shadow-brand-500/20 transition-all"
+            className="flex items-center gap-2 rounded-xl bg-gradient-to-r from-brand-600 to-brand-700 hover:from-brand-700 hover:to-brand-800 text-white font-black px-4 py-2.5 text-xs shadow-md shadow-brand-500/25 transition-all hover:scale-[1.02] active:scale-[0.98] cursor-pointer"
+            title="Cadastrar e matricular novo aluno na escola"
           >
-            <UserPlus className="h-4 w-4" />
+            <UserPlus className="h-4 w-4 stroke-[2.5]" />
             <span>+ Matricular Novo Aluno</span>
           </button>
         </div>

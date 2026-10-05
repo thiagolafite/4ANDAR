@@ -246,7 +246,8 @@ export const RegistrarPresencaModal: React.FC<RegistrarPresencaModalProps> = ({
     );
   };
 
-  const handleConfirmarPresenca = async () => {
+  const handleConfirmarPresenca = async (statusOverride?: 'confirmada' | 'ausente') => {
+    const finalStatus = statusOverride || statusPresenca;
     if (!selectedAluno || !selectedAulaId) {
       showToast('Selecione um aluno e uma turma para registrar presença.', 'error');
       return;
@@ -258,7 +259,7 @@ export const RegistrarPresencaModal: React.FC<RegistrarPresencaModalProps> = ({
         selectedAluno.id,
         selectedAulaId,
         selectedData,
-        statusPresenca
+        finalStatus
       );
 
       // Reseta a seleção e limpa o campo de busca para o próximo aluno
@@ -298,15 +299,18 @@ export const RegistrarPresencaModal: React.FC<RegistrarPresencaModalProps> = ({
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 bg-slate-50/70">
           <div className="flex items-center gap-3">
-            <div className="h-10 w-10 rounded-2xl bg-brand-100 text-brand-700 flex items-center justify-center shadow-xs">
-              <UserCheck className="h-5 w-5 text-brand-600" />
+            <div className="h-10 w-10 rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-600 text-white flex items-center justify-center shadow-md shadow-emerald-500/25 shrink-0">
+              <UserCheck className="h-5 w-5 stroke-[2.5]" />
             </div>
             <div>
-              <h3 className="text-lg font-black text-slate-900 tracking-tight">
-                Registrar Presença de Aluno
+              <h3 className="text-lg font-black text-slate-900 tracking-tight flex items-center gap-2">
+                <span>Registrar Presença de Aluno</span>
+                <span className="text-[10px] font-extrabold bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-full uppercase tracking-normal">
+                  Chamada Rápida
+                </span>
               </h3>
               <p className="text-xs text-slate-500">
-                Digite o nome para localizar a ficha do aluno. A turma é reconhecida automaticamente pelo horário e cronograma.
+                Digite o nome do aluno para localizar seu cadastro e confirmar presença em 1 clique.
               </p>
             </div>
           </div>
@@ -479,7 +483,7 @@ export const RegistrarPresencaModal: React.FC<RegistrarPresencaModalProps> = ({
                         </div>
                       </div>
 
-                      {/* Right indicator: presence status or radio check */}
+                      {/* Right indicator: presence status and interactive select button */}
                       <div className="flex items-center gap-2 shrink-0">
                         {presencaAtual && (
                           <span
@@ -499,15 +503,25 @@ export const RegistrarPresencaModal: React.FC<RegistrarPresencaModalProps> = ({
                           </span>
                         )}
 
-                        <div
-                          className={`h-5 w-5 rounded-full border-2 flex items-center justify-center transition-all ${
+                        <span
+                          className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-black transition-all ${
                             isSelected
-                              ? 'border-brand-600 bg-brand-600 text-white'
-                              : 'border-slate-300 bg-white group-hover:border-slate-400'
+                              ? 'bg-emerald-600 text-white shadow-sm ring-2 ring-emerald-600/30'
+                              : 'bg-brand-50 text-brand-700 border border-brand-200 group-hover:bg-brand-600 group-hover:text-white group-hover:border-transparent'
                           }`}
                         >
-                          {isSelected && <Check className="h-3 w-3 stroke-[3]" />}
-                        </div>
+                          {isSelected ? (
+                            <>
+                              <Check className="h-3.5 w-3.5 stroke-[3]" />
+                              <span>Selecionado</span>
+                            </>
+                          ) : (
+                            <>
+                              <span>Selecionar</span>
+                              <span className="text-[11px] font-bold">→</span>
+                            </>
+                          )}
+                        </span>
                       </div>
                     </div>
                   );
@@ -612,47 +626,37 @@ export const RegistrarPresencaModal: React.FC<RegistrarPresencaModalProps> = ({
                 </div>
               )}
 
-              {/* Ações: Situação e Botão de Confirmação */}
+              {/* Ações Rápidas: Botões Diretos de Confirmação em 1 Clique */}
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-3 border-t border-slate-100">
-                <div className="flex items-center gap-2">
-                  <span className="text-xs font-bold text-slate-700">Situação:</span>
-                  <button
-                    type="button"
-                    onClick={() => setStatusPresenca('confirmada')}
-                    className={`px-3 py-2 rounded-xl text-xs font-bold transition-all ${
-                      statusPresenca === 'confirmada'
-                        ? 'bg-emerald-600 text-white shadow-xs'
-                        : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50'
-                    }`}
-                  >
-                    ✓ Presente (Confirmada)
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setStatusPresenca('ausente')}
-                    className={`px-3 py-2 rounded-xl text-xs font-bold transition-all ${
-                      statusPresenca === 'ausente'
-                        ? 'bg-rose-600 text-white shadow-xs'
-                        : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50'
-                    }`}
-                  >
-                    ✕ Marcar Falta
-                  </button>
+                <div className="text-xs text-slate-500 font-medium">
+                  Ação para <strong className="text-slate-800">{selectedAluno.nome}</strong>:
                 </div>
 
-                <button
-                  type="button"
-                  onClick={handleConfirmarPresenca}
-                  disabled={isSubmitting}
-                  className="flex items-center justify-center gap-2 rounded-2xl bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white font-black px-6 py-3 text-xs shadow-md shadow-emerald-600/20 transition-all cursor-pointer"
-                >
-                  <Check className="h-4 w-4" />
-                  <span>
-                    {statusPresenca === 'confirmada'
-                      ? `Confirmar Presença na ${selectedAula?.nome || 'Turma'}`
-                      : `Registrar Falta na ${selectedAula?.nome || 'Turma'}`}
-                  </span>
-                </button>
+                <div className="flex flex-wrap items-center gap-2.5">
+                  {/* Botão Falta */}
+                  <button
+                    type="button"
+                    onClick={() => handleConfirmarPresenca('ausente')}
+                    disabled={isSubmitting}
+                    className="flex items-center gap-1.5 px-4 py-2.5 rounded-2xl text-xs font-bold text-rose-700 bg-rose-50 border border-rose-200 hover:bg-rose-100 hover:border-rose-300 transition-all active:scale-[0.98] cursor-pointer disabled:opacity-50 shadow-2xs"
+                    title="Registrar falta para este aluno nesta turma"
+                  >
+                    <X className="h-4 w-4 text-rose-600 stroke-[2.5]" />
+                    <span>✕ Marcar Falta</span>
+                  </button>
+
+                  {/* Botão Principal: Confirmar Presença */}
+                  <button
+                    type="button"
+                    onClick={() => handleConfirmarPresenca('confirmada')}
+                    disabled={isSubmitting}
+                    className="flex items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white font-black px-6 py-2.5 text-xs shadow-lg shadow-emerald-600/30 ring-2 ring-emerald-500/20 hover:scale-[1.02] active:scale-[0.98] transition-all cursor-pointer disabled:opacity-50"
+                    title="Confirmar presença deste aluno na turma selecionada"
+                  >
+                    <Check className="h-4 w-4 stroke-[3]" />
+                    <span>✓ Confirmar Presença ({selectedAula?.nome || 'Turma'})</span>
+                  </button>
+                </div>
               </div>
             </div>
           )}

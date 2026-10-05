@@ -444,11 +444,11 @@ export const DashboardPage: React.FC = () => {
             <div className="flex flex-wrap items-center gap-2">
               <button
                 onClick={() => setIsRegistrarModalOpen(true)}
-                className="inline-flex items-center gap-1.5 rounded-xl bg-brand-600 px-3.5 py-2 text-xs font-bold text-white shadow-sm hover:bg-brand-700 transition-colors"
-                title="Chamada rápida: busque o aluno pelo nome e confirme a presença"
+                className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 px-4 py-2 text-xs font-black text-white shadow-md shadow-emerald-600/25 ring-1 ring-emerald-500/20 hover:scale-[1.02] active:scale-[0.98] transition-all cursor-pointer"
+                title="Chamada rápida: busque o aluno pelo nome e confirme a presença na hora"
               >
-                <UserCheck className="h-3.5 w-3.5" />
-                Registrar Presença
+                <UserCheck className="h-4 w-4 stroke-[2.5]" />
+                <span>⚡ Fazer Chamada / Registrar Presença</span>
               </button>
 
               <button
@@ -556,11 +556,11 @@ export const DashboardPage: React.FC = () => {
                   <div className="flex items-center gap-2">
                     <button
                       onClick={() => setIsRegistrarModalOpen(true)}
-                      className="text-xs font-bold text-brand-600 hover:text-brand-700 flex items-center gap-1 bg-brand-50 px-2.5 py-1 rounded-lg hover:bg-brand-100 transition-colors"
-                      title="Registrar presença avulsa ou manual"
+                      className="text-xs font-black text-white flex items-center gap-1.5 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 px-3 py-1.5 rounded-xl shadow-xs hover:scale-[1.02] active:scale-[0.98] transition-all cursor-pointer"
+                      title="Registrar presença de aluno em 1 clique"
                     >
-                      <UserCheck className="h-3.5 w-3.5" />
-                      + Registrar
+                      <UserCheck className="h-3.5 w-3.5 stroke-[2.5]" />
+                      <span>+ Registrar Presença</span>
                     </button>
                     <button
                       onClick={() => navigate('/presenca')}

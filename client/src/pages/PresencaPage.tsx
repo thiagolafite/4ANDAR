@@ -35,7 +35,6 @@ export const PresencaPage: React.FC = () => {
 
   const [selectedAulaId, setSelectedAulaId] = useState<string>(aulas[0]?.id || '');
   const [selectedData, setSelectedData] = useState<string>('2026-09-29');
-  const [alunoManualId, setAlunoManualId] = useState<string>('');
   const [isRegistrarModalOpen, setIsRegistrarModalOpen] = useState(false);
 
   useEffect(() => {
@@ -119,12 +118,6 @@ export const PresencaPage: React.FC = () => {
     showToast(`Arquivo CSV da lista baixado com sucesso (${confirmados.length} confirmados)!`);
   };
 
-  const handleAddAlunoManual = () => {
-    if (!alunoManualId) return;
-    solicitarPresenca(alunoManualId, selectedAulaId, selectedData);
-    setAlunoManualId('');
-  };
-
   return (
     <div className="space-y-6">
       {/* Page Title & CSV Button */}
@@ -151,10 +144,11 @@ export const PresencaPage: React.FC = () => {
           {canRegisterPresenca && (
             <button
               onClick={() => setIsRegistrarModalOpen(true)}
-              className="flex items-center gap-2 rounded-xl bg-brand-600 hover:bg-brand-700 text-white px-4 py-2.5 text-xs font-bold shadow-md shadow-brand-500/20 transition-all"
+              className="flex items-center gap-2 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white px-5 py-2.5 text-xs font-black shadow-lg shadow-emerald-600/30 ring-2 ring-emerald-500/30 hover:ring-emerald-400 hover:scale-[1.02] active:scale-[0.98] transition-all cursor-pointer"
+              title="Fazer chamada rápida: busque o aluno pelo nome e confirme a presença instantaneamente"
             >
-              <UserCheck className="h-4 w-4" />
-              <span>Registrar Presença</span>
+              <UserCheck className="h-4 w-4 stroke-[2.5]" />
+              <span>⚡ Registrar Presença (Chamada Rápida)</span>
             </button>
           )}
         </div>
@@ -191,31 +185,22 @@ export const PresencaPage: React.FC = () => {
           />
         </div>
 
-        <div>
-          <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">
-            Adicionar Aluno na Chamada
+        <div className="flex flex-col justify-end">
+          <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5 flex items-center justify-between">
+            <span>Chamada em Tempo Real</span>
+            <span className="text-[10px] text-emerald-700 font-extrabold bg-emerald-100 px-2 py-0.5 rounded-full uppercase tracking-normal">
+              Instantâneo
+            </span>
           </label>
-          <div className="flex gap-2">
-            <select
-              value={alunoManualId}
-              onChange={(e) => setAlunoManualId(e.target.value)}
-              className="flex-1 rounded-xl border border-slate-300 p-2.5 text-sm font-medium text-slate-800 outline-none focus:border-brand-500 bg-white"
-            >
-              <option value="">Selecione o aluno cadastrado...</option>
-              {alunosCadastrados.map((a) => (
-                <option key={a.id} value={a.id}>
-                  {a.nome} (Nível {a.nivel_atual} - {a.papel})
-                </option>
-              ))}
-            </select>
-            <button
-              onClick={handleAddAlunoManual}
-              disabled={!alunoManualId}
-              className="px-3 py-2.5 bg-brand-600 hover:bg-brand-700 disabled:opacity-40 text-white rounded-xl text-xs font-bold transition-colors"
-            >
-              <Plus className="h-4 w-4" />
-            </button>
-          </div>
+          <button
+            type="button"
+            onClick={() => setIsRegistrarModalOpen(true)}
+            className="w-full flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white p-2.5 text-xs font-black shadow-md shadow-emerald-600/25 transition-all hover:scale-[1.01] active:scale-[0.99] cursor-pointer"
+            title="Abrir busca rápida de alunos e confirmar presença nesta aula"
+          >
+            <UserCheck className="h-4 w-4 stroke-[2.5]" />
+            <span>+ Buscar Aluno e Dar Presença</span>
+          </button>
         </div>
       </div>
 
